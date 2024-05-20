@@ -646,10 +646,13 @@ def prepareTest(test_file):
     global hw
     hw = buildHw()
     programFile = ex_dir + test_file
+    symbolFile = programFile + '.sym'
     
     loadElf(memory, programFile, mem_base ) # 32*4 - 0x10054)
-    os.system('/opt/riscv/bin/riscv64-unknown-elf-objdump -t {} > /tmp/ISAtest.sym'.format(programFile))
-    loadSymbols(cpu,  '/tmp/ISAtest.sym', 0) # 32*4 - 0x10054)
+    
+    if not(os.path.exists(symbolFile)):
+        os.system('/opt/riscv/bin/riscv64-unknown-elf-objdump -t {} > {}'.format(programFile, symbolFile))
+    loadSymbols(cpu,  symbolFile, 0) # 32*4 - 0x10054)
 
 
 def runTest(test_file):
