@@ -3,6 +3,11 @@
 Created on Thu Feb  2 09:54:32 2023
 
 @author: dcr
+
+
+Latest info obtained from
+https://uim.fei.stuba.sk/wp-content/uploads/2018/02/riscv-privileged-2022.pdf
+
 """
 
 #-----------------------------
@@ -54,6 +59,13 @@ CSR_PMPCFG0 = 0x3A0
 # for i in range(64):
 #     self.implemented_csrs[0x3B0+i] = 'pmpaddr{}'.format(i)
         
+
+# Machine non-maskable interrupt handling
+CSR_MNSCRATCH = 0x740
+CSR_MNEPC = 0x741
+CSR_MNCAUSE = 0x742
+CSR_MNSTATUS = 0x744
+
 CSR_MCYCLE = 0xB00
 CSR_MINSTRET = 0xB02
 
