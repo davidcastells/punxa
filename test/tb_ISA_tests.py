@@ -675,8 +675,6 @@ def computeAllTests():
     ret = {}
 
     for f in files:
-        fd = (f+'.dump')
-        if (os.path.exists(ex_dir+fd)):
             if (f[0:4] != 'rv64'):
                 continue
             if ('-v-' in f):
