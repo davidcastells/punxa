@@ -50,6 +50,14 @@ rvc_instructions = ['C.ADDI4SPN', 'C.FLD', 'C.LQ', 'C.LW', 'C.FLW', 'C.LD', 'C.F
                     'C.J', 'C.BEQZ', 'C.BNEZ', 'C.SLLI', 'C.SLLI64', 'C.FLDSP', 'C.LQSP', 'C.LWSP',
                     'C.FLWSP', 'C.LDSP', 'C.JR', 'C.MV', 'C.EBREAK', 'C.JALR', 'C.ADD', 'C.FSDSP',
                     'C.SQSP', 'C.SWSP', 'C.FSWSP', 'C.SDSP']
+
+
+# All instructions dealing with FPU
+fpu_instructions = []
+fpu_instructions.extend(rv32f_instructions)
+fpu_instructions.extend(rv32d_instructions)
+fpu_instructions.extend	(rv64f_instructions)
+
     
 RTypeIns = ['ADD','AND','OR','SLL','SLT','SLTU','SRA','SRL','SUB','XOR', 
             'MUL', 'MULH', 'MULHU', 'MULHSU', 'MULW',
