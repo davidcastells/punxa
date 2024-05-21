@@ -35,7 +35,7 @@ class MultiplexedBus(Logic):
                 addressSize = size
                 size = slave[2]
                 if (size > addressSize):
-                    raise Exception('address size does not allow required memory map')
+                    raise Exception(f'address size given by address bit width {addressSize:X} does not allow required memory map {size:X}')
             
             stop = start + size - 1
             
