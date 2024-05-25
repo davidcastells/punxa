@@ -35,7 +35,8 @@ import py4hw.debug
 import py4hw.gui as gui
 import zlib
 
-mem_base = 0x80000000
+mem_base =  0x80000000
+test_base = 0x80001000
 
 def help():
     print('Interactive commands')
@@ -66,6 +67,17 @@ def multi_split(s, l):
     return ret
 
     
+from elftools.elf.elffile import ELFFile
+
+def isElf(filepath):
+    try:
+        with open(filepath, 'rb') as file:
+            elf = ELFFile(file)
+            return True
+    except Exception as e:
+        return False
+
+
 def loadElf(memory, filename, offset):
     from elftools.elf.elffile import ELFFile
 
@@ -278,8 +290,13 @@ def run(upto, maxclks=100000, verbose=True, autoCheckpoint=False):
 
     tf = time.time()
     clkf = sim.total_clks
-    
-    print('clks: {} time: {} simulation freq: {}'.format(clkf-clk0, tf-t0, (clkf-clk0)/(tf-t0)))
+
+    if (tf != t0):    
+        freq = (clkf-clk0)/(tf-t0)
+    else:
+        freq = '?'
+
+    print('clks: {} time: {} simulation freq: {}'.format(clkf-clk0, tf-t0, freq))
         
         
 def step(steps = 1):
@@ -581,7 +598,7 @@ def findFunction(name):
 #             +-----+
 #  | start          | stop           | device        |
 #  | 0000 0000 0000 | 0001 BFEF FFFF | memory (5GB)  |
-#  | 0001 BFF0 0000 | 0002 8000 0000 | pmem (3GB)    |
+#  | 0000 BFF0 0000 | 0002 8000 0000 | pmem (3GB)    |
 #  | 00FF F0C2 C000 | 00FF F0C2 CFFF | uart          |
 #  | 00FF F102 0000 | 00FF F102 FFFF | CLINT         |
 #  | 00FF F110 0000 | 00FF F11F FFFF | PLIC          |
@@ -589,22 +606,24 @@ def findFunction(name):
 def buildHw():
     global memory
     global cpu
+    global bus
 
     hw = HWSystem()
 
     port_c = MemoryInterface(hw, 'port_c', mem_width, 40)
-    port_m = MemoryInterface(hw, 'port_m', mem_width, 33)     # 32bits = 8 GB
+    port_m = MemoryInterface(hw, 'port_m', mem_width, 14)     # 14	bits = 
     port_u = MemoryInterface(hw, 'port_u', mem_width, 8)      # 8 bits = 256
     port_l = MemoryInterface(hw, 'port_l', mem_width, 16)      # 8 bits = 256
     port_p = MemoryInterface(hw, 'port_p', mem_width, 24)      # 8 bits = 256
-    port_d = MemoryInterface(hw, 'port_d', mem_width, 32)     # 4 GB
+    #port_t = MemoryInterface(hw, 'port_t', mem_width, 8)     # 8 bits = 256
     # Memory initialization
 
-    memory = SparseMemory(hw, 'main_memory', mem_width, 33, port_m, mem_base=mem_base)
+    memory = SparseMemory(hw, 'main_memory', mem_width, 32, port_m, mem_base=mem_base)
 
     memory.reallocArea(0, 1 << 16)
 
-    #pmem = PersistentMemory(hw, 'pmem', ex_dir + 'pmem.img', port_d)
+    #test = ISATestCommunication(hw, 'test', mem_width, 8, port_t)
+
 
     # Uart initialization
     uart = Uart(hw, 'uart', port_u)
@@ -629,7 +648,8 @@ def buildHw():
     # PLIC initialization
     plic = PLIC(hw, 'plic', port_p, ext_int_sources, ext_int_targets)
 
-    bus = MultiplexedBus(hw, 'bus', port_c, [(port_m, mem_base, 0x013ff00000),
+    bus = MultiplexedBus(hw, 'bus', port_c, [(port_m, mem_base),
+                                          #(port_t, test_base),
                                           #(port_d, 0x01BFF00000),
                                           (port_u, 0xFFF0C2C000),
                                           (port_p, 0xFFF1100000),
@@ -672,15 +692,20 @@ def runTest(test_file):
     
     if (value != 1):
         raise Exception('Test return value = {}'.format(value))
+    else:
+        print('Test return value = {}'.format(value))
+
 
 def computeAllTests():
     files = os.listdir(ex_dir)
     ret = {}
 
     for f in files:
+        if (isElf(ex_dir + f)):
             if (f[0:4] != 'rv64'):
                 continue
             if ('-v-' in f):
+                # bypass vector extensions
                 continue
 
             print('Run test', f, end=' ')
@@ -691,6 +716,8 @@ def computeAllTests():
             except Exception as e:
                 print('FAILED')
                 ret[f] = ('FAILED', e)
+        else:
+            print(f'{f} not ELF')
 
     return ret
 

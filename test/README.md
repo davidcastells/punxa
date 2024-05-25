@@ -9,7 +9,8 @@ To run them do
  python  tb_ISA_tests.py -c "runAllTests()"
 ```
 
-Currently not all tests pass. The current output is:
+Currently, we do not check all the tests. We do not run the rv32 tests, and we also bypass the vector instructions tests.
+Moreover, not all tests pass. The current output is:
 
 ```
 Test rv64um-p-mulhsu                = OK

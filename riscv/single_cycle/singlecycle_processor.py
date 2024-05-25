@@ -484,6 +484,12 @@ class SingleCycleRISCV(py4hw.Logic):
         self.jmp_address = 0
         
         ins = self.ins
+
+        fpu_ena = (self.csr[CSR_MSTATUS] & CSR_MSTATUS_FS_MASK) >> CSR_MSTATUS_FS_POS 
+
+        if (fpu_ena == 0):
+            if (op in fpu_instructions):
+                raise IllegalInstruction('FP instruction with disabled FPU')
         
         if (op in RTypeIns):
             yield from self.executeRIns()
