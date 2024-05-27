@@ -19,4 +19,4 @@ run_qemu:
 	qemu-riscv64 hello.elf
 
 run_punxa:
-	python3 tb_HelloProxy.py -c runHello()
+	python3 tb_HelloProxy.py -c "runHello()"
