@@ -73,6 +73,8 @@ class SingleCycleRISCV(py4hw.Logic):
         
         self.fpu = FPU(self)
         
+        self.setCSR(CSR_MSTATUS, 3 << CSR_MSTATUS_FS_POS)   # Enable FPU by default
+        
         self.co = self.run()
         
     def setVerbose(self, verbose):
