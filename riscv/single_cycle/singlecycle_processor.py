@@ -1789,6 +1789,7 @@ class SingleCycleRISCV(py4hw.Logic):
     
     def clock(self):
         next(self.co)
+        # @todo the acquisition of values should be done before the block edge
         self.v_mem_read_data = self.mem.read_data.get()
         self.mem.address.prepare(self.v_mem_address)        
         self.mem.read.prepare(self.v_mem_read)
