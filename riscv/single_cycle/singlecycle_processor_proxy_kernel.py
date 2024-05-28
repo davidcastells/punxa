@@ -7,6 +7,9 @@ Created on Mon May 27 05:49:18 2024
 
 from riscv.single_cycle.singlecycle_processor import SingleCycleRISCV
 
+# Proxy Kernel Syscalls are listed in
+# https://github.com/riscv-software-src/riscv-pk/blob/master/pk/syscall.h
+
 SYSCALL_OPENAT = 56
 SYSCALL_CLOSE = 57
 SYSCALL_READ = 63
@@ -14,6 +17,10 @@ SYSCALL_WRITE = 64
 SYSCALL_FSTAT = 80
 SYSCALL_EXIT = 93
 SYSCALL_BRK = 214
+SYSCALL_OPEN = 1024
+
+O_WRONLY = 0x001
+O_CREAT =  0x100
 
 class SingleCycleRISCVProxyKernel(SingleCycleRISCV):
     
@@ -24,12 +31,21 @@ class SingleCycleRISCVProxyKernel(SingleCycleRISCV):
                          int_timer_machine, ext_int_targets, resetAddress)
 
         self.behavioural_memory = None
-        self.console = ['']        
+        self.console = [''] 
+        self.open_files = {}
+
+    def readMemoryStringz(self, add):
+        ret = ''
+        while (True):
+            c = self.behavioural_memory.readByte(add)
+            if (c == 0): return ret;
+            ret += chr(c)
+            add += 1
 
     def executeIIns(self):
         op = self.decoded_ins
 
-        if (op == 'ECALL'):            
+        if (op == 'ECALL'): 
             syscall = self.reg[17]
             
             if (syscall == SYSCALL_FSTAT):
@@ -40,7 +56,21 @@ class SingleCycleRISCVProxyKernel(SingleCycleRISCV):
                 self.reg[10] = 0
             elif (syscall == SYSCALL_BRK):
                 ptr = self.reg[10]
-                print(f'BRK ptr:0x{ptr:X}')
+                if (ptr == 0):
+                    self.reg[10] = self.heap_base + self.heap_size
+                else:
+                    newsize = ptr - self.heap_base
+                    if (newsize > self.heap_size):
+                        print(f'Extending heap to size 0x{newsize:X}')
+                        self.heap_size = newsize
+                    else:
+                        print('new size is smaller than previous one')
+                    self.reg[10] = self.heap_base + self.heap_size
+	
+                print(f'BRK ptr:0x{ptr:X} -> brk:0x{self.reg[10]:X}')
+
+                self.behavioural_memory.reallocArea(self.heap_base, self.heap_size)
+
             elif (syscall == SYSCALL_WRITE):
                 fd = self.reg[10]
                 buf = self.reg[11]
@@ -51,6 +81,12 @@ class SingleCycleRISCVProxyKernel(SingleCycleRISCV):
             elif (syscall == SYSCALL_EXIT):
                 print('EXIT')
                 self.parent.getSimulator().stop()
+            elif (syscall == SYSCALL_OPEN):
+                filename = self.readMemoryStringz(self.reg[10])
+                flags = self.reg[11]
+                mode = self.reg[12]
+                print(f'OPEN {filename} f:0x{flags:X} m:0x{mode:X}')
+                self.reg[10] = self.syscall_open(filename, flags, mode)
             else:
                 print('my syscall', syscall)
         else:
@@ -61,6 +97,17 @@ class SingleCycleRISCVProxyKernel(SingleCycleRISCV):
             b = self.behavioural_memory.readByte(buf+i)
             self.addConsoleChar(chr(b))
             
+    def syscall_open(self, filename, flags, mode):
+        if (flags == 0x601 and mode ==0x1b6):
+            py_mode = 'wb'
+        else:
+            print(f'Unknown flags/mode 0x{flags:X}/0x{mode:X}')
+            self.parent.getSimulator().stop()
+
+        file = open(filename, py_mode)
+        self.open_files[file.fileno()] = file
+        return file.fileno()
+
     def addConsoleChar(self, c):
         if (c == '\n'):
             clen = len(self.console)
