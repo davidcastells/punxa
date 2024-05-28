@@ -51,12 +51,13 @@ rvc_instructions = ['C.ADDI4SPN', 'C.FLD', 'C.LQ', 'C.LW', 'C.FLW', 'C.LD', 'C.F
                     'C.FLWSP', 'C.LDSP', 'C.JR', 'C.MV', 'C.EBREAK', 'C.JALR', 'C.ADD', 'C.FSDSP',
                     'C.SQSP', 'C.SWSP', 'C.FSWSP', 'C.SDSP']
 
+rvzbb_instructions = ['CLZ','CTZ','PCNT','ANDN','ORC','XORC','MIN','MAX','MINU','MAXU','CLZW','CTZW']
 
 # All instructions dealing with FPU
 fpu_instructions = []
 fpu_instructions.extend(rv32f_instructions)
 fpu_instructions.extend(rv32d_instructions)
-fpu_instructions.extend	(rv64f_instructions)
+fpu_instructions.extend(rv64f_instructions)
 
     
 RTypeIns = ['ADD','AND','OR','SLL','SLT','SLTU','SRA','SRL','SUB','XOR', 
@@ -73,7 +74,8 @@ RTypeIns = ['ADD','AND','OR','SLL','SLT','SLTU','SRA','SRL','SUB','XOR',
             'AMOSWAP.W','AMOADD.W','AMOAND.W','AMOOR.W','AMOXOR.W','AMOMAX.W','AMOMIN.W','AMOMAXU.W','AMOMINU.W',
             'AMOSWAP.D','AMOADD.D','AMOAND.D','AMOOR.D','AMOXOR.D','AMOMAX.D','AMOMIN.D','AMOMAXU.D','AMOMINU.D',
             'ADDW','SLLW','SRLW','SUBW','SRAW',
-            'SFENCE.VMA']
+            'SFENCE.VMA',
+            'ANDN','ORC','XORC','MIN','MAX','MINU','MAXU', 'PACK', 'PACKU', 'PACKH', 'PACKW', 'PACKUW']
 R4TypeIns = ['FMADD.S', 'FMSUB.S', 'FNMSUB.S', 'FNMADD.S',
              'FMADD.D', 'FMSUB.D', 'FNMSUB.D', 'FNMADD.D',
              'FSGNJ.S', 'FSGNJN.S', 'FSGNJX.S',
@@ -84,7 +86,9 @@ ITypeIns = ['JALR','LB','LH','LW','LWU','LBU','LHU','LD','ADDI','SLTI','SLTIU',
             'SLLI','SRLI','SRAI','SLLIW','SRLIW','SRAIW',
             'CSRRW','CSRRS','CSRRC','CSRRWI','CSRRSI','CSRRCI',
             'WFI', 'MRET', 'SRET', 'URET', 'ECALL', 'EBREAK',
-            'FLD','FLW']
+            'FLD','FLW',
+            'CLZ', 'CTZ','CPOP','CPOPW','CLZW','CTZW', 'SEXT.B', 'SEXT.H']
+            
 STypeIns = ['SB','SH','SW','SD', 'FSD', 'FSW']
 BTypeIns = ['BEQ','BNE','BLT','BGE','BLTU','BGEU']
 UTypeIns = ['LUI','AUIPC']
@@ -267,16 +271,23 @@ def ins_to_str(ins, isa=32):
         if (func3 == 0x03):
             return 'FLD'
     
-    if (opcode == 0b0001111):
-        if (func3 == 0b000):
+    if (opcode == 0x0F):
+        if (func3 == 0x00):
             return 'FENCE'
-        if (func3 == 0b001):
+        if (func3 == 0x01):
             return 'FENCE.I'
         
     if (opcode == 0x13):
         if (func3 == 0x00):
             return 'ADDI'
         if (func3 == 0x01):
+            if (func7 == 0x30):
+                if (rs2 == 0x00): return 'CLZ'
+                if (rs2 == 0x01): return 'CTZ'
+                if (rs2 == 0x02): return 'CPOP'
+                if (rs2 == 0x03): return 'BMATFLIP'
+                if (rs2 == 0x04): return 'SEXT.B'
+                if (rs2 == 0x05): return 'SEXT.H'
             if (func6 == 0x00):
                 return 'SLLI'
 
@@ -305,6 +316,14 @@ def ins_to_str(ins, isa=32):
         if (func3 == 0x01):
             if (func7 == 0x00):
                 return 'SLLIW'
+            if (func7 == 0x30):
+                if (rs2 == 0x00):
+                    return 'CLZW'
+                if (rs2 == 0x01):
+                    return 'CTZW'
+                if (rs2 == 0x02):
+                    return 'CPOPW'
+                    
         if (func3 == 0x05):
             if (func7 == 0x00):
                 return 'SRLIW'
@@ -420,6 +439,8 @@ def ins_to_str(ins, isa=32):
                 return 'AND'
             if (func7 == 0x01):
                 return 'REMU'
+            if (func7 == 0x05):
+                return 'MAXU'
             
     if (opcode == 0x37):
         return 'LUI'
@@ -438,6 +459,10 @@ def ins_to_str(ins, isa=32):
         if (func3 == 0x04):
             if (func7 == 0x01):
                 return 'DIVW'
+            if (func7 == 0x04):
+                return 'PACKW'
+            if (func7 == 0x24):
+                return 'PACKUW'
         if (func3 == 0x05):
             if (func7 == 0x00):
                 return 'SRLW'
