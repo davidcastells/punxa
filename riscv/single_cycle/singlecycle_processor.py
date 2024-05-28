@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+    # -*- coding: utf-8 -*-
 """
 Created on Sat Nov 26 13:12:41 2022
 
@@ -27,6 +27,29 @@ def dummy_print(*args, **kargs):
 
 
 pr = print
+
+# @todo Move it to py4hw helper functions
+def count_leading_zeros(v, w):
+    for i in range(w):
+        if (v & (1<<(w-1))): return i
+        v = v << 1
+    return w
+        
+# @todo Move it to py4hw helper functions
+def count_trailing_zeros(v, w):
+    for i in range(w):
+        if (v & 1): return i
+        v = v >> 1
+    return w
+        
+# @todo Move it to py4hw helper functions
+def pop_count(v, w):
+    c = 0
+    for i in range(w):
+        if (v & 1): c += 1
+        v = v >> 1
+    return c
+
      
 class SingleCycleRISCV(py4hw.Logic):
     
@@ -667,6 +690,9 @@ class SingleCycleRISCV(py4hw.Logic):
             v2 = signExtend(self.reg[rs2] & ((1<<32) -1), 32)
             self.reg[rd] = signExtend((v1 - v2) & ((1<<32)-1), 32) & ((1<<64) -1)      
             pr('r{} = r{} - r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'MAXU'):
+            self.reg[rd] = max(self.reg[rs1] , self.reg[rs2])   
+            pr('r{} = r{} ^ r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'SLT'):
             self.reg[rd] = 0
             if (signExtend(self.reg[rs1], 64) < signExtend(self.reg[rs2], 64)):
@@ -1100,6 +1126,27 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'XORI'):
             self.reg[rd] = self.reg[rs1] ^ (simm12 & ((1<<64)-1))
             pr('r{} = r{} ^ {} -> {:016X}'.format(rd, rs1, simm12, self.reg[rd]))
+        elif (op == 'CLZ'):
+            self.reg[rd] = count_leading_zeros(self.reg[rs1], 64)
+            pr('r{} = clz(r{}) -> {:016X}'.format(rd, rs1, self.reg[rd]))
+        elif (op == 'CLZW'):
+            self.reg[rd] = count_leading_zeros(self.reg[rs1], 32)
+            pr('r{} = clzw(r{}) -> {:016X}'.format(rd, rs1, self.reg[rd]))
+        elif (op == 'CTZ'):
+            self.reg[rd] = count_trailing_zeros(self.reg[rs1], 64)
+            pr('r{} = ctz(r{}) -> {:016X}'.format(rd, rs1, self.reg[rd]))
+        elif (op == 'CTZW'):
+            self.reg[rd] = count_trailing_zeros(self.reg[rs1], 32)
+            pr('r{} = ctzw(r{}) -> {:016X}'.format(rd, rs1, self.reg[rd]))
+        elif (op == 'CPOP'):
+            self.reg[rd] = pop_count(self.reg[rs1], 64)
+            pr('r{} = cpop(r{}) -> {:016X}'.format(rd, rs1, self.reg[rd]))
+        elif (op == 'SEXT.B'):
+            self.reg[rd] = signExtend(self.reg[rs1] & 0xFF, 8) & ((1<<64) -1)
+            pr('r{} = sign extend 8 (r{}) -> {:016X}'.format(rd, rs1, self.reg[rd]))
+        elif (op == 'SEXT.H'):
+            self.reg[rd] = signExtend(self.reg[rs1] & 0xFFFF, 16) & ((1<<64) -1)
+            pr('r{} = sign extend 16 (r{}) -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'LD'):
             address = self.reg[rs1] + simm12
             self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
