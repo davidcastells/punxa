@@ -104,6 +104,8 @@ class SparseMemory(Logic):
         end = offset + size -1
         mem_base = self.mem_base
         
+        print(f'original area: {start+mem_base:016X}-{end+mem_base:016X}')
+
         # first check if it is already included , and expand 
         for block in self.area:
             bstart = block[0]
@@ -118,9 +120,10 @@ class SparseMemory(Logic):
                 start = bstart
                 
             if (end >= bstart and end <= bend):
-                print('new block end {:016X} included in {:016X}-{:016X}, updating start'.format(end+mem_base, bstart+mem_base, bend+mem_base))
+                print('new block end {:016X} included in {:016X}-{:016X}, updating end'.format(end+mem_base, bstart+mem_base, bend+mem_base))
                 end = bend
                 
+        print(f'reshaped area: {start+mem_base:016X}-{end+mem_base:016X}')
         newsize = end + 1 - start
         
         if (newsize > size):
