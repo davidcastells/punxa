@@ -31,6 +31,10 @@ def signExtend(v, w):
 
     return v
 
+# @todo should be part of py4hw
+def zeroExtend(v, w):
+    return v & ((1<<w) - 1)
+
 def compose(v, parts):
     ret = 0
     bits = 0
