@@ -28,7 +28,7 @@ from riscv.clint import *
 from riscv.plic import *
 from riscv.single_cycle.singlecycle_processor import *
 from riscv.instruction_decode import *
-    
+from riscv.interactive_commands import *
 
 import py4hw    
 import py4hw.debug
@@ -38,14 +38,6 @@ import zlib
 mem_base =  0x80000000
 test_base = 0x80001000
 
-def help():
-    print('Interactive commands')
-    print('loadProgram - loads a program in memory')
-    print('loadSymbols - loads symbols')
-    print('checkpoint')
-    print('restore')
-    print('run')
-    print('step')
     
 def is_hex(s):
     try:
@@ -54,111 +46,11 @@ def is_hex(s):
     except ValueError:
         return False
 
-def multi_split(s, l):
-    ret = [s]
-
-    for el in l:
-        ret2 = []
-        for x in ret:
-            for y in x.split(el):
-                if (len(y)>0):
-                    ret2.append(y)
-        ret = ret2
-    return ret
 
     
 from elftools.elf.elffile import ELFFile
 
-def isElf(filepath):
-    try:
-        with open(filepath, 'rb') as file:
-            elf = ELFFile(file)
-            return True
-    except Exception as e:
-        return False
 
-
-def loadElf(memory, filename, offset):
-    from elftools.elf.elffile import ELFFile
-
-    f = open(filename,'rb')
-    elffile = ELFFile(f,'rb')
-
-    for seg in elffile.iter_segments():
-        if seg['p_type'] == 'PT_LOAD':
-            adr = seg['p_paddr']
-            data = seg.data()
-            size = len(data)
-            print('ELF segment. address: {:016X} - {:016X}'.format(adr, size))
-            memory.reallocArea(adr - offset, 1 << int(math.ceil(math.log2(size))))
-            p = adr - offset
-            for x in data:
-                memory.writeByte(p, x)
-                p += 1
-
-def loadProgram(memory, filename, offset):
-    """
-    
-
-    Parameters
-    ----------
-    memory : TYPE
-        memory device.
-    filename : TYPE
-        file to load.
-    offset : TYPE
-        offset in memory were to store the program.
-
-    Returns
-    -------
-    None.
-
-    """
-    
-    file = open(filename, 'rb')
-    
-    code = file.read()
-        
-    size = len(code)
-    off = offset
-
-    if (verbose):    
-        print('Code size:   {:10d}'.format(size))
-        print('Memory size: {:10d}'.format(memory.getMaxSize()))
-    
-    memory.reallocArea(off, 1 << int(math.ceil(math.log2(size))))
-    
-    for x in code:
-        memory.writeByte(off, x)
-        off += 1
-    file.close()
-
-    if (verbose):
-        print('program loaded!')
-        
-def loadSymbols(cpu, filename, address_fix=0):
-    file = open(filename, 'r')
-    lines = file.readlines()
-    file.close()
-    
-    for line in lines:
-        if not('\t' in line):
-            continue
-        
-        part = multi_split(line, '\t\n ')
-        
-        #if not(part[0][23] == 'F'):
-        #    continue
- 
-        try:       
-            address = int(part[0][0:16],16) + address_fix
-            func = part[4]
-        
-            cpu.funcs[address]= func
-        
-            #print('{:016X} = {}'.format( address, func))
-        except:
-            print('Failed to parse', part)
 
 def write_trace(filename=ex_dir + 'newtrace.json'):
     cpu.tracer.write_json(filename)
@@ -659,6 +551,11 @@ def buildHw():
 
     cpu.min_clks_for_trace_event = 1000
 
+    # pass objects to interactive commands module
+    import riscv.interactive_commands
+    riscv.interactive_commands._ci_hw = hw
+    riscv.interactive_commands._ci_cpu = cpu
+    
     return hw
 
 
