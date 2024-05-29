@@ -648,7 +648,7 @@ class SingleCycleRISCV(py4hw.Logic):
             if (self.reg[rs2] == 0):
                 self.reg[rd] = ((1<<64)-1)
             else:
-                self.reg[rd] = (self.reg[rs1] & ((1<<32)-1)) // (self.reg[rs2] & ((1<<32)-1))      
+                self.reg[rd] = signExtend((self.reg[rs1] & ((1<<32)-1)) // (self.reg[rs2] & ((1<<32)-1)), 32) & ((1<<64)-1)
             pr('r{} = r{} / r{} -> {:08X}'.format(rd, rs1, rs2, self.reg[rd]))   
         elif (op == 'REM'):
             v1 = signExtend(self.reg[rs1], 64)
@@ -662,7 +662,27 @@ class SingleCycleRISCV(py4hw.Logic):
             self.reg[rd] = vr & ((1<<64)-1)
             pr('r{} = r{} % r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))         
         elif (op == 'REMW'):
-            self.reg[rd] = ( signExtend(self.reg[rs1] & ((1<<32)-1), 32) % signExtend(self.reg[rs2] & ((1<<32)-1), 32)  )  & ((1<<64)-1)  
+            v1 = signExtend(self.reg[rs1] & ((1<<32)-1), 32)
+            v2 = signExtend(self.reg[rs2] & ((1<<32)-1), 32)  
+            
+            if (v2 == 0):
+                vr = v1
+            else:
+                vr = ( v1 % v2)
+            
+                if (vr == 0):
+                    pass
+                elif (v1 < 0):
+                    if (v2 < 0):
+                        pass
+                    else:
+                        # if vr != 0 and v1 < 0 and v2 >= 0
+                        vr = vr - v2
+                elif (v2 < 0):
+                    # if vr != 0 and v1 >= 0 and v2 < 0
+                    vr = vr - v2
+            
+            self.reg[rd] = vr & ((1<<64)-1)  
             pr('r{} = r{} % r{} -> {:08X}'.format(rd, rs1, rs2, self.reg[rd]))            
         elif (op == 'REMU'):
             v1 = self.reg[rs1]
@@ -683,7 +703,9 @@ class SingleCycleRISCV(py4hw.Logic):
             self.reg[rd] = vr      
             pr('r{} = r{} % r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))       
         elif (op == 'ADDW'):
-            self.reg[rd] = signExtend((self.reg[rs1] & ((1<<32) -1)) + ( self.reg[rs2] & ((1<<32) -1)),32) & ((1<<64) -1)      
+            v = (self.reg[rs1] & ((1<<32) -1)) + ( self.reg[rs2] & ((1<<32) -1))
+            v = v & ((1<<32) -1)
+            self.reg[rd] = signExtend(v,32) & ((1<<64) -1)      
             pr('r{} = r{} + r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'SUBW'):
             v1 = signExtend(self.reg[rs1] & ((1<<32) -1), 32)
@@ -694,9 +716,10 @@ class SingleCycleRISCV(py4hw.Logic):
             self.reg[rd] = max(self.reg[rs1] , self.reg[rs2])   
             pr('r{} = r{} ^ r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'SLT'):
-            self.reg[rd] = 0
             if (signExtend(self.reg[rs1], 64) < signExtend(self.reg[rs2], 64)):
                 self.reg[rd] = 1
+            else:
+                self.reg[rd] = 0            
             pr('r{} = r{} < r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))                
         elif (op == 'SLTU'):
             self.reg[rd] = int(self.reg[rs1] < self.reg[rs2])
@@ -958,16 +981,18 @@ class SingleCycleRISCV(py4hw.Logic):
             pr('r{}:[r{}] X r{} -> {:016X} [{}]={:016X}'.format(rd, rs1, rs2, self.reg[rd], self.addressFmt(address), newvalue))
         elif (op == 'AMOMAX.W'):
             address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
-            self.reg[rd] = signExtend(self.reg[rd], 32) & ((1<<64)-1)
-            newvalue= max(self.reg[rd] , self.reg[rs2]) & ((1<<32)-1)
+            v = yield from self.virtualMemoryLoad(address, 32//8)
+            v = signExtend(v, 32) 
+            self.reg[rd] = v & ((1<<64)-1)
+            newvalue= max(v , signExtend(self.reg[rs2], 32)) & ((1<<32)-1)
             yield from self.virtualMemoryWrite(address, 32//8, newvalue)
             pr('[r{}] = max([r{}] , r{}) -> [{}]={:08X}'.format(rd, rs1, rs2, self.addressFmt(address), newvalue))
         elif (op == 'AMOMAXU.W'):
             address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
-            self.reg[rd] = signExtend(self.reg[rd], 32) & ((1<<64)-1)
-            newvalue= max(self.reg[rd] , self.reg[rs2]) # & ((1<<32)-1)
+            v = yield from self.virtualMemoryLoad(address, 32//8)
+            v = zeroExtend(v, 32) 
+            self.reg[rd] = signExtend(v, 32) & ((1<<64)-1)
+            newvalue= max(v , self.reg[rs2] & ((1<<32)-1))
             yield from self.virtualMemoryWrite(address, 32//8, newvalue)
             pr('[r{}] = max([r{}] , r{}) -> [{}]={:08X}'.format(rd, rs1, rs2, self.addressFmt(address), newvalue))
         elif (op == 'AMOMAX.D'):
@@ -994,9 +1019,10 @@ class SingleCycleRISCV(py4hw.Logic):
             pr('[r{}] = min([r{}] , r{}) -> [{}]={:08X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
         elif (op == 'AMOMINU.W'):
             address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
-            #self.reg[rd] = signExtend(self.reg[rd], 32) & ((1<<64)-1)
-            newvalue= min(self.reg[rd] , self.reg[rs2]) & ((1<<32)-1)
+            v = yield from self.virtualMemoryLoad(address, 32//8)
+            v = zeroExtend(v, 32) 
+            self.reg[rd] = signExtend(v, 32) & ((1<<64)-1)
+            newvalue= min(v , self.reg[rs2] & ((1<<32)-1))
             yield from self.virtualMemoryWrite(address, 32//8, newvalue)
             pr('[r{}] = min([r{}] , r{}) -> [{}]={:08X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
         elif (op == 'AMOMIN.D'):
