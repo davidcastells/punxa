@@ -503,7 +503,7 @@ def buildHw():
     hw = HWSystem()
 
     port_c = MemoryInterface(hw, 'port_c', mem_width, 40)
-    port_m = MemoryInterface(hw, 'port_m', mem_width, 18)     # 18	bits = 
+    port_m = MemoryInterface(hw, 'port_m', mem_width, 20)     # 20	bits = 
     port_u = MemoryInterface(hw, 'port_u', mem_width, 8)      # 8 bits = 256
     port_l = MemoryInterface(hw, 'port_l', mem_width, 16)      # 8 bits = 256
     port_p = MemoryInterface(hw, 'port_p', mem_width, 24)      # 8 bits = 256
@@ -572,10 +572,21 @@ def prepareTest(test_file):
 
     cpu.pc = start_adr
     
-    stack_size = 0x1000
-    cpu.reg[2] = mem_base + stack_size - 8
+    stack_base = 0x90000
+    stack_size = 0x10000
+    cpu.reg[2] = mem_base + stack_base + stack_size - 8
+
+    memory.reallocArea(stack_base, stack_size)
+
+    cpu.heap_base = 0xA0000
+    cpu.heap_size = 0x20000 
+
+    memory.reallocArea(cpu.heap_base, cpu.heap_size)
     
-    memory.reallocArea(0, stack_size)
+    print('')
+    print(f'\tStack base: 0x{stack_base:016X} size: 0x{stack_size:016X}')
+    print(f'\tHeap base:  0x{cpu.heap_base:016X} size: 0x{cpu.heap_size:016X}')
+
 
 def runTest(test_file):
     prepareTest(test_file)
