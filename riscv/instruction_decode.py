@@ -138,15 +138,13 @@ def ins_to_str(ins, isa=32):
         raise IllegalInstruction()
         
     if (opcode_c == 0x00):
-        if (func3_c == 0x00):
-            return 'C.ADDI4SPN'
+        if (func3_c == 0x00): return 'C.ADDI4SPN'
         if (func3_c == 0x01):
             if (isa == 128):
                 return 'C.LQ'
             return 'C.FLD' 
-        if (func3_c == 0x02):
-            return 'C.LW'
-        if (func3_c == 0x03):
+        if (func3_c == 0x02): return 'C.LW'
+        if (func3_c == 0x03): 
             if (isa == 32):
                 return 'C.FLW' 
             return 'C.LD'
@@ -154,24 +152,20 @@ def ins_to_str(ins, isa=32):
             if (isa == 128):
                 return 'C.SQ'
             return 'C.FSD' 
-        if (func3_c == 0x06):
-            return 'C.SW'
+        if (func3_c == 0x06): return 'C.SW'
         if (func3_c == 0x07):
             if (isa == 32):
                 return 'C.FSW' 
             return 'C.SD'
         
     if (opcode_c == 0x01):
-        if (ins16 == 0x00):
-            return 'C.NOP'
-        if (func3_c == 0x00):
-            return 'C.ADDI'
+        if (ins16 == 0x00):   return 'C.NOP'
+        if (func3_c == 0x00): return 'C.ADDI'
         if (func3_c == 0x01):
             if (isa == 32):
                 return 'C.JAL'
             return 'C.ADDIW'
-        if (func3_c == 0x02):
-            return 'C.LI'
+        if (func3_c == 0x02): return 'C.LI'
         if (func3_c == 0x03):
              if (rd5_c == 0x02):
                  return 'C.ADDI16SP'
@@ -184,31 +178,19 @@ def ins_to_str(ins, isa=32):
                 else:
                     return 'C.SRLI' 
             if (rdu2_c == 0x01):
-                if (imm5_c == 0x00):
-                    return 'C.SRAI64'
-                else:
-                    return 'C.SRAI'
-            if (rdu2_c == 0x02):
-                return 'C.ANDI'
+                if (imm5_c == 0x00): return 'C.SRAI64'
+                else: return 'C.SRAI'
+            if (rdu2_c == 0x02): return 'C.ANDI'
             if (rdu2_c == 0x03):
-                if (imm3_c == 0x00):
-                    return 'C.SUB'
-                if (imm3_c == 0x01):
-                    return 'C.XOR'
-                if (imm3_c == 0x02):
-                    return 'C.OR'
-                if (imm3_c == 0x03):
-                    return 'C.AND'
-                if (imm3_c == 0x04):
-                    return 'C.SUBW'
-                if (imm3_c == 0x05):
-                    return 'C.ADDW'
-        if (func3_c == 0x05):
-            return 'C.J'
-        if (func3_c == 0x06):
-            return 'C.BEQZ'
-        if (func3_c == 0x07):
-            return 'C.BNEZ'
+                if (imm3_c == 0x00): return 'C.SUB'
+                if (imm3_c == 0x01): return 'C.XOR'
+                if (imm3_c == 0x02): return 'C.OR'
+                if (imm3_c == 0x03): return 'C.AND'
+                if (imm3_c == 0x04): return 'C.SUBW'
+                if (imm3_c == 0x05): return 'C.ADDW'
+        if (func3_c == 0x05): return 'C.J'
+        if (func3_c == 0x06): return 'C.BEQZ'
+        if (func3_c == 0x07): return 'C.BNEZ'
     
     if (opcode_c == 0x02):
         if (func3_c == 0x00):
@@ -220,17 +202,14 @@ def ins_to_str(ins, isa=32):
             if (isa == 128):
                 return 'C.LQSP'
             return 'C.FLDSP' 
-        if (func3_c == 0x02):
-            return 'C.LWSP' 
+        if (func3_c == 0x02): return 'C.LWSP' 
         if (func3_c == 0x03):
             if (isa == 32):
                 return 'C.FLWSP'
             return 'C.LDSP'
         if (func3_c == 0x04):
-            if (imm5_c == 0x00):
-                return 'C.JR'
-            if (imm1_c == 0x00):
-                return 'C.MV'
+            if (imm5_c == 0x00): return 'C.JR'
+            if (imm1_c == 0x00): return 'C.MV'
             if (imm1_c == 0x01):
                 if (rd5_c == 0x00):
                     return 'C.EBREAK'
@@ -242,45 +221,38 @@ def ins_to_str(ins, isa=32):
             if (isa == 128):
                 return 'C.SQSP'
             return 'C.FSDSP' 
-        if (func3_c == 0x06):
-            return 'C.SWSP'
+        if (func3_c == 0x06): return 'C.SWSP'
         if (func3_c == 0x07):
             if (isa == 32):
                 return 'C.FSWSP'
             return 'C.SDSP'
         
     if (opcode == 0x03):
-        if (func3 == 0x00):
-            return 'LB'
-        if (func3 == 0x01):
-            return 'LH'
-        if (func3 == 0x02):
-            return 'LW'
-        if (func3 == 0x03):
-            return 'LD'
-        if (func3 == 0x04):
-            return 'LBU'
-        if (func3 == 0x05):
-            return 'LHU'
-        if (func3 == 0x06):
-            return 'LWU'
+        if (func3 == 0x00): return 'LB'
+        if (func3 == 0x01): return 'LH'
+        if (func3 == 0x02): return 'LW'
+        if (func3 == 0x03): return 'LD'
+        if (func3 == 0x04): return 'LBU'
+        if (func3 == 0x05): return 'LHU'
+        if (func3 == 0x06): return 'LWU'
         
     if (opcode == 0x07):
-        if (func3 == 0x02):
-            return 'FLW'
-        if (func3 == 0x03):
-            return 'FLD'
+        if (func3 == 0x02): return 'FLW'
+        if (func3 == 0x03): return 'FLD'
     
     if (opcode == 0x0F):
-        if (func3 == 0x00):
-            return 'FENCE'
-        if (func3 == 0x01):
-            return 'FENCE.I'
+        if (func3 == 0x00): return 'FENCE'
+        if (func3 == 0x01): return 'FENCE.I'
         
     if (opcode == 0x13):
         if (func3 == 0x00):
             return 'ADDI'
         if (func3 == 0x01):
+            if (func5 == 0x05): return 'BSETI'
+            if (func5 == 0x09): return 'BCLRI'
+            if (func5 == 0x0D): return 'BINVI'
+            if (func6 == 0x00): return 'SLLI'
+            if (func6 == 0x02): return 'SHFLI'
             if (func7 == 0x30):
                 if (rs2 == 0x00): return 'CLZ'
                 if (rs2 == 0x01): return 'CTZ'
@@ -288,194 +260,169 @@ def ins_to_str(ins, isa=32):
                 if (rs2 == 0x03): return 'BMATFLIP'
                 if (rs2 == 0x04): return 'SEXT.B'
                 if (rs2 == 0x05): return 'SEXT.H'
-            if (func6 == 0x00):
-                return 'SLLI'
-
-        if (func3 == 0x02):
-            return 'SLTI'
-        if (func3 == 0x03):
-            return 'SLTIU'
-        if (func3 == 0x04):
-            return 'XORI'
+                
+                if (rs2 == 0x10): return 'CRC32.B'
+                if (rs2 == 0x11): return 'CRC32.H'
+                if (rs2 == 0x12): return 'CRC32.W'
+                if (rs2 == 0x13): return 'CRC32.D'
+                if (rs2 == 0x18): return 'CRC32C.B'
+                if (rs2 == 0x19): return 'CRC32C.H'
+                if (rs2 == 0x1A): return 'CRC32C.W'
+                if (rs2 == 0x1B): return 'CRC32C.D'
+        if (func3 == 0x02): return 'SLTI'
+        if (func3 == 0x03): return 'SLTIU'
+        if (func3 == 0x04): return 'XORI'
         if (func3 == 0x05):
-            if (func6 == 0x00):
-                return 'SRLI'
-            if (func6 == 0x10):
-                return 'SRAI'
-        if (func3 == 0x06):
-            return 'ORI'
-        if (func3 == 0x07):
-            return 'ANDI'
-
-    if (opcode == 0x17):
-        return 'AUIPC'
-
-    if (opcode == 0x1b):
-        if (func3 == 0x00):
-            return 'ADDIW'
+            if (func5 == 0x04): return 'SROI'
+            if (func5 == 0x05): return 'GORCI'
+            if (func5 == 0x09): return 'BEXTI'
+            if (func5 == 0x0C): return 'RORI'
+            if (func5 == 0x0D): return 'GREVI'
+            if (func6 == 0x00): return 'SRLI'
+            if (func6 == 0x10): return 'SRAI'
+            if (func6 == 0x02): return 'UNSHFLI'
+        if (func3 == 0x06): return 'ORI'
+        if (func3 == 0x07): return 'ANDI'
+    if (opcode == 0x17): return 'AUIPC'
+    if (opcode == 0x1B):
+        if (func3 == 0x00): return 'ADDIW'
         if (func3 == 0x01):
-            if (func7 == 0x00):
-                return 'SLLIW'
+            if (func5 == 0x01): return 'SLLI.UW'
+            if (func7 == 0x00): return 'SLLIW'
             if (func7 == 0x30):
-                if (rs2 == 0x00):
-                    return 'CLZW'
-                if (rs2 == 0x01):
-                    return 'CTZW'
-                if (rs2 == 0x02):
-                    return 'CPOPW'
-                    
+                if (rs2 == 0x00): return 'CLZW'
+                if (rs2 == 0x01): return 'CTZW'
+                if (rs2 == 0x02): return 'CPOPW'
         if (func3 == 0x05):
-            if (func7 == 0x00):
-                return 'SRLIW'
-            if (func7 == 0x20):
-                return 'SRAIW'
+            if (func7 == 0x00): return 'SRLIW'
+            if (func7 == 0x20): return 'SRAIW'
+            if (func7 == 0x30): return 'RORIW'
 
     if (opcode == 0x23):
-        if (func3 == 0x00):
-            return 'SB'
-        if (func3 == 0x01):
-            return 'SH'
-        if (func3 == 0x02):
-            return 'SW'
-        if (func3 == 0x03):
-            return 'SD'
+        if (func3 == 0x00): return 'SB'
+        if (func3 == 0x01): return 'SH'
+        if (func3 == 0x02): return 'SW'
+        if (func3 == 0x03): return 'SD'
 
     if (opcode == 0x27):
-        if (func3 == 0x02):
-            return 'FSW'
-        if (func3 == 0x03):
-            return 'FSD'
+        if (func3 == 0x02): return 'FSW'
+        if (func3 == 0x03): return 'FSD'
 
-    if (opcode == 0b0101111):
-        if (func3 == 0b010):
-            if (func5 == 0b00000):
-                return 'AMOADD.W'
-            if (func5 == 0b00001):
-                return 'AMOSWAP.W'
-            if (func5 == 0b00010):
-                return 'LR.W'
-            if (func5 == 0b00011):
-                return 'SC.W'
-            if (func5 == 0b00100):
-                return 'AMOXOR.W'
-            if (func5 == 0b01000):
-                return 'AMOOR.W'
-            if (func5 == 0b01100):
-                return 'AMOAND.W'
-            if (func5 == 0b10000):
-                return 'AMOMIN.W'
-            if (func5 == 0b10100):
-                return 'AMOMAX.W'
-            if (func5 == 0b11000):
-                return 'AMOMINU.W'
-            if (func5 == 0b11100):
-                return 'AMOMAXU.W'
-        if (func3 == 0b011):
-            if (func5 == 0b00010):
-                return 'LR.D'
-            if (func5 == 0b00011):
-                return 'SC.D'
-            if (func5 == 0b00001):
-                return 'AMOSWAP.D'
-            if (func5 == 0b00000):
-                return 'AMOADD.D'
-            if (func5 == 0b00100):
-                return 'AMOXOR.D'
-            if (func5 == 0b01100):
-                return 'AMOAND.D'
-            if (func5 == 0b01000):
-                return 'AMOOR.D'
-            if (func5 == 0b10000):
-                return 'AMOMIN.D'
-            if (func5 == 0b10100):
-                return 'AMOMAX.D'
-            if (func5 == 0b11000):
-                return 'AMOMINU.D'
-            if (func5 == 0b11100):
-                return 'AMOMAXU.D'
+    if (opcode == 0x2F):
+        if (func3 == 0x02):
+            if (func5 == 0x00): return 'AMOADD.W'
+            if (func5 == 0x01): return 'AMOSWAP.W'
+            if (func5 == 0x02): return 'LR.W'
+            if (func5 == 0x03): return 'SC.W'
+            if (func5 == 0x04): return 'AMOXOR.W'
+            if (func5 == 0x08): return 'AMOOR.W'
+            if (func5 == 0x0C): return 'AMOAND.W'
+            if (func5 == 0x10): return 'AMOMIN.W'
+            if (func5 == 0x14): return 'AMOMAX.W'
+            if (func5 == 0x18): return 'AMOMINU.W'
+            if (func5 == 0x1C): return 'AMOMAXU.W'
+        if (func3 == 0x03):
+            if (func5 == 0b00010): return 'LR.D'
+            if (func5 == 0b00011): return 'SC.D'
+            if (func5 == 0b00001): return 'AMOSWAP.D'
+            if (func5 == 0b00000): return 'AMOADD.D'
+            if (func5 == 0b00100): return 'AMOXOR.D'
+            if (func5 == 0b01100): return 'AMOAND.D'
+            if (func5 == 0b01000): return 'AMOOR.D'
+            if (func5 == 0b10000): return 'AMOMIN.D'
+            if (func5 == 0b10100): return 'AMOMAX.D'
+            if (func5 == 0b11000): return 'AMOMINU.D'
+            if (func5 == 0b11100): return 'AMOMAXU.D'
             
     if (opcode == 0x33):
         if (func3 == 0x00):
-            if (func7 == 0x00):
-                return 'ADD'
-            if (func7 == 0x01):
-                return 'MUL'
-            if (func7 == 0x20):
-                return 'SUB'
+            if (func7 == 0x00): return 'ADD'
+            if (func7 == 0x01): return 'MUL'
+            if (func7 == 0x20): return 'SUB'
         if (func3 == 0x01):
-            if (func7 == 0x00):
-                return 'SLL'
-            if (func7 == 0x01):
-                return 'MULH'
+            if (func7 == 0x00): return 'SLL'
+            if (func7 == 0x01): return 'MULH'
+            if (func7 == 0x04): return 'SHFL'
+            if (func7 == 0x05): return 'CLMUL'
+            if (func7 == 0x14): return 'BSET'
+            if (func7 == 0x24): return 'BCLR'
+            if (func7 == 0x30): return 'ROL'
+            if (func7 == 0x34): return 'BINV'
         if (func3 == 0x02):
-            if (func7 == 0x00):
-                return 'SLT'
-            if (func7 == 0x01):
-                return 'MULHSU'
+            if (func7 == 0x00): return 'SLT'
+            if (func7 == 0x01): return 'MULHSU'
+            if (func7 == 0x05): return 'CLMULR'
+            if (func7 == 0x10): return 'SH1ADD'
         if (func3 == 0x03):
-            if (func7 == 0x00):
-                return 'SLTU'
-            if (func7 == 0x01):
-                return 'MULHU'
+            if (func7 == 0x00): return 'SLTU'
+            if (func7 == 0x01): return 'MULHU'
+            if (func7 == 0x04): return 'BMATOR'
+            if (func7 == 0x05): return 'CLMULH'
+            if (func7 == 0x24): return 'BMATXOR'
         if (func3 == 0x04):
-            if (func7 == 0x00):
-                return 'XOR'
-            if (func7 == 0x01):
-                return 'DIV'
+            if (func7 == 0x00): return 'XOR'
+            if (func7 == 0x01): return 'DIV'
+            if (func7 == 0x04): return 'PACK'
+            if (func7 == 0x05): return 'MIN'
+            if (func7 == 0x10): return 'SH2ADD'
+            if (func7 == 0x20): return 'XNOR'
+            if (func7 == 0x24): return 'PACKU'
         if (func3 == 0x05):
-            if (func7 == 0x00):
-                return 'SRL'
-            if (func7 == 0x01):
-                return 'DIVU'
-            if (func7 == 0x20):
-                return 'SRA'
+            if (func7 == 0x00): return 'SRL'
+            if (func7 == 0x01): return 'DIVU'
+            if (func7 == 0x04): return 'UNSHFL'
+            if (func7 == 0x05): return 'MINU'
+            if (func7 == 0x20): return 'SRA'
+            if (func7 == 0x24): return 'BEXT'
+            if (func7 == 0x30): return 'ROR'
+            if (func7 == 0x34): return 'GREV'
         if (func3 == 0x06):
-            if (func7 == 0x00):
-                return 'OR'
-            if (func7 == 0x01):
-                return 'REM'
+            if (func7 == 0x00): return 'OR'
+            if (func7 == 0x01): return 'REM'
+            if (func7 == 0x04): return 'BCOMPRESS'
+            if (func7 == 0x05): return 'MAX'
+            if (func7 == 0x10): return 'SH3ADD'
+            if (func7 == 0x20): return 'ORN'
+            if (func7 == 0x24): return 'BDECOMPRESS'
         if (func3 == 0x07):
-            if (func7 == 0x00):
-                return 'AND'
-            if (func7 == 0x01):
-                return 'REMU'
-            if (func7 == 0x05):
-                return 'MAXU'
+            if (func7 == 0x00): return 'AND'
+            if (func7 == 0x01): return 'REMU'
+            if (func7 == 0x04): return 'PACKH'
+            if (func7 == 0x05): return 'MAXU'
+            if (func7 == 0x20): return 'ANDN'
+            if (func7 == 0x24): return 'BFP'
             
     if (opcode == 0x37):
         return 'LUI'
     
-    if (opcode == 0x3b):
+    if (opcode == 0x3B):
         if (func3 == 0x00):
-            if (func7 == 0x00):
-                return 'ADDW'
-            if (func7 == 0x01):
-                return 'MULW'
-            if (func7 == 0x20):
-                return 'SUBW'
+            if (func7 == 0x00): return 'ADDW'
+            if (func7 == 0x01): return 'MULW'
+            if (func7 == 0x04): return 'ADD.UW'
+            if (func7 == 0x20): return 'SUBW'
         if (func3 == 0x01):
-            if (func7 == 0x00):
-                return 'SLLW'
+            if (func7 == 0x00): return 'SLLW'
+            if (func7 == 0x10): return 'SLOW'
+            if (func7 == 0x30): return 'ROLW'
+        if (func3 == 0x02):
+            if (func7 == 0x10): return 'SH1ADD.UW'
         if (func3 == 0x04):
-            if (func7 == 0x01):
-                return 'DIVW'
-            if (func7 == 0x04):
-                return 'PACKW'
-            if (func7 == 0x24):
-                return 'PACKUW'
+            if (func7 == 0x01): return 'DIVW'
+            if (func7 == 0x04): return 'PACKW'
+            if (func7 == 0x10): return 'SH2ADD.UW'
+            if (func7 == 0x24): return 'PACKUW'
         if (func3 == 0x05):
-            if (func7 == 0x00):
-                return 'SRLW'
-            if (func7 == 0x01):
-                return 'DIVUW'
-            if (func7 == 0x20):
-                return 'SRAW'
+            if (func7 == 0x00): return 'SRLW'
+            if (func7 == 0x01): return 'DIVUW'
+            if (func7 == 0x10): return 'SROW'
+            if (func7 == 0x20): return 'SRAW'
+            if (func7 == 0x30): return 'RORW'
         if (func3 == 0x06):
-            if (func7 == 0x01):
-                return 'REMW'
+            if (func7 == 0x01): return 'REMW'
+            if (func7 == 0x10): return 'SH3ADD.UW'
         if (func3 == 0x07):
-            if (func7 == 0x01):
-                return 'REMUW'
+            if (func7 == 0x01): return 'REMUW'
     
     if (opcode == 0x43):
         if (func2 == 0x00):
