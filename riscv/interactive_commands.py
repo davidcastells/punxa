@@ -4,10 +4,12 @@ Created on Sat May 25 15:41:27 2024
 
 @author: dcastel1
 """
-from elftools.elf.elffile import ELFFile
 import math
 
 _ic_verbose = False
+tbreak_address = None
+_ci_hw = None
+_ci_cpu = None
 
 def help():
     print('Interactive commands')
@@ -17,10 +19,12 @@ def help():
     print('  run')
     print('  step        - run an instruction step')
     print('  tbreak      - set a temporal breakpoint')
+    print('  go          - run until the temporal breakpoint')
 
 
 
 def isElf(filepath):
+    from elftools.elf.elffile import ELFFile
     try:
         with open(filepath, 'rb') as file:
             elf = ELFFile(file)
@@ -142,9 +146,6 @@ def loadSymbols(cpu, filename, address_fix=0):
             print('Failed to parse', part)
 
 
-tbreak_address = None
-_ci_hw = None
-_ci_cpu = None
 
 def tbreak(add):
     global tbreak_address
