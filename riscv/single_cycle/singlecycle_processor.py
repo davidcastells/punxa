@@ -670,16 +670,7 @@ class SingleCycleRISCV(py4hw.Logic):
             else:
                 vr = ( v1 % v2)
             
-                if (vr == 0):
-                    pass
-                elif (v1 < 0):
-                    if (v2 < 0):
-                        pass
-                    else:
-                        # if vr != 0 and v1 < 0 and v2 >= 0
-                        vr = vr - v2
-                elif (v2 < 0):
-                    # if vr != 0 and v1 >= 0 and v2 < 0
+                if (vr != 0) and ( (v1 < 0 and v2 >= 0) or (v1 >= 0 and v2 < 0)):
                     vr = vr - v2
             
             self.reg[rd] = vr & ((1<<64)-1)  
