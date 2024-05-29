@@ -13,13 +13,14 @@ _ci_cpu = None
 
 def help():
     print('Interactive commands')
-    print('  loadProgram - loads a program in memory')
+    print('  loadProgram - load a program in memory')
     print('  checkpoint  - save the system state in a file')
     print('  restore     - restore the system state from a file')
     print('  run')
     print('  step        - run an instruction step')
     print('  tbreak      - set a temporal breakpoint')
     print('  go          - run until the temporal breakpoint')
+    print('  regs        - display the registers of the processor')
 
 
 
