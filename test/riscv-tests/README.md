@@ -48,13 +48,13 @@ Test rv64ua-p-amoor_d               = OK
 Test rv64ua-p-amomaxu_d             = OK
 Test rv64ua-p-amoand_d              = OK
 Test rv64ua-p-amoadd_d              = OK
-Test rv64ua-p-amominu_w             = FAILED - Test return value = 5
+Test rv64ua-p-amominu_w             = OK
 Test rv64ua-p-amoswap_d             = OK
 Test rv64ua-p-amomin_d              = OK
-Test rv64ua-p-amomaxu_w             = FAILED - Test return value = 15
+Test rv64ua-p-amomaxu_w             = OK
 Test rv64ua-p-amoand_w              = OK
 Test rv64ua-p-amominu_d             = OK
-Test rv64ua-p-amomax_w              = FAILED - Test return value = 15
+Test rv64ua-p-amomax_w              = OK
 Test rv64ua-p-lrsc                  = FAILED - Test return value = 5
 Test rv64ua-p-amoxor_d              = OK
 Test rv64uc-p-rvc                   = OK
@@ -103,12 +103,12 @@ Test rv64ui-p-bge                   = OK
 Test rv64ui-p-sraw                  = OK
 Test rv64ui-p-andi                  = OK
 Test rv64ui-p-jal                   = OK
-Test rv64ui-p-slt                   = FAILED - Test return value = 35
+Test rv64ui-p-slt                   = OK
 Test rv64ui-p-ma_data               = OK
 Test rv64ui-p-blt                   = OK
 Test rv64ui-p-lui                   = OK
 Test rv64ui-p-slliw                 = OK
-Test rv64ui-p-addw                  = FAILED - Test return value = 15
+Test rv64ui-p-addw                  = OK
 Test rv64ui-p-lh                    = OK
 Test rv64ui-p-sltu                  = OK
 Test rv64ui-p-bltu                  = OK
@@ -138,57 +138,57 @@ Test rv64um-p-div                   = OK
 Test rv64um-p-mulw                  = OK
 Test rv64um-p-mulhu                 = OK
 Test rv64um-p-remu                  = OK
-Test rv64um-p-remw                  = FAILED - Test return value = 7
+Test rv64um-p-remw                  = OK
 Test rv64um-p-divu                  = OK
-Test rv64um-p-divuw                 = FAILED - Test return value = 13
+Test rv64um-p-divuw                 = OK
 Test rv64um-p-remuw                 = OK
 Test rv64um-p-divw                  = OK
 Test rv64um-p-mul                   = OK
 Test rv64um-p-mulh                  = OK
 Test rv64um-p-rem                   = OK
-Test rv64uzba-p-sh1add_uw           = FAILED - Unknown opcode 0111011 func3 010 func7 0010000 rs2 0010 full 2020a73b
-Test rv64uzba-p-sh1add              = FAILED - Unknown opcode 0110011 func3 010 func7 0010000 rs2 0010 full 2020a733
-Test rv64uzba-p-sh3add_uw           = FAILED - Unknown opcode 0111011 func3 110 func7 0010000 rs2 0010 full 2020e73b
-Test rv64uzba-p-sh2add              = FAILED - Unknown opcode 0110011 func3 100 func7 0010000 rs2 0010 full 2020c733
-Test rv64uzba-p-add_uw              = FAILED - Unknown opcode 0111011 func3 000 func7 0000100 rs2 0010 full 0820873b
-Test rv64uzba-p-sh3add              = FAILED - Unknown opcode 0110011 func3 110 func7 0010000 rs2 0010 full 2020e733
-Test rv64uzba-p-sh2add_uw           = FAILED - Unknown opcode 0111011 func3 100 func7 0010000 rs2 0010 full 2020c73b
-Test rv64uzba-p-slli_uw             = FAILED - Unknown opcode 0011011 func3 001 func7 0000100 rs2 0000 full 0800971b
+Test rv64uzba-p-sh1add_uw           = FAILED - SH1ADD.UW - Not supported!
+Test rv64uzba-p-sh1add              = FAILED - SH1ADD - Not supported!
+Test rv64uzba-p-sh3add_uw           = FAILED - SH3ADD.UW - Not supported!
+Test rv64uzba-p-sh2add              = FAILED - SH2ADD - Not supported!
+Test rv64uzba-p-add_uw              = FAILED - ADD.UW - Not supported!
+Test rv64uzba-p-sh3add              = FAILED - SH3ADD - Not supported!
+Test rv64uzba-p-sh2add_uw           = FAILED - SH2ADD.UW - Not supported!
+Test rv64uzba-p-slli_uw             = FAILED - SLLI.UW - Not supported!
 Test rv64uzbb-p-maxu                = OK
 Test rv64uzbb-p-ctzw                = OK
 Test rv64uzbb-p-clz                 = OK
-Test rv64uzbb-p-rolw                = FAILED - Unknown opcode 0111011 func3 001 func7 0110000 rs2 0010 full 6020973b
-Test rv64uzbb-p-ror                 = FAILED - Unknown opcode 0110011 func3 101 func7 0110000 rs2 0010 full 6020d733
-Test rv64uzbb-p-andn                = FAILED - Unknown opcode 0110011 func3 111 func7 0100000 rs2 0010 full 4020f733
+Test rv64uzbb-p-rolw                = FAILED - ROLW - Not supported!
+Test rv64uzbb-p-ror                 = FAILED - ROR - Not supported!
+Test rv64uzbb-p-andn                = FAILED - ANDN - R-Type instruction not supported!
 Test rv64uzbb-p-sext_h              = OK
-Test rv64uzbb-p-orn                 = FAILED - Unknown opcode 0110011 func3 110 func7 0100000 rs2 0010 full 4020e733
+Test rv64uzbb-p-orn                 = FAILED - ORN - Not supported!
 Test rv64uzbb-p-cpop                = OK
 Test rv64uzbb-p-clzw                = OK
-Test rv64uzbb-p-minu                = FAILED - Unknown opcode 0110011 func3 101 func7 0000101 rs2 0010 full 0a20d733
-Test rv64uzbb-p-orc_b               = FAILED - Unknown opcode 0010011 func3 101 func7 0010100 rs2 0111 full 2870d713
-Test rv64uzbb-p-max                 = FAILED - Unknown opcode 0110011 func3 110 func7 0000101 rs2 0010 full 0a20e733
-Test rv64uzbb-p-rori                = FAILED - Unknown opcode 0010011 func3 101 func7 0110000 rs2 0000 full 6000d713
-Test rv64uzbb-p-min                 = FAILED - Unknown opcode 0110011 func3 100 func7 0000101 rs2 0010 full 0a20c733
+Test rv64uzbb-p-minu                = FAILED - MINU - R-Type instruction not supported!
+Test rv64uzbb-p-orc_b               = FAILED - GORCI - Not supported!
+Test rv64uzbb-p-max                 = FAILED - MAX - R-Type instruction not supported!
+Test rv64uzbb-p-rori                = FAILED - RORI - Not supported!
+Test rv64uzbb-p-min                 = FAILED - MIN - R-Type instruction not supported!
 Test rv64uzbb-p-cpopw               = FAILED - CPOPW I-Type instruction not supported!
-Test rv64uzbb-p-xnor                = FAILED - Unknown opcode 0110011 func3 100 func7 0100000 rs2 0010 full 4020c733
-Test rv64uzbb-p-rol                 = FAILED - Unknown opcode 0110011 func3 001 func7 0110000 rs2 0010 full 60209733
+Test rv64uzbb-p-xnor                = FAILED - XNOR - Not supported!
+Test rv64uzbb-p-rol                 = FAILED - ROL - Not supported!
 Test rv64uzbb-p-zext_h              = FAILED - PACKW - R-Type instruction not supported!
-Test rv64uzbb-p-rev8                = FAILED - Unknown opcode 0010011 func3 101 func7 0110101 rs2 11000 full 6b80d713
-Test rv64uzbb-p-roriw               = FAILED - Unknown opcode 0011011 func3 101 func7 0110000 rs2 0000 full 6000d71b
+Test rv64uzbb-p-rev8                = FAILED - GREVI - Not supported!
+Test rv64uzbb-p-roriw               = FAILED - RORIW - Not supported!
 Test rv64uzbb-p-ctz                 = OK
-Test rv64uzbb-p-rorw                = FAILED - Unknown opcode 0111011 func3 101 func7 0110000 rs2 0010 full 6020d73b
+Test rv64uzbb-p-rorw                = FAILED - RORW - Not supported!
 Test rv64uzbb-p-sext_b              = OK
-Test rv64uzbc-p-clmulr              = FAILED - Unknown opcode 0110011 func3 010 func7 0000101 rs2 0010 full 0a20a733
-Test rv64uzbc-p-clmulh              = FAILED - Unknown opcode 0110011 func3 011 func7 0000101 rs2 0010 full 0a20b733
-Test rv64uzbc-p-clmul               = FAILED - Unknown opcode 0110011 func3 001 func7 0000101 rs2 0010 full 0a209733
-Test rv64uzbs-p-bext                = FAILED - Unknown opcode 0110011 func3 101 func7 0100100 rs2 0010 full 4820d733
-Test rv64uzbs-p-bexti               = FAILED - Unknown opcode 0010011 func3 101 func7 0100100 rs2 0000 full 4800d713
-Test rv64uzbs-p-bclri               = FAILED - Unknown opcode 0010011 func3 001 func7 0100100 rs2 0000 full 48009713
-Test rv64uzbs-p-bclr                = FAILED - Unknown opcode 0110011 func3 001 func7 0100100 rs2 0010 full 48209733
-Test rv64uzbs-p-binv                = FAILED - Unknown opcode 0110011 func3 001 func7 0110100 rs2 0010 full 68209733
-Test rv64uzbs-p-bset                = FAILED - Unknown opcode 0110011 func3 001 func7 0010100 rs2 0010 full 28209733
-Test rv64uzbs-p-binvi               = FAILED - Unknown opcode 0010011 func3 001 func7 0110100 rs2 0000 full 68009713
-Test rv64uzbs-p-bseti               = FAILED - Unknown opcode 0010011 func3 001 func7 0010100 rs2 0000 full 28009713
+Test rv64uzbc-p-clmulr              = FAILED - CLMULR - Not supported!
+Test rv64uzbc-p-clmulh              = FAILED - CLMULH - Not supported!
+Test rv64uzbc-p-clmul               = FAILED - CLMUL - Not supported!
+Test rv64uzbs-p-bext                = FAILED - BEXT - Not supported!
+Test rv64uzbs-p-bexti               = FAILED - BEXTI - Not supported!
+Test rv64uzbs-p-bclri               = FAILED - BCLRI - Not supported!
+Test rv64uzbs-p-bclr                = FAILED - BCLR - Not supported!
+Test rv64uzbs-p-binv                = FAILED - BINV - Not supported!
+Test rv64uzbs-p-bset                = FAILED - BSET - Not supported!
+Test rv64uzbs-p-binvi               = FAILED - BINVI - Not supported!
+Test rv64uzbs-p-bseti               = FAILED - BSETI - Not supported!
 Test rv64uzfh-p-move                = FAILED - Unknown opcode 1010011 func3 000 func7 1111010 rs2 0000 full f40580d3
 Test rv64uzfh-p-ldst                = FAILED - Unknown opcode 0000111 func3 001 func7 0000000 rs2 0100 full 00459087
 Test rv64uzfh-p-fcvt_w              = FAILED - Unknown opcode 0000111 func3 001 func7 0000000 rs2 0000 full 00051007
@@ -200,6 +200,7 @@ Test rv64uzfh-p-fcmp                = FAILED - Unknown opcode 0000111 func3 001 
 Test rv64uzfh-p-fmin                = FAILED - Unknown opcode 0000111 func3 001 func7 0000000 rs2 0000 full 00051007
 Test rv64uzfh-p-fmadd               = FAILED - Unknown opcode 0000111 func3 001 func7 0000000 rs2 0000 full 00051007
 Test rv64uzfh-p-fadd                = FAILED - Unknown opcode 0000111 func3 001 func7 0000000 rs2 0000 full 00051007
-Total: 187 Correct: 114 (61.0 %)
+Total: 187 Correct: 121 (64.7 %)
+
 ```
 
