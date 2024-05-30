@@ -12,7 +12,7 @@ When completed, next goal is Linux boot.
 
 Some instructions from the rv64uzbs and rv64uzfh not implemented. Some bugs in floating point operations.
 
-Progress: 64.7%
+RV64 (excluding vector instructions) progress: 64.7%
 |██████████████████████████░░░░░░░░░░░░░░|
 
 check [riscv-tests](https://github.com/davidcastells/punxa/blob/main/test/riscv-tests/README.md) for a complete list
