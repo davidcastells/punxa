@@ -7,7 +7,16 @@ Created on Sat Dec  3 10:41:17 2022
 
 from .processor_exceptions import *
 
+#|   31 - 25             | 24 - 20 | 19 - 15 | 14 - 12 | 11 - 7      |  6 - 0 | Instruction Type |
+#|-----------------------|---------|---------|---------|-------------|--------|------------------|
+#| funct7                | rs2     | rs1     | funct3  | rd          | opcode | R-Type           |
+#| imm[11:0]                       | rs1     | funct3  | rd          | opcode | I-Type           |
+#| imm[11:5]             | rs2     | rs1     | funct3  | imm[4:0]    | opcode | S-Type           |
+#| imm[12|10:5]          | rs2     | rs1     | funct3  | imm[4:1|11] | opcode | B-Type           |
+#| imm[31:12]            |         |         |         | rd          | opcode | U-Type           |
+#| imm[20|10:1|11|19:12] |         |         |         | rd          | opcode | J-Type           |
 
+ 
 rv32i_instructions = ['LUI','AUIPC','JAL','JALR','BEQ','BNE','BLT','BGE','BLTU', 
                       'BGEU','LB','LH','LW','LBU','LHU','SB','SH','SW','ADDI',
                       'SLTI','SLTIU','XORI','ORI','ANDI','SLLI','SRLI','SRAI',
@@ -87,7 +96,8 @@ ITypeIns = ['JALR','LB','LH','LW','LWU','LBU','LHU','LD','ADDI','SLTI','SLTIU',
             'CSRRW','CSRRS','CSRRC','CSRRWI','CSRRSI','CSRRCI',
             'WFI', 'MRET', 'SRET', 'URET', 'ECALL', 'EBREAK',
             'FLD','FLW',
-            'CLZ', 'CTZ','CPOP','CPOPW','CLZW','CTZW', 'SEXT.B', 'SEXT.H']
+            'CLZ', 'CTZ','CPOP','CPOPW','CLZW','CTZW', 'SEXT.B', 'SEXT.H',
+            'CBO.CLEAN', 'CBO.FLUSH', 'CBO.INVAL', 'CBO.ZERO']
             
 STypeIns = ['SB','SH','SW','SD', 'FSD', 'FSW']
 BTypeIns = ['BEQ','BNE','BLT','BGE','BLTU','BGEU']
@@ -133,6 +143,7 @@ def ins_to_str(ins, isa=32):
     imm1_c = ((ins >> 12) & 0x1) 
     imm5_c = (((ins >> 12) & 0x1) << 5) | ((ins >> 2) & 0x1F)
     imm3_c = (((ins >> 12) & 0x1) << 2) | ((ins >> 5) & 0x03)
+    imm12 = (ins >> 20) & 0xFFF
     
     if (ins16 == 0x00):
         raise IllegalInstruction()
@@ -243,6 +254,11 @@ def ins_to_str(ins, isa=32):
     if (opcode == 0x0F):
         if (func3 == 0x00): return 'FENCE'
         if (func3 == 0x01): return 'FENCE.I'
+        if (func3 == 0x02): 
+            if (imm12 == 0x00): return 'CBO.INVAL'
+            if (imm12 == 0x00): return 'CBO.CLEAN'
+            if (imm12 == 0x02): return 'CBO.FLUSH'
+            if (imm12 == 0x04): return 'CBO.ZERO'
         
     if (opcode == 0x13):
         if (func3 == 0x00):
