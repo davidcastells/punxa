@@ -1195,29 +1195,31 @@ class SingleCycleRISCV(py4hw.Logic):
             address = self.reg[rs1] + simm12
             self.reg[rd] = yield from self.virtualMemoryLoad(address, 8//8)
             pr('r{} = [r{} + {}] -> [{}]={:02X}'.format(rd, rs1, simm12, self.addressFmt(address), self.reg[rd]))
+        elif (op == 'CBO.ZERO'):
+            pr('r{}'.format(rs1))
         elif (op == 'CSRRW'):
+            v1 = self.reg[rs1]
+            vcsr, allowed = self.readCSR(csr)
             if (rd == 0):
-                self.writeCSR(csr, self.reg[rs1])
+                self.writeCSR(csr, v1)
                 csrname = self.implemented_csrs[csr]
                 pr('{} = r{} -> {:016X}'.format(csrname, rs1, self.csr[csr]))            
             else:
-                rs1v = self.reg[rs1] # save the value of the rs1, since it 
-                                     # could be the same as rd
-                self.reg[rd] = self.readCSR(csr)
-                self.writeCSR(csr, rs1v)
+                self.writeCSR(csr, v1)
+                if (rd != 0) and (allowed): self.reg[rd] = vcsr
                 csrname = self.implemented_csrs[csr]
                 
                 if (rd == 0):
-                    pr('{} = r{} -> {:016X}'.format(csrname, rs1, rs1v))            
+                    pr('{} = r{} -> {:016X}'.format(csrname, rs1, v1))
                 else:
-                    pr('r{} = {}, {} = r{} -> {:016X},{:016X}'.format(rd, csrname, csrname, rs1, self.reg[rd], rs1v))            
+                    pr('r{} = {}, {} = r{} -> {:016X},{:016X}'.format(rd, csrname, csrname, rs1, self.reg[rd], v1))
 
         elif (op == 'CSRRS'):
             # Read and set
-            csrv = self.readCSR(csr)
-            self.setCSR(csr, self.reg[rs1])
-            if (rd != 0):
-                self.reg[rd] = csrv
+            v1 = self.reg[rs1] 
+            vcsr, allowed = self.readCSR(csr)
+            if (v1 != 0): self.setCSR(csr, v1)
+            if (rd != 0) and allowed: self.reg[rd] = vcsr
             csrname = self.implemented_csrs[csr]
             
             if (rd == 0):
@@ -1229,10 +1231,10 @@ class SingleCycleRISCV(py4hw.Logic):
         
         elif (op == 'CSRRC'):
             # Read and clear
-            csrv = self.readCSR(csr)
-            self.clearCSR(csr, self.reg[rs1])
-            if (rd != 0):
-                self.reg[rd] = csrv
+            v1 = self.reg[rs1]
+            csrv , allowed = self.readCSR(csr)
+            if (v1 != 0): self.clearCSR(csr, v1)
+            if (rd != 0) and allowed: self.reg[rd] = csrv
             csrname = self.implemented_csrs[csr]
             
             if (rd == 0):
@@ -1241,23 +1243,21 @@ class SingleCycleRISCV(py4hw.Logic):
                 pr('r{} = {}, {} &= ~r{} -> {:016X},{:016X}'.format(rd, csrname, csrname, rs1, self.reg[rd], self.csr[csr]))            
         
         elif (op == 'CSRRWI'):
-            if (rd != 0):
-                self.reg[rd] = self.readCSR(csr)
+            vcsr, allowed = self.readCSR(csr)
+            if (rd != 0) and allowed: self.reg[rd] = vcsr
             self.writeCSR(csr, rs1)
             csrname = self.implemented_csrs[csr]
             pr('r{} = {}, {} = {} -> {:016X}'.format(rd, csrname, csrname, rs1, self.reg[rd]))
         elif (op == 'CSRRSI'):
-            crsv = self.readCSR(csr)
-            self.setCSR(csr, rs1)
-            if (rd != 0):
-                self.reg[rd] = crsv
+            crsv, allowed = self.readCSR(csr)
+            if (rs1 != 0): self.setCSR(csr, rs1)
+            if (rd != 0) and allowed: self.reg[rd] = crsv
             csrname = self.implemented_csrs[csr]
             pr('r{} = {}, {} |= {} -> {:016X}'.format(rd, csrname, csrname, rs1, self.reg[rd]))                        
         elif (op == 'CSRRCI'):
-            crsv = self.readCSR(csr)
-            self.clearCSR(csr, rs1)
-            if (rd != 0):
-                self.reg[rd] = crsv
+            crsv, allowed = self.readCSR(csr)
+            if (rs1 != 0): self.clearCSR(csr, rs1)
+            if (rd != 0) and allowed: self.reg[rd] = crsv
             csrname = self.implemented_csrs[csr]
             pr('r{} = {}, {} &= ~{} -> {:016X}'.format(rd, csrname, csrname, rs1, self.reg[rd]))                        
         elif (op == 'SLLI'):
@@ -1793,6 +1793,9 @@ class SingleCycleRISCV(py4hw.Logic):
         self.csr[CSR_PRIVLEVEL] = CSR_PRIVLEVEL_MACHINE # (Machine =3, Supervisor = 1, User = 0)
         
     def readCSR(self, idx):
+        # Returns the value of the CSR, and if the access was allowed
+        # Take into consideration that some accesses raise an exception, while others just do not return the value
+        allowed = True
         if not(idx in self.implemented_csrs):
             raise InstructionAccessFault(' - CSR {:03X} not supported!'.format(idx))
 
@@ -1803,17 +1806,24 @@ class SingleCycleRISCV(py4hw.Logic):
             if (idx == CSR_SSTATUS):
                 self.csr[idx] = self.csr[CSR_MSTATUS] & csr_mirror_mask[CSR_SSTATUS]
         
-        return self.csr[idx]
+        if (getCSRPrivilege(idx) > self.csr[CSR_PRIVLEVEL]):
+            raise IllegalInstruction('CSR priv: {}  current priv: {}'.format(getCSRPrivilege(idx), self.csr[CSR_PRIVLEVEL])) 
+        
+        return self.csr[idx], allowed
 
     def writeCSR(self, idx, v):
         if not(idx in self.implemented_csrs):
             raise InstructionAccessFault(' - CSR {:03X} not supported!'.format(idx))
 
         csrname = self.implemented_csrs[idx]
+
         
         if ((idx in csr_fix_ro) or (idx in csr_var_ro)):
-            print('WARNING! trying to write RO CSR {}'.format(csrname))
-            return
+            if (self.csr[CSR_PRIVLEVEL] == CSR_PRIVLEVEL_MACHINE):
+                print('WARNING! trying to write read-only CSR {}'.format(csrname))
+                return
+            else:
+                raise IllegalInstruction('trying to write read-only CSR {}'.format(csrname))            
         
         # do write special things
         if (idx in csr_partial_wr_mask.keys()):
@@ -1840,7 +1850,8 @@ class SingleCycleRISCV(py4hw.Logic):
         # do write special things
         
         #self.csr[idx] = self.csr[idx] | v
-        self.writeCSR(idx, self.readCSR(idx) | v)
+        vcsr, allowed = self.readCSR(idx)
+        self.writeCSR(idx, vcsr | v)
     
     def clearCSR(self, idx, v):
         #if not(idx in self.implemented_csrs):
@@ -1851,7 +1862,8 @@ class SingleCycleRISCV(py4hw.Logic):
         # do write special things
         
         #self.csr[idx] = self.csr[idx] & (~v & ((1<<64)-1))
-        self.writeCSR(idx, self.readCSR(idx) & (~v & ((1<<64)-1)))
+        vcsr, allowed = self.readCSR(idx)
+        self.writeCSR(idx, vcsr & (~v & ((1<<64)-1)))
     
     def clock(self):
         next(self.co)
