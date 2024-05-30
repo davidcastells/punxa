@@ -84,7 +84,7 @@ CSR_PRIVLEVEL = 0xFFF
 csr_fix_ro = [CSR_MISA, CSR_MCPUID, CSR_MHARTID] 
 
 # Non writable CSR that CPU state can change
-csr_var_ro = [] 
+csr_var_ro = [CSR_CYCLE] 
 
 # Writable CSR that CPU state can change
 csr_var_rw = [CSR_FFLAGS] 
@@ -159,5 +159,6 @@ CSR_PRIVLEVEL_SUPERVISOR = 1
 CSR_PRIVLEVEL_USER = 0
 
 
-
+def getCSRPrivilege(csr):
+    return (csr >> 8) & 0x3
 
