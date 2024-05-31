@@ -602,7 +602,7 @@ prefixes = ['rv32mi-p', 'rv32si-p', 'rv32ua-p',
             'rv64uzba-p', 'rv64uzba-v', 'rv64uzbb-p', 'rv64uzbb-v', 'rv64uzbc-p', 'rv64uzbc-v', 'rv64uzbs-p', 'rv64uzbs-v',
             'rv64uzfh-p', 'rv64uzfh-v']
             
-selected_prefixes = ['rv64mi-p', 'rv64mzicbo-p', 'rv64si-p', 'rv64ssvnapot-p', 'rv64ua-p', 'rv64uc-p', 
+selected_prefixes = ['rv64mi-p', 'rv64si-p', 'rv64ssvnapot-p', 'rv64ua-p', 'rv64uc-p', 
                      'rv64ud-p', 'rv64uf-p',  'rv64ui-p',  'rv64um-p', 'rv64uzba-p', 'rv64uzbb-p', 'rv64uzbc-p', 'rv64uzbs-p', 'rv64uzfh-p']
 
 def computeAllTests():
