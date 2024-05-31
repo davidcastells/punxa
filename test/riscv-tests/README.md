@@ -19,17 +19,16 @@ Test rv64mi-p-scall                 = OK
 Test rv64mi-p-sbreak                = FAILED - Test return value = 5
 Test rv64mi-p-sd-misaligned         = OK
 Test rv64mi-p-lh-misaligned         = OK
-Test rv64mi-p-csr                   = FAILED - Test return value = 29
+Test rv64mi-p-csr                   = OK
 Test rv64mi-p-zicntr                = OK
 Test rv64mi-p-illegal               = FAILED - Test return value = 0
 Test rv64mi-p-ld-misaligned         = OK
 Test rv64mi-p-sw-misaligned         = OK
-Test rv64mi-p-mcsr                  = FAILED - Test return value = 59
+Test rv64mi-p-mcsr                  = OK
 Test rv64mi-p-ma_fetch              = OK
 Test rv64mi-p-breakpoint            = FAILED - Test return value = 5
 Test rv64mi-p-lw-misaligned         = OK
 Test rv64mi-p-access                = FAILED - Test return value = 5
-Test rv64mzicbo-p-zero              = FAILED - Unknown opcode 0001111 func3 010 func7 0000000 rs2 0100 full 0040a00f
 Test rv64si-p-dirty                 = FAILED - Test return value = 0
 Test rv64si-p-ma_fetch              = OK
 Test rv64si-p-csr                   = OK
@@ -164,12 +163,12 @@ Test rv64uzbb-p-sext_h              = OK
 Test rv64uzbb-p-orn                 = FAILED - ORN - Not supported!
 Test rv64uzbb-p-cpop                = OK
 Test rv64uzbb-p-clzw                = OK
-Test rv64uzbb-p-minu                = FAILED - MINU - R-Type instruction not supported!
+Test rv64uzbb-p-minu                = OK
 Test rv64uzbb-p-orc_b               = FAILED - GORCI - Not supported!
-Test rv64uzbb-p-max                 = FAILED - MAX - R-Type instruction not supported!
+Test rv64uzbb-p-max                 = OK
 Test rv64uzbb-p-rori                = FAILED - RORI - Not supported!
-Test rv64uzbb-p-min                 = FAILED - MIN - R-Type instruction not supported!
-Test rv64uzbb-p-cpopw               = FAILED - CPOPW I-Type instruction not supported!
+Test rv64uzbb-p-min                 = OK
+Test rv64uzbb-p-cpopw               = OK
 Test rv64uzbb-p-xnor                = FAILED - XNOR - Not supported!
 Test rv64uzbb-p-rol                 = FAILED - ROL - Not supported!
 Test rv64uzbb-p-zext_h              = FAILED - PACKW - R-Type instruction not supported!
@@ -181,14 +180,14 @@ Test rv64uzbb-p-sext_b              = OK
 Test rv64uzbc-p-clmulr              = FAILED - CLMULR - Not supported!
 Test rv64uzbc-p-clmulh              = FAILED - CLMULH - Not supported!
 Test rv64uzbc-p-clmul               = FAILED - CLMUL - Not supported!
-Test rv64uzbs-p-bext                = FAILED - BEXT - Not supported!
-Test rv64uzbs-p-bexti               = FAILED - BEXTI - Not supported!
-Test rv64uzbs-p-bclri               = FAILED - BCLRI - Not supported!
-Test rv64uzbs-p-bclr                = FAILED - BCLR - Not supported!
-Test rv64uzbs-p-binv                = FAILED - BINV - Not supported!
-Test rv64uzbs-p-bset                = FAILED - BSET - Not supported!
-Test rv64uzbs-p-binvi               = FAILED - BINVI - Not supported!
-Test rv64uzbs-p-bseti               = FAILED - BSETI - Not supported!
+Test rv64uzbs-p-bext                = OK
+Test rv64uzbs-p-bexti               = OK
+Test rv64uzbs-p-bclri               = OK
+Test rv64uzbs-p-bclr                = OK
+Test rv64uzbs-p-binv                = OK
+Test rv64uzbs-p-bset                = OK
+Test rv64uzbs-p-binvi               = OK
+Test rv64uzbs-p-bseti               = OK
 Test rv64uzfh-p-move                = FAILED - Unknown opcode 1010011 func3 000 func7 1111010 rs2 0000 full f40580d3
 Test rv64uzfh-p-ldst                = FAILED - Unknown opcode 0000111 func3 001 func7 0000000 rs2 0100 full 00459087
 Test rv64uzfh-p-fcvt_w              = FAILED - Unknown opcode 0000111 func3 001 func7 0000000 rs2 0000 full 00051007
@@ -200,7 +199,6 @@ Test rv64uzfh-p-fcmp                = FAILED - Unknown opcode 0000111 func3 001 
 Test rv64uzfh-p-fmin                = FAILED - Unknown opcode 0000111 func3 001 func7 0000000 rs2 0000 full 00051007
 Test rv64uzfh-p-fmadd               = FAILED - Unknown opcode 0000111 func3 001 func7 0000000 rs2 0000 full 00051007
 Test rv64uzfh-p-fadd                = FAILED - Unknown opcode 0000111 func3 001 func7 0000000 rs2 0000 full 00051007
-Total: 187 Correct: 121 (64.7 %)
-
+Total: 186 Correct: 135 (72.6 %)
 ```
 
