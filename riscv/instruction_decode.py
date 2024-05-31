@@ -13,8 +13,8 @@ from .processor_exceptions import *
 #| imm[11:0]                       | rs1     | funct3  | rd          | opcode | I-Type           |
 #| imm[11:5]             | rs2     | rs1     | funct3  | imm[4:0]    | opcode | S-Type           |
 #| imm[12|10:5]          | rs2     | rs1     | funct3  | imm[4:1|11] | opcode | B-Type           |
-#| imm[31:12]            |         |         |         | rd          | opcode | U-Type           |
-#| imm[20|10:1|11|19:12] |         |         |         | rd          | opcode | J-Type           |
+#| imm[31:12]                                          | rd          | opcode | U-Type           |
+#| imm[20|10:1|11|19:12]                               | rd          | opcode | J-Type           |
 
  
 rv32i_instructions = ['LUI','AUIPC','JAL','JALR','BEQ','BNE','BLT','BGE','BLTU', 
@@ -84,7 +84,9 @@ RTypeIns = ['ADD','AND','OR','SLL','SLT','SLTU','SRA','SRL','SUB','XOR',
             'AMOSWAP.D','AMOADD.D','AMOAND.D','AMOOR.D','AMOXOR.D','AMOMAX.D','AMOMIN.D','AMOMAXU.D','AMOMINU.D',
             'ADDW','SLLW','SRLW','SUBW','SRAW',
             'SFENCE.VMA',
-            'ANDN','ORC','XORC','MIN','MAX','MINU','MAXU', 'PACK', 'PACKU', 'PACKH', 'PACKW', 'PACKUW']
+            'ANDN','ORC','XORC','MIN','MAX','MINU','MAXU', 'PACK', 'PACKU', 
+            'PACKH', 'PACKW', 'PACKUW',
+            'BEXT','BINV','BSET', 'BCLR']
 R4TypeIns = ['FMADD.S', 'FMSUB.S', 'FNMSUB.S', 'FNMADD.S',
              'FMADD.D', 'FMSUB.D', 'FNMSUB.D', 'FNMADD.D',
              'FSGNJ.S', 'FSGNJN.S', 'FSGNJX.S',
@@ -96,7 +98,8 @@ ITypeIns = ['JALR','LB','LH','LW','LWU','LBU','LHU','LD','ADDI','SLTI','SLTIU',
             'CSRRW','CSRRS','CSRRC','CSRRWI','CSRRSI','CSRRCI',
             'WFI', 'MRET', 'SRET', 'URET', 'ECALL', 'EBREAK',
             'FLD','FLW',
-            'CLZ', 'CTZ','CPOP','CPOPW','CLZW','CTZW', 'SEXT.B', 'SEXT.H',
+            'CLZ', 'CTZ','CPOP','CPOPW','CLZW','CTZW', 'SEXT.B', 'SEXT.H', 
+            'BEXTI','BINVI','BSETI', 'BCLRI',
             'CBO.CLEAN', 'CBO.FLUSH', 'CBO.INVAL', 'CBO.ZERO']
             
 STypeIns = ['SB','SH','SW','SD', 'FSD', 'FSW']
