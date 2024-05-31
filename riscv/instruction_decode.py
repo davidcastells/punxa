@@ -69,7 +69,7 @@ fpu_instructions.extend(rv32d_instructions)
 fpu_instructions.extend(rv64f_instructions)
 
     
-RTypeIns = ['ADD','AND','OR','SLL','SLT','SLTU','SRA','SRL','SUB','XOR', 
+RTypeIns = ['ADD','AND','OR','SLL','SLT','SLTU','SRA','SRL','SUB','XOR', 'XNOR',
             'MUL', 'MULH', 'MULHU', 'MULHSU', 'MULW',
             'DIV', 'DIVU', 'DIVW', 'DIVUW', 'REM', 'REMU', 'REMW', 'REMUW',
             'FADD.S','FSUB.S','FMUL.S','FDIV.S','FMIN.S','FMAX.S','FCLASS.S','FEQ.S','FLT.S','FLE.S',
