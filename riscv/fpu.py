@@ -7,6 +7,32 @@ from .temp_helper import *
 from .csr import *
 
 
+def fclass_16(v):
+    r = 0
+    if (v == -math.inf):
+        r |= 1 << 0
+    if (v < 0):
+        if (abs(v) >= np.finfo(np.float32).smallest_normal):
+            r |= 1 << 1
+        else:
+            r |= 1 << 2
+    if (v == -0):
+        r |= 1 << 3
+    if (v == 0):
+        r |= 1 << 4
+    if (v > 0):
+        if (abs(v) >= np.finfo(np.float32).smallest_normal):
+            r |= 1 << 5
+        else:
+            r |= 1 << 6
+    if (v == math.inf):
+        r |= 1 << 7
+    # signaling nan r |= 1 << 8
+    if (v == math.nan):
+        r |= 1 << 9
+    return r
+
+
 def fclass_32(v):
     r = 0
     if (v == -math.inf):
@@ -49,11 +75,25 @@ class FPU:
             return l
         else:
             return IEEE754_SP_CANONICAL_NAN
+
+    def sp_half_box(self, x):
+        # generates Nan boxed dp from sp
+        mask = ((1<<48)-1) << 16
+        return mask | x
             
     def sp_box(self, x):
         # generates Nan boxed dp from sp
-        mask = ((1<<32)-1)
-        return (mask << 32) | x
+        mask = ((1<<32)-1) << 32
+        return mask | x
+        
+    def is_boxed(self, x):
+        mask = ((1<<32)-1) << 32
+        return ((x & mask) == mask)
+
+    def is_half_boxed(self, x):
+        mask = ((1<<48)-1) << 16
+        return ((x & mask) == mask)
+
 
     def class_dp(self, x):
         fp = FloatingPointHelper()
@@ -117,16 +157,20 @@ class FPU:
         fp = FloatingPointHelper()
         b = fp.ieee754_to_sp(xb)
         
-        sign_a = ((xa>>31) & 1) or ((xa >> 32) == ((1<<32)-1))
-        sign_b = ((xb>>31) & 1) or ((xb >> 32) == ((1<<32)-1))
+        sign_a = ((xa>>31) & 1) 
+        
+        if (self.is_boxed(xb)):
+            sign_b = ((xb>>31) & 1) 
+        else:
+            sign_b = ((xb>>63) & 1) 
         sign_r = sign_b
         
-        if (b == 0):
-            sign_r = f2_high_1
+        #abs a
+        if (sign_a): xa = xa ^ (1 << 31)
         
         if (f1_valid and f2_valid):
             # valid single precision       
-            return (xa & (((1<<32)-1)<<32)) | (xa & ((1<<31)-1)) | (sign_r<<31) 
+            return self.sp_box(xa | (sign_r<<31) )
         else:
             if (not(f1_valid) and f2_high_1):
                 return ((1<<32)-1)<<32 | (1<<31) | IEEE754_SP_CANONICAL_NAN
@@ -134,6 +178,40 @@ class FPU:
                 return xa
             else:
                 return ((1<<32)-1)<<32 | IEEE754_SP_CANONICAL_NAN
+                
+    def sign_inject_half(self, xa, xb):
+        
+        fp = FloatingPointHelper()
+        b = fp.ieee754_to_sp(xb)
+        
+        sign_a = ((xa>>15) & 1) 
+        
+        if (self.is_half_boxed(xb)):
+            sign_b = ((xb>>15) & 1) 
+        else:
+            sign_b = ((xb>>63) & 1) 
+        sign_r = sign_b
+        
+        #abs a
+        if (sign_a): xa = xa ^ (1 << 15)
+        
+        if (True): # (f1_valid and f2_valid):
+            # valid half precision       
+            return self.sp_half_box(xa | (sign_r<<15) )
+        else:
+            if (not(f1_valid) and f2_high_1):
+                return ((1<<32)-1)<<32 | (1<<31) | IEEE754_SP_CANONICAL_NAN
+            elif (not(f2_valid) and (b==0)):
+                return xa
+            else:
+                return ((1<<32)-1)<<32 | IEEE754_SP_CANONICAL_NAN
+
+    def sign_n_inject_half(self, xa, xb):
+        return self.sign_inject_half(xa, self.sp_box(xb ^ (1<<15)))
+                
+    def sign_n_inject_sp(self, xa, xb):
+        return self.sign_inject_sp(xa, self.sp_box(xb ^ (1<<31)))
+
 
     def fsub_dp(self, xa, xb):
         fp = FloatingPointHelper()
@@ -212,6 +290,80 @@ class FPU:
             xr = fp.sp_to_ieee754(r)
             
         return self.sp_box(xr)
+        
+    def fma_half(self, xa, xb, xc):
+        # fused multiply-add r = a*b +c
+        # update floating point flags
+        from decimal import Decimal
+        
+        fp = FloatingPointHelper()
+        a = fp.ieee754_to_sp(xa)
+        b = fp.ieee754_to_sp(xb)
+        c = fp.ieee754_to_sp(xc)
+        
+        self.cpu.csr[CSR_FFLAGS] = 0
+        r = a*b+c
+            
+        if (math.isnan(r)):
+            xr = 0x7F800000 # signaling Nan
+            self.cpu.csr[CSR_FFLAGS] |= CSR_FFLAGS_INVALID_OPERATION_MASK
+        elif (math.isinf(a) and math.isinf(b)):
+            if (math.copysign(1, a) == math.copysign(1, b)):
+                r = a           
+                xr = fp.sp_to_ieee754(r)
+            else:
+                print('Invalid inf')
+                xr = 0x7F800000 # signaling Nan
+                self.cpu.csr[CSR_FFLAGS] |= CSR_FFLAGS_INVALID_OPERATION_MASK
+        else:
+            rd = Decimal(a)*Decimal(b)+Decimal(c)
+        
+            if (rd != r):
+                self.cpu.csr[CSR_FFLAGS] |= CSR_FFLAGS_INEXACT_MASK
+            
+            xr = fp.sp_to_ieee754(r)
+            
+        return self.sp_box(xr)
+        
+    def min_half(self, xa, xb):
+        r = 0
+        fp = FloatingPointHelper()
+        a = fp.ieee754_to_sp(xa)
+        b = fp.ieee754_to_sp(xb)
+        
+        any_nan = (math.isnan(a) or math.isnan(b))
+        all_nan = (math.isnan(a) and math.isnan(b))
+        signaling = 0
+        invalid = 0
+        
+        if (any_nan):
+            signaling = self.is_sp_signaling_nan(xa, a)
+            signaling |= self.is_sp_signaling_nan(xb, b)
+            #print()
+            #print('signaling a: ', self.is_dp_signaling_nan(xa, a), get_bit(xa,51), a)
+            #print('signaling b: ', self.is_dp_signaling_nan(xb, b), get_bit(xb,51), b)
+        
+        if (all_nan):
+            #print('all-nan')
+            r = IEEE754_SP_SIGNALING_NAN # signaling Nan
+            invalid = False
+        elif (math.isnan(a)):
+            r = fp.sp_to_ieee754(b)
+            invalid = signaling
+        elif (math.isnan(b)):
+            r = fp.sp_to_ieee754(a)
+            invalid = signaling
+        else:
+            r = fp.sp_to_ieee754(fp.min(a,b))
+            invalid = (math.isinf(a) or math.isinf(b))
+        
+        
+        print('invalid:', a, b, invalid)
+            
+        if (invalid):
+            self.cpu.csr[CSR_FFLAGS] |= CSR_FFLAGS_INVALID_OPERATION_MASK
+            
+        return r
         
     def min_sp(self, xa, xb):
         r = 0
@@ -413,6 +565,43 @@ class FPU:
         return r
         
     def cmp_sp(self, op, xa, xb):
+        self.cpu.csr[CSR_FFLAGS] = 0
+
+        fp = FloatingPointHelper()
+        a = fp.ieee754_to_sp(self.sp_unbox(xa))
+        b = fp.ieee754_to_sp(self.sp_unbox(xb))
+        
+        any_nan = (math.isnan(a) or math.isnan(b))
+        signaling = 0
+        invalid = 0
+        
+        if (any_nan):
+            signaling = self.is_sp_signaling_nan(xa, a)
+            signaling |= self.is_sp_signaling_nan(xb, b)
+            
+        if (op == 'eq'):
+            r = (a == b)
+            
+            if (any_nan):
+                r = 0
+            
+            invalid = signaling
+        elif (op == 'le'):
+            r = (a <= b)
+            invalid = any_nan
+        elif (op == 'lt'):
+            r = (a < b)
+            invalid = any_nan
+        else:
+            raise Exception('unkwon op {}'.format(op))
+            
+        
+        if (invalid):
+            self.cpu.csr[CSR_FFLAGS] |= CSR_FFLAGS_INVALID_OPERATION_MASK
+            
+        return r
+        
+    def cmp_half(self, op, xa, xb):
         self.cpu.csr[CSR_FFLAGS] = 0
 
         fp = FloatingPointHelper()

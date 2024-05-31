@@ -795,17 +795,32 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'FADD.S'):
             self.freg[rd] = self.fpu.fma_sp(fp.sp_to_ieee754(1.0), self.freg[rs1] , self.freg[rs2])      
             pr('fr{} = fr{} + fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
+        elif (op == 'FADD.D'):
+            self.freg[rd] = self.fpu.fma_dp(fp.dp_to_ieee754(1.0), self.freg[rs1] , self.freg[rs2])
+            pr('fr{} = fr{} + fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
+        elif (op == 'FADD.H'):
+            self.freg[rd] = self.fpu.fma_half(fp.dp_to_ieee754(1.0), self.freg[rs1] , self.freg[rs2])
+            pr('fr{} = fr{} + fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))            
         elif (op == 'FSUB.S'):
             self.freg[rd] = self.fpu.fsub_sp(self.freg[rs1], self.freg[rs2])
             pr('fr{} = fr{} - fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FMUL.S'):
             self.freg[rd] = self.fpu.fma_sp(self.freg[rs1], self.freg[rs2], 0.0)
             pr('fr{} = fr{} * fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
+        elif (op == 'FDIV.H'):
+            self.freg[rd] = fp.half_to_ieee754(fs1 / fs2)      
+            pr('fr{} = fr{} / fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FDIV.S'):
             self.freg[rd] = fp.sp_to_ieee754(fs1 / fs2)      
             pr('fr{} = fr{} / fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
+        elif (op == 'FMIN.H'):
+            self.freg[rd] = self.fpu.min_half(self.freg[rs1], self.freg[rs2])
+            pr('fr{} = min(fr{}, fr{}) -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FMIN.S'):
             self.freg[rd] = self.fpu.min_sp(self.freg[rs1], self.freg[rs2])    
+            pr('fr{} = min(fr{}, fr{}) -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
+        elif (op == 'FMIN.D'):
+            self.freg[rd] = self.fpu.min_dp(self.freg[rs1], self.freg[rs2])
             pr('fr{} = min(fr{}, fr{}) -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FMAX.S'):
             self.freg[rd] = self.fpu.max_sp(self.freg[rs1], self.freg[rs2])      
@@ -813,9 +828,6 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'FSQRT.S'):
             self.freg[rd] = fp.sp_to_ieee754(math.sqrt(fs1))      
             pr('fr{} = sqrt(fr{}) -> {:016X}'.format(rd, rs1, self.freg[rd]))
-        elif (op == 'FADD.D'):
-            self.freg[rd] = self.fpu.fma_dp(fp.dp_to_ieee754(1.0), self.freg[rs1] , self.freg[rs2])
-            pr('fr{} = fr{} + fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FSUB.D'):
             self.freg[rd] = self.fpu.fsub_dp(self.freg[rs1], self.freg[rs2])
             pr('fr{} = fr{} - fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
@@ -825,23 +837,29 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'FDIV.D'):
             self.freg[rd] = fp.dp_to_ieee754(fd1 / fd2)
             pr('fr{} = fr{} / fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
-        elif (op == 'FMIN.D'):
-            self.freg[rd] = self.fpu.min_dp(self.freg[rs1], self.freg[rs2])
-            pr('fr{} = min(fr{}, fr{}) -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FMAX.D'):
             self.freg[rd] = self.fpu.max_dp(self.freg[rs1], self.freg[rs2])
             pr('fr{} = max(fr{}, fr{}) -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FSQRT.D'):
             self.freg[rd] = fp.dp_to_ieee754(math.sqrt(fd1))
             pr('fr{} = sqrt(fr{}) -> {:016X}'.format(rd, rs1, self.freg[rd]))
+        elif (op == 'FCLASS.H'):
+            self.reg[rd] = fclass_16(fs1)
+            pr('r{} = class(fr{}) -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCLASS.S'):
             self.reg[rd] = fclass_32(fs1)
             pr('r{} = class(fr{}) -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCLASS.D'):
             self.reg[rd] = self.fpu.class_dp(self.freg[rs1])
             pr('r{} = class(fr{}) -> {:016X}'.format(rd, rs1, self.reg[rd]))
+        elif (op == 'FEQ.H'):
+            self.reg[rd] = self.fpu.cmp_half('eq', self.freg[rs1], self.freg[rs2])
+            pr('r{} = (fr{}==fr{}) -> {:016X}'.format(rd, rs1,rs2, self.reg[rd]))
         elif (op == 'FEQ.S'):
             self.reg[rd] = self.fpu.cmp_sp('eq', self.freg[rs1], self.freg[rs2]) 
+            pr('r{} = (fr{}==fr{}) -> {:016X}'.format(rd, rs1,rs2, self.reg[rd]))
+        elif (op == 'FEQ.D'):
+            self.reg[rd] = self.fpu.cmp_dp('eq', self.freg[rs1], self.freg[rs2])
             pr('r{} = (fr{}==fr{}) -> {:016X}'.format(rd, rs1,rs2, self.reg[rd]))
         elif (op == 'FLE.S'):
             self.reg[rd] = self.fpu.cmp_sp('le', self.freg[rs1], self.freg[rs2]) 
@@ -849,9 +867,6 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'FLT.S'):
             self.reg[rd] = self.fpu.cmp_sp('lt', self.freg[rs1], self.freg[rs2]) 
             pr('r{} = (fr{}<fr{}) -> {:016X}'.format(rd, rs1,rs2, self.reg[rd]))
-        elif (op == 'FEQ.D'):
-            self.reg[rd] = self.fpu.cmp_dp('eq', self.freg[rs1], self.freg[rs2])
-            pr('r{} = (fr{}==fr{}) -> {:016X}'.format(rd, rs1,rs2, self.reg[rd]))
         elif (op == 'FLE.D'):
             self.reg[rd] = self.fpu.cmp_dp('le', self.freg[rs1], self.freg[rs2])
             pr('r{} = (fr{}<=fr{}) -> {:016X}'.format(rd, rs1,rs2, self.reg[rd]))
@@ -897,14 +912,14 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'FCVT.WU.S'):
             self.reg[rd] = self.fpu.convert_sp_to_u32(self.freg[rs1])
             pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
-        elif (op == 'FMV.X.D'):
-            self.reg[rd] = self.freg[rs1] 
-            pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.S.D'):
             self.freg[rd] = fp.sp_to_ieee754(fd1)
             pr('fr{} = fr{} -> {:016X}'.format(rd, rs1, self.freg[rd]))
         elif (op == 'FCVT.S.W'):
             self.freg[rd] = fp.sp_to_ieee754(signExtend(self.reg[rs1] & ((1<<32)-1), 32))
+            pr('fr{} = r{} -> {:016X}'.format(rd, rs1, self.freg[rd]))
+        elif (op == 'FCVT.H.W'):
+            self.freg[rd] = fp.half_to_ieee754(signExtend(self.reg[rs1] & ((1<<15)-1), 15))
             pr('fr{} = r{} -> {:016X}'.format(rd, rs1, self.freg[rd]))
         elif (op == 'FCVT.S.WU'):
             self.freg[rd] = fp.sp_to_ieee754(self.reg[rs1] & ((1<<32)-1))
@@ -915,9 +930,7 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'FCVT.S.LU'):
             self.freg[rd] = fp.sp_to_ieee754(self.reg[rs1])
             pr('fr{} = r{} -> {:016X}'.format(rd, rs1, self.freg[rd]))
-        elif (op == 'FMV.D.X'):
-            self.freg[rd] = self.reg[rs1]
-            pr('fr{} = r{} -> {:016X}'.format(rd, rs1, self.freg[rd]))
+
         elif (op == 'LR.D'):
             address = self.reg[rs1]
             self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
@@ -1097,6 +1110,12 @@ class SingleCycleRISCV(py4hw.Logic):
         if (op == 'FMADD.S'):
             self.freg[rd] = fp.dp_to_ieee754(fs1 * fs2 + fs3)      
             pr('fr{} = fr{} * fr{} + fr{} -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
+        elif (op == 'FMADD.D'):
+            self.freg[rd] = self.fpu.fma_dp(self.freg[rs1] , self.freg[rs2] , self.freg[rs3])
+            pr('fr{} = fr{} * fr{} + fr{} -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
+        elif (op == 'FMADD.H'):
+            self.freg[rd] = self.fpu.fma_half(self.freg[rs1] , self.freg[rs2] , self.freg[rs3])
+            pr('fr{} = fr{} * fr{} + fr{} -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
         elif (op == 'FMSUB.S'):
             self.freg[rd] = fp.dp_to_ieee754(fs1 * fs2 - fs3)      
             pr('r{} = r{} * r{} - r{} -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
@@ -1106,9 +1125,6 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'FNMADD.S'):
             self.freg[rd] = fp.dp_to_ieee754(-(fs1 * fs2 + fs3))      
             pr('r{} = -(r{} * r{} + r{}) -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
-        elif (op == 'FMADD.D'):
-            self.freg[rd] = self.fpu.fma_dp(self.freg[rs1] , self.freg[rs2] , self.freg[rs3])
-            pr('fr{} = fr{} * fr{} + fr{} -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
         elif (op == 'FMSUB.D'):
             self.freg[rd] = self.fpu.fms_dp(self.freg[rs1] , self.freg[rs2], self.freg[rs3])
             pr('r{} = r{} * r{} - r{} -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
@@ -1118,11 +1134,23 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'FNMADD.D'):
             self.freg[rd] = self.fpu.fma_dp(FloatingPointHelper.ieee754_dp_neg(self.freg[rs1]) , self.freg[rs2] , FloatingPointHelper.ieee754_dp_neg(self.freg[rs3]))
             pr('fr{} = -(fr{} * fr{} + fr{}) -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
+        elif (op == 'FMV.X.H'):
+            self.reg[rd] = signExtend(self.freg[rs1] & ((1<<16)-1), 16) & ((1<<64)-1)
+            pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
+        elif (op == 'FMV.H.X'):
+            self.freg[rd] = self.reg[rs1]
+            pr('fr{} = r{} -> {:016X}'.format(rd, rs1, self.freg[rd]))
+        elif (op == 'FMV.X.D'):
+            self.reg[rd] = self.freg[rs1] 
+            pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
+        elif (op == 'FMV.D.X'):
+            self.freg[rd] = self.reg[rs1]
+            pr('fr{} = r{} -> {:016X}'.format(rd, rs1, self.freg[rd]))
         elif (op == 'FMV.X.W'):
             self.reg[rd] = signExtend(self.freg[rs1] & ((1<<32)-1), 32) & ((1<<64)-1)
             pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FMV.W.X'):
-            self.freg[rd] = self.reg[rs1] & ((1<<32)-1)
+            self.freg[rd] = self.fpu.sp_box(self.reg[rs1] & ((1<<32)-1))
             pr('fr{} = r{} -> {:016X}'.format(rd, rs1, self.freg[rd]))
         elif (op == 'FSGNJ.D'):
             self.freg[rd] = self.fpu.sign_inject_dp(self.freg[rs1], self.freg[rs2])
@@ -1136,11 +1164,20 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'FSGNJ.S'):
             self.freg[rd] = self.fpu.sign_inject_sp(self.freg[rs1], self.freg[rs2])
             pr('fr{} = abs(fr{}) * sign(fr{}) -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
+        elif (op == 'FSGNJ.H'):
+            self.freg[rd] = self.fpu.sign_inject_half(self.freg[rs1], self.freg[rs2])
+            pr('fr{} = abs(fr{}) * sign(fr{}) -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FSGNJN.S'):
-            self.freg[rd] = (self.freg[rs1] & ((1<<31)-1)) | ((1<<31) & (self.freg[rs2] ^ ((1<<31)-1)))
+            self.freg[rd] = self.fpu.sign_n_inject_sp(self.freg[rs1], self.freg[rs2])
+            pr('fr{} = abs(fr{}) * not(sign(fr{})) -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
+        elif (op == 'FSGNJN.H'):
+            self.freg[rd] = self.fpu.sign_n_inject_half(self.freg[rs1], self.freg[rs2])
             pr('fr{} = abs(fr{}) * not(sign(fr{})) -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FSGNJX.S'):
             self.freg[rd] = (self.freg[rs1] & ((1<<31)-1)) | (((1<<31) & (self.freg[rs1])) ^ ((1<<31) & (self.freg[rs2])))
+            pr('fr{} = abs(fr{}) * (sign(fr{})^sign(fr{})) -> {:016X}'.format(rd, rs1, rs1, rs2, self.freg[rd]))
+        elif (op == 'FSGNJX.H'):
+            self.freg[rd] = (self.freg[rs1] & ((1<<15)-1)) | (((1<<15) & (self.freg[rs1])) ^ ((1<<15) & (self.freg[rs2])))
             pr('fr{} = abs(fr{}) * (sign(fr{})^sign(fr{})) -> {:016X}'.format(rd, rs1, rs1, rs2, self.freg[rd]))
         else:
             raise Exception('{} - R4-Type instruction not supported!'.format(op))
@@ -1259,6 +1296,11 @@ class SingleCycleRISCV(py4hw.Logic):
             address = self.reg[rs1] + simm12
             self.reg[rd] = yield from self.virtualMemoryLoad(address, 8//8)
             pr('r{} = [r{} + {}] -> [{}]={:02X}'.format(rd, rs1, simm12, self.addressFmt(address), self.reg[rd]))
+        elif (op == 'FLH'):
+            address = self.reg[rs1] + simm12
+            v = yield from self.virtualMemoryLoad(address, 32//8)
+            self.freg[rd] = signExtend(v, 32) & ((1<<64)-1)
+            pr('r{} = [r{} + {}] -> [{}]={:016X}'.format(rd, rs1, simm12, self.addressFmt(address), self.reg[rd]))
         elif (op == 'CBO.ZERO'):
             pr('r{}'.format(rs1))
         elif (op == 'CSRRW'):
@@ -1666,6 +1708,11 @@ class SingleCycleRISCV(py4hw.Logic):
             off = compose(ins, [[7,3],[10,3]]) << 3
             address = self.reg[2] + off
             yield from self.virtualMemoryWrite(address, 64//8, self.reg[rs2])
+            pr('[r2 + {}]=r{} -> [{:016X}]={:016X}'.format(off, rs2, address, self.reg[rs2]))
+        elif (op == 'C.FSDSP'):
+            off = compose(ins, [[7,3],[10,3]]) << 3
+            address = self.reg[2] + off
+            yield from self.virtualMemoryWrite(address, 64//8, self.freg[rs2])
             pr('[r2 + {}]=r{} -> [{:016X}]={:016X}'.format(off, rs2, address, self.reg[rs2]))
         else:
             pr(' - CSS-Type instruction not supported!')
