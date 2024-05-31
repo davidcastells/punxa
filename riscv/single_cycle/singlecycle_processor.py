@@ -703,9 +703,48 @@ class SingleCycleRISCV(py4hw.Logic):
             v2 = signExtend(self.reg[rs2] & ((1<<32) -1), 32)
             self.reg[rd] = signExtend((v1 - v2) & ((1<<32)-1), 32) & ((1<<64) -1)      
             pr('r{} = r{} - r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'MAX'):
+            v1 = signExtend(self.reg[rs1], 64)
+            v2 = signExtend(self.reg[rs2], 64)
+            self.reg[rd] = max(v1 , v2) & ((1<<64)-1)
+            pr('r{} = max(r{} , r{}) -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'MAXU'):
             self.reg[rd] = max(self.reg[rs1] , self.reg[rs2])   
-            pr('r{} = r{} ^ r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+            pr('r{} = maxu(r{} , r{}) -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'MIN'):
+            v1 = signExtend(self.reg[rs1], 64)
+            v2 = signExtend(self.reg[rs2], 64)
+            self.reg[rd] = min(v1 , v2) & ((1<<64)-1)
+            pr('r{} = min(r{} , r{}) -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'MINU'):
+            self.reg[rd] = min(self.reg[rs1] , self.reg[rs2])   
+            pr('r{} = minu(r{} , r{}) -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+            
+        elif (op == 'BEXT'):
+            sham = self.reg[rs2] & ((1<<6)-1)
+            self.reg[rd] = (self.reg[rs1] >> sham) & 1
+            pr('r{} = r{}[r{}] -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'BINV'):
+            #if (self.isa == 32): 
+            #    self.reg[rd] = self.reg[rs1] | (1 << shamt5)
+            #else:
+            sham = self.reg[rs2] & ((1<<6)-1)
+            self.reg[rd] = self.reg[rs1] ^ (1 << sham)
+            pr('r{} = r{} ^ (1<<r{}) -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'BCLR'):
+            #if (self.isa == 32): 
+            #    self.reg[rd] = self.reg[rs1] | (1 << shamt5)
+            #else:
+            sham = self.reg[rs2] & ((1<<6)-1)
+            self.reg[rd] = self.reg[rs1] & ~(1 << sham)
+            pr('r{} = r{} & ~(1<<r{}) -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'BSET'):
+            #if (self.isa == 32): 
+            #    self.reg[rd] = self.reg[rs1] | (1 << shamt5)
+            #else:
+            sham = self.reg[rs2] & ((1<<6)-1)
+            self.reg[rd] = self.reg[rs1] | (1 << sham)
+            pr('r{} = r{} | (1<<r{}) -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'SLT'):
             if (signExtend(self.reg[rs1], 64) < signExtend(self.reg[rs2], 64)):
                 self.reg[rd] = 1
@@ -1143,6 +1182,28 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'XORI'):
             self.reg[rd] = self.reg[rs1] ^ (simm12 & ((1<<64)-1))
             pr('r{} = r{} ^ {} -> {:016X}'.format(rd, rs1, simm12, self.reg[rd]))
+        elif (op == 'BEXTI'):
+            self.reg[rd] = (self.reg[rs1] >> shamt6) & 1
+            pr('r{} = r{}[{}] -> {:016X}'.format(rd, rs1, shamt6, self.reg[rd]))
+        elif (op == 'BINVI'):
+            #if (self.isa == 32): 
+            #    self.reg[rd] = self.reg[rs1] | (1 << shamt5)
+            #else:
+            self.reg[rd] = self.reg[rs1] ^ (1 << shamt6)
+            pr('r{} = r{} ^ (1<<{}) -> {:016X}'.format(rd, rs1, shamt6, self.reg[rd]))
+
+        elif (op == 'BCLRI'):
+            #if (self.isa == 32): 
+            #    self.reg[rd] = self.reg[rs1] | (1 << shamt5)
+            #else:
+            self.reg[rd] = self.reg[rs1] & ~(1 << shamt6)
+            pr('r{} = r{} & ~(1<<{}) -> {:016X}'.format(rd, rs1, shamt6, self.reg[rd]))
+        elif (op == 'BSETI'):
+            #if (self.isa == 32): 
+            #    self.reg[rd] = self.reg[rs1] | (1 << shamt5)
+            #else:
+            self.reg[rd] = self.reg[rs1] | (1 << shamt6)
+            pr('r{} = r{} | (1<<{}) -> {:016X}'.format(rd, rs1, shamt6, self.reg[rd]))
         elif (op == 'CLZ'):
             self.reg[rd] = count_leading_zeros(self.reg[rs1], 64)
             pr('r{} = clz(r{}) -> {:016X}'.format(rd, rs1, self.reg[rd]))
@@ -1157,6 +1218,9 @@ class SingleCycleRISCV(py4hw.Logic):
             pr('r{} = ctzw(r{}) -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'CPOP'):
             self.reg[rd] = pop_count(self.reg[rs1], 64)
+            pr('r{} = cpop(r{}) -> {:016X}'.format(rd, rs1, self.reg[rd]))
+        elif (op == 'CPOPW'):
+            self.reg[rd] = pop_count(self.reg[rs1] & ((1<<32)-1), 32)
             pr('r{} = cpop(r{}) -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'SEXT.B'):
             self.reg[rd] = signExtend(self.reg[rs1] & 0xFF, 8) & ((1<<64) -1)
@@ -1715,10 +1779,17 @@ class SingleCycleRISCV(py4hw.Logic):
         self.csr[CSR_MISA] = 2 << 62 | self.encodeFeatures('ACDIFMSU') # misa
         self.csr[CSR_MCPUID] = 2 << 62 | self.encodeFeatures('ACDIFMSU') # mcpuid
         self.csr[0xf10] = 0 # mhartid @todo is this wrong???
-        self.csr[CSR_MHARTID] = 0 # mhartid
 
+        self.csr[CSR_MVENDORID] = 0x414255 # UAB
+        self.csr[CSR_MARCHID] = 0
+        self.csr[CSR_MIMPID] = 0x70756e7861323431  # @todo should be reversed
+        self.csr[CSR_MHARTID] = 0 # mhartid
+        
 
         self.implemented_csrs[CSR_MCPUID] = 'mcpuid'
+        self.implemented_csrs[CSR_MVENDORID] = 'mvendorid'
+        self.implemented_csrs[CSR_MARCHID] = 'marchid'
+        self.implemented_csrs[CSR_MIMPID] = 'mimpid'
         self.implemented_csrs[CSR_MHARTID] = 'mhartid'
         
 
