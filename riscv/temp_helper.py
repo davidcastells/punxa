@@ -140,6 +140,66 @@ class FloatingPointHelper:
             return s, re, rm
     
     @staticmethod
+    def half_to_ieee754_parts(v):
+        '''
+        Return the parts of the IEEE 754 representation of a half-precision floating-point number v
+
+        Parameters
+        ----------
+        v : TYPE
+        A half-precision floating-point number
+
+        Returns
+        -------
+        tuple
+        A tuple containing:
+          - sign: 0 for positive, 1 for negative
+          - biased_exponent: biased representation of exponent (e+15)
+          - significand: representation of mantissa (m-1) << 10
+        '''
+
+        if (math.isinf(v)):
+            s = 0 if v > 0 else 1
+            e = 31
+            m = 0
+            return s, e, m
+
+        if (math.isnan(v)):
+            s = 0
+            e = 31
+            m = (1 << 10) - 1
+            return s, e, m
+
+        s,e,m = FloatingPointHelper.fp_to_parts(v)
+        
+        if (m == 0):
+            v = math.copysign(1, v)
+            s = 0 if v > 0 else 1
+            return s,0,0
+        else:
+            if (e >= 16):
+                return s,31,0  # infinity
+                
+            if (e <= -15):
+                # denormalized values
+                div = math.pow(2, (-15-e))
+                #print('e',e,'div', div)
+                m = m / div
+                re = 0
+                rm = int(round(m * (1 << 9)))
+            else:
+                im = int(round((m-1) * (1<<10)))
+                if (im >= (1<<10)):
+                    e += 1
+                    m /= 2
+                    
+                re = 127 + e
+                rm = int(round((m-1) * (1<<10)))
+    
+            return s, re, rm
+
+
+    @staticmethod
     def sp_to_ieee754_parts(v):
         """
         Return the parts of the IEEE 754 representation of v
@@ -272,6 +332,15 @@ class FloatingPointHelper:
         
         r = s << 31
         r = r | (e << 23)
+        r = r | (m)
+        return r
+        
+    @staticmethod
+    def half_to_ieee754(v):
+        s,e,m = FloatingPointHelper.half_to_ieee754_parts(v)
+        
+        r = s << 15
+        r = r | (e << 10)
         r = r | (m)
         return r
 
