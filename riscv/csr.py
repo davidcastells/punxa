@@ -16,8 +16,6 @@ https://uim.fei.stuba.sk/wp-content/uploads/2018/02/riscv-privileged-2022.pdf
 
 
 CSR_MISA = 0x301
-CSR_MCPUID = 0xf00
-CSR_MHARTID = 0xf14
 
 CSR_FFLAGS = 0x001
 CSR_FRM = 0x002
@@ -62,19 +60,25 @@ CSR_PMPCFG0 = 0x3A0
 
 # Machine non-maskable interrupt handling
 CSR_MNSCRATCH = 0x740
-CSR_MNEPC = 0x741
-CSR_MNCAUSE = 0x742
-CSR_MNSTATUS = 0x744
+CSR_MNEPC =     0x741
+CSR_MNCAUSE =   0x742
+CSR_MNSTATUS =  0x744
 
-CSR_MCYCLE = 0xB00
-CSR_MINSTRET = 0xB02
+CSR_MCYCLE =    0xB00
+CSR_MINSTRET =  0xB02
 
 # for i in range(3,32):
 #     self.implemented_csrs[0xB00+i] = 'mhpmcounter{}'.format(i)
 
-CSR_CYCLE = 0xC00
-CSR_TIME = 0xC01
-CSR_INSTRET = 0xC02
+CSR_CYCLE =     0xC00
+CSR_TIME =      0xC01
+CSR_INSTRET =   0xC02
+
+CSR_MCPUID =    0xf00
+CSR_MVENDORID = 0xF11
+CSR_MARCHID =   0xF12
+CSR_MIMPID =    0xF13
+CSR_MHARTID =   0xf14
 
 CSR_PRIVLEVEL = 0xFFF
 
