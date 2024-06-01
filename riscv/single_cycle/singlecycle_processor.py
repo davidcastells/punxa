@@ -50,6 +50,23 @@ def pop_count(v, w):
         v = v >> 1
     return c
 
+def grev(x, shamt):
+    if (shamt & 1): x = ((x & 0x5555555555555555) << 1) | ((x & 0xAAAAAAAAAAAAAAAA) >> 1)
+    if (shamt & 2): x = ((x & 0x3333333333333333) << 2) | ((x & 0xCCCCCCCCCCCCCCCC) >> 2)
+    if (shamt & 4): x = ((x & 0x0F0F0F0F0F0F0F0F) << 4) | ((x & 0xF0F0F0F0F0F0F0F0) >> 4)
+    if (shamt & 8): x = ((x & 0x00FF00FF00FF00FF) << 8) | ((x & 0xFF00FF00FF00FF00) >> 8)
+    if (shamt & 16): x = ((x & 0x0000FFFF0000FFFF) << 16) | ((x & 0xFFFF0000FFFF0000) >> 16)
+    if (shamt & 32): x = ((x & 0x00000000FFFFFFFF) << 32) | ((x & 0xFFFFFFFF00000000) >> 32)
+    return x
+
+def gorc(x,  shamt ):
+    if (shamt & 1): x |= ((x & 0x5555555555555555) << 1) | ((x & 0xAAAAAAAAAAAAAAAA) >> 1);
+    if (shamt & 2): x |= ((x & 0x3333333333333333) << 2) | ((x & 0xCCCCCCCCCCCCCCCC) >> 2);
+    if (shamt & 4): x |= ((x & 0x0F0F0F0F0F0F0F0F) << 4) | ((x & 0xF0F0F0F0F0F0F0F0) >> 4);
+    if (shamt & 8): x |= ((x & 0x00FF00FF00FF00FF) << 8) | ((x & 0xFF00FF00FF00FF00) >> 8);
+    if (shamt & 16): x |= ((x & 0x0000FFFF0000FFFF) << 16) | ((x & 0xFFFF0000FFFF0000) >> 16);
+    if (shamt & 32): x |= ((x & 0x00000000FFFFFFFF) << 32) | ((x & 0xFFFFFFFF00000000) >> 32);
+    return x
      
 class SingleCycleRISCV(py4hw.Logic):
     
@@ -584,20 +601,41 @@ class SingleCycleRISCV(py4hw.Logic):
         if (op == 'ADD'):
             self.reg[rd] = (self.reg[rs1] + self.reg[rs2]) & ((1<<64)-1)  
             pr('r{} = r{} + r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'ADD.UW'):
+            self.reg[rd] = (zeroExtend(self.reg[rs1], 32) + self.reg[rs2] ) & ((1<<64)-1)  
+            pr('r{} = r{} + r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'AND'):
             self.reg[rd] = self.reg[rs1] & self.reg[rs2]      
             pr('r{} = r{} & r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'ANDN'):
+            self.reg[rd] = self.reg[rs1] & ~self.reg[rs2]      
+            pr('r{} = r{} & ~r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'OR'):
             self.reg[rd] = self.reg[rs1] | self.reg[rs2]      
             pr('r{} = r{} | r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'ORN'):
+            self.reg[rd] = self.reg[rs1] | ~self.reg[rs2]      
+            pr('r{} = r{} | ~r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'XOR'):
             self.reg[rd] = self.reg[rs1] ^ self.reg[rs2]      
+            pr('r{} = r{} ^ r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'XNOR'):
+            self.reg[rd] = (self.reg[rs1] ^ ~self.reg[rs2]) & ((1<<64)-1)      
             pr('r{} = r{} ^ r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'SUB'):
             #print('{:016X} - {:016X}'.format(self.reg[rs1] , self.reg[rs2]))
             self.reg[rd] = (self.reg[rs1] - self.reg[rs2]) & ((1<<64)-1)
             pr('r{} = r{} - r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'MUL'):
+            self.reg[rd] = (self.reg[rs1] * self.reg[rs2]) & ((1<<64)-1)      
+            pr('r{} = r{} * r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'CLMUL'):
+            self.reg[rd] = (self.reg[rs1] * self.reg[rs2]) & ((1<<64)-1)      
+            pr('r{} = r{} * r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'CLMULH'):
+            self.reg[rd] = (self.reg[rs1] * self.reg[rs2]) & ((1<<64)-1)      
+            pr('r{} = r{} * r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'CLMULR'):
             self.reg[rd] = (self.reg[rs1] * self.reg[rs2]) & ((1<<64)-1)      
             pr('r{} = r{} * r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'MULH'):
@@ -754,6 +792,31 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'SLTU'):
             self.reg[rd] = int(self.reg[rs1] < self.reg[rs2])
             pr('r{} = r{} < r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))                
+        elif (op == 'ROR'): 
+            shv = self.reg[rs2] & ((1<<6)-1)
+            self.reg[rd] = ((self.reg[rs1] >> shv ) | (self.reg[rs1] << (64 - shv) ) ) & ((1<<64) -1)      
+            pr('r{} = r{} R>> r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'RORW'):
+            shv = self.reg[rs2] & ((1<<5)-1)
+            if (shv > 0): 
+                v = zeroExtend(self.reg[rs1], 32)
+                v = ((v >> shv ) | (v << (32 - shv) )) & ((1<<32)-1)
+                v = signExtend(v , 32) & ((1<<64) -1)      
+            else: v = self.reg[rs1]
+            self.reg[rd] = v
+            pr('r{} = r{} R>> r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'ROL'):
+            shv = self.reg[rs2] & ((1<<6)-1)
+            self.reg[rd] = ((self.reg[rs1] << shv ) | (self.reg[rs1] >> (64 - shv) ) ) & ((1<<64) -1)      
+            pr('r{} = r{} R>> r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'ROLW'):
+            shv = self.reg[rs2] & ((1<<5)-1)
+            if (shv > 0): 
+                v = zeroExtend(self.reg[rs1], 32)
+                v = ((v << shv ) | (v >> (32 - shv) )) & ((1<<32)-1)
+            else: v = self.reg[rs1] 
+            self.reg[rd] = signExtend(v , 32) & ((1<<64) -1)
+            pr('r{} = r{} R<< r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'SLL'):
             shv = self.reg[rs2] & ((1<<6)-1)
             self.reg[rd] = (self.reg[rs1] << shv ) & ((1<<64) -1)      
@@ -792,6 +855,24 @@ class SingleCycleRISCV(py4hw.Logic):
                 v = ((v & ((1<<32) -1)) >> shv) 
             self.reg[rd] = signExtend(v & ((1<<32) -1), 32) & ((1<<64) -1)
             pr('r{} = r{} >> r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'SH1ADD'):
+            self.reg[rd] = ((self.reg[rs1] << 1) + self.reg[rs2]) & ((1<<64)-1)  
+            pr('r{} = r{} << 1 + r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'SH1ADD.UW'):
+            self.reg[rd] = ((zeroExtend(self.reg[rs1],32) << 1) + self.reg[rs2]) & ((1<<64)-1)  
+            pr('r{} = r{} << 1 + r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'SH2ADD'):
+            self.reg[rd] = ((self.reg[rs1] << 2) + self.reg[rs2]) & ((1<<64)-1)  
+            pr('r{} = r{} << 2 + r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'SH2ADD.UW'):
+            self.reg[rd] = ((zeroExtend(self.reg[rs1],32) << 2) + self.reg[rs2]) & ((1<<64)-1)  
+            pr('r{} = r{} << 2 + r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'SH3ADD'):
+            self.reg[rd] = ((self.reg[rs1] << 3) + self.reg[rs2]) & ((1<<64)-1)  
+            pr('r{} = r{} << 3 + r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'SH3ADD.UW'):
+            self.reg[rd] = ((zeroExtend(self.reg[rs1],32) << 3) + self.reg[rs2]) & ((1<<64)-1)  
+            pr('r{} = r{} << 3 + r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'FADD.S'):
             self.freg[rd] = self.fpu.fma_sp(fp.sp_to_ieee754(1.0), self.freg[rs1] , self.freg[rs2])      
             pr('fr{} = fr{} + fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
@@ -902,6 +983,9 @@ class SingleCycleRISCV(py4hw.Logic):
             pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.W.D'):
             self.reg[rd] = self.fpu.convert_dp_to_i32(self.freg[rs1])
+            pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
+        elif (op == 'FCVT.W.H'):
+            self.reg[rd] = self.fpu.convert_half_to_i32(self.freg[rs1])
             pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.WU.D'):
             self.reg[rd] = self.fpu.convert_dp_to_u32(self.freg[rs1])
@@ -1086,6 +1170,9 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'SFENCE.VMA'):
             pr('flusing tlb')
             self.tlb = {}
+        elif (op == 'PACKW'):
+            self.reg[rd] = self.reg[rs2] << 32 | (self.reg[rs1] & ((1<<32)-1))    
+            pr('r{} = r{}[31:0]  | r{} << 32 -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         else:
             raise Exception('{} - R-Type instruction not supported!'.format(op))
             #self.parent.getSimulator().stop()
@@ -1219,6 +1306,12 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'XORI'):
             self.reg[rd] = self.reg[rs1] ^ (simm12 & ((1<<64)-1))
             pr('r{} = r{} ^ {} -> {:016X}'.format(rd, rs1, simm12, self.reg[rd]))
+        elif (op == 'GREVI'):
+            self.reg[rd] = grev(self.reg[rs1] , shamt6)
+            pr('r{} = r{} grev {} -> {:016X}'.format(rd, rs1, shamt6, self.reg[rd]))
+        elif (op == 'GORCI'):
+            self.reg[rd] = gorc(self.reg[rs1] , shamt6)
+            pr('r{} = r{} gorc {} -> {:016X}'.format(rd, rs1, shamt6, self.reg[rd]))
         elif (op == 'BEXTI'):
             self.reg[rd] = (self.reg[rs1] >> shamt6) & 1
             pr('r{} = r{}[{}] -> {:016X}'.format(rd, rs1, shamt6, self.reg[rd]))
@@ -1353,7 +1446,10 @@ class SingleCycleRISCV(py4hw.Logic):
             if (rd != 0) and allowed: self.reg[rd] = vcsr
             self.writeCSR(csr, rs1)
             csrname = self.implemented_csrs[csr]
-            pr('r{} = {}, {} = {} -> {:016X}'.format(rd, csrname, csrname, rs1, self.reg[rd]))
+            if (rd == 0):
+                pr('{} = {} -> {:016X}'.format(csrname, rs1, self.reg[rd]))
+            else:
+                pr('r{} = {}, {} = {} -> {:016X}'.format(rd, csrname, csrname, rs1, self.reg[rd]))
         elif (op == 'CSRRSI'):
             crsv, allowed = self.readCSR(csr)
             if (rs1 != 0): self.setCSR(csr, rs1)
@@ -1366,12 +1462,23 @@ class SingleCycleRISCV(py4hw.Logic):
             if (rd != 0) and allowed: self.reg[rd] = crsv
             csrname = self.implemented_csrs[csr]
             pr('r{} = {}, {} &= ~{} -> {:016X}'.format(rd, csrname, csrname, rs1, self.reg[rd]))                        
+        elif (op == 'RORI'):
+            self.reg[rd] = ((self.reg[rs1] >> shamt6) | (self.reg[rs1] << (64-shamt6))) & ((1<<64)-1)
+            pr('r{} = r{} >> {} -> {:016X}'.format(rd, rs1, shamt6, self.reg[rd]))
+        elif (op == 'RORIW'):
+            v = ((self.reg[rs1] >> shamt6) | (self.reg[rs1] << (32-shamt6))) & ((1<<32)-1)
+            self.reg[rd] = signExtend(v, 32) & ((1<<64)-1)
+            pr('r{} = r{} >> {} -> {:016X}'.format(rd, rs1, shamt6, self.reg[rd]))
         elif (op == 'SLLI'):
             self.reg[rd] = (self.reg[rs1] << shamt6) & ((1<<64)-1)
             pr('r{} = r{} << {} -> {:016X}'.format(rd, rs1, shamt6, self.reg[rd]))
         elif (op == 'SLLIW'):
             v = self.reg[rs1] << shamt6
             self.reg[rd] = signExtend(v & ((1<<32)-1), 32) & ((1<<64)-1)
+            pr('r{} = r{} << {} -> {:016X}'.format(rd, rs1, shamt6, self.reg[rd]))
+        elif (op == 'SLLI.UW'):
+            v = zeroExtend(self.reg[rs1], 32) <<  shamt6
+            self.reg[rd] = v  & ((1<<64)-1)
             pr('r{} = r{} << {} -> {:016X}'.format(rd, rs1, shamt6, self.reg[rd]))
         elif (op == 'SRLI'):
             self.reg[rd] = self.reg[rs1] >> shamt6
