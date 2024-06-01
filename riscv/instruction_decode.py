@@ -87,9 +87,12 @@ fpu_instructions.extend(rv64f_instructions)
 fpu_instructions.extend(rvzfh_instructions)
 
     
-RTypeIns = ['ADD','AND','OR','SLL','SLT','SLTU','SRA','SRL','SUB','XOR', 'XNOR',
+RTypeIns = ['AND','OR','XOR', 'XNOR',
+            'ADD','ADD.UW','SUB',
             'MUL', 'MULH', 'MULHU', 'MULHSU', 'MULW',
+            'CLMUL','CLMULH', 'CLMULR',
             'DIV', 'DIVU', 'DIVW', 'DIVUW', 'REM', 'REMU', 'REMW', 'REMUW',
+            'ROL','ROLW','ROR','RORW','SLL','SLT','SLTU','SRA','SRL',
             'FADD.S','FSUB.S','FMUL.S','FDIV.S','FMIN.S','FMAX.S','FCLASS.S','FEQ.S','FLT.S','FLE.S',
             'FADD.D','FSUB.D','FMUL.D','FDIV.D','FMIN.D','FMAX.D','FCLASS.D','FEQ.D','FLT.D','FLE.D',
             'FADD.H','FSUB.H','FMUL.H','FDIV.H','FMIN.H','FMAX.H','FCLASS.H','FEQ.H','FLT.H','FLE.H',
@@ -97,13 +100,14 @@ RTypeIns = ['ADD','AND','OR','SLL','SLT','SLTU','SRA','SRL','SUB','XOR', 'XNOR',
             'FCVT.L.D','FCVT.L.S','FCVT.LU.D','FCVT.LU.S',
             'FCVT.S.D','FCVT.S.W','FCVT.S.WU','FCVT.S.L','FCVT.S.LU',
             'FCVT.D.L','FCVT.D.LU','FCVT.D.W','FCVT.D.WU','FCVT.D.S',
-            'FCVT.H.W',
+            'FCVT.H.W','FCVT.W.H',
             'LR.W', 'SC.W','LR.D', 'SC.D',
             'AMOSWAP.W','AMOADD.W','AMOAND.W','AMOOR.W','AMOXOR.W','AMOMAX.W','AMOMIN.W','AMOMAXU.W','AMOMINU.W',
             'AMOSWAP.D','AMOADD.D','AMOAND.D','AMOOR.D','AMOXOR.D','AMOMAX.D','AMOMIN.D','AMOMAXU.D','AMOMINU.D',
             'ADDW','SLLW','SRLW','SUBW','SRAW',
             'SFENCE.VMA',
-            'ANDN','ORC','XORC','MIN','MAX','MINU','MAXU', 'PACK', 'PACKU', 
+            'ANDN','ORN','ORC','XORC','MIN','MAX','MINU','MAXU', 'PACK', 'PACKU', 
+            'SH1ADD','SH1ADD.UW','SH2ADD','SH2ADD.UW','SH3ADD','SH3ADD.UW',
             'PACKH', 'PACKW', 'PACKUW',
             'BEXT','BINV','BSET', 'BCLR']
 R4TypeIns = ['FMADD.S', 'FMSUB.S', 'FNMSUB.S', 'FNMADD.S',
@@ -118,15 +122,15 @@ R4TypeIns = ['FMADD.S', 'FMSUB.S', 'FNMSUB.S', 'FNMADD.S',
              
 ITypeIns = ['JALR','LB','LH','LW','LWU','LBU','LHU','LD','ADDI','SLTI','SLTIU',
             'XORI', 'ADDIW', 'ORI','ANDI',
-            'SLLI','SRLI','SRAI','SLLIW','SRLIW','SRAIW',
+            'SLLI','SLLI.UW','SRLI','SRAI','SLLIW','SRLIW','SRAIW','RORI','RORIW',
             'CSRRW','CSRRS','CSRRC','CSRRWI','CSRRSI','CSRRCI',
             'WFI', 'MRET', 'SRET', 'URET', 'ECALL', 'EBREAK',
             'FLD','FLW', 'FLH',
             'CLZ', 'CTZ','CPOP','CPOPW','CLZW','CTZW', 'SEXT.B', 'SEXT.H', 
-            'BEXTI','BINVI','BSETI', 'BCLRI',
+            'BEXTI','BINVI','BSETI', 'BCLRI','GREVI','GORCI',
             'CBO.CLEAN', 'CBO.FLUSH', 'CBO.INVAL', 'CBO.ZERO']
             
-STypeIns = ['SB','SH','SW','SD', 'FSD', 'FSW']
+STypeIns = ['SB','SH','SW','SD', 'FSD', 'FSW','FSH']
 BTypeIns = ['BEQ','BNE','BLT','BGE','BLTU','BGEU']
 UTypeIns = ['LUI','AUIPC']
 JTypeIns = ['JAL']
