@@ -15,7 +15,7 @@ We have some bugs in floating point operations.
 
 RV64 (excluding vector and cache management instructions) progress: 
 
-72.6% |███████████████████████████████░░░░░░░░|
+83.3% |███████████████████████████████████░░░░░░░░|
 
 check [riscv-tests](https://github.com/davidcastells/punxa/blob/main/test/riscv-tests/README.md) for a complete list
 
