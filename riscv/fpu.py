@@ -769,6 +769,38 @@ class FPU:
             if (iv != sp):
                 self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INEXACT_MASK
         return ret
+
+    def convert_half_to_i32(self, v):
+        fp = FloatingPointHelper()
+        MIN_I32 = -(1<<31)
+        MAX_I32 = (1<<31)-1
+        
+        self.cpu.csr[CSR_FFLAGS] = 0
+        dp = fp.ieee754_to_dp(v)
+        
+        if (math.isnan(dp)):
+            iv = MAX_I32
+        elif (math.isinf(dp)):
+            if (dp < 0):
+                iv = MIN_I32
+            else:
+                iv = MAX_I32
+        else:
+            iv = int(dp)
+        
+        if (iv < MIN_I32):
+            ret = MIN_I32 & ((1<<64)-1) 
+            self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INVALID_OPERATION_MASK
+        elif (iv > MAX_I32):
+            ret = MAX_I32
+            self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INVALID_OPERATION_MASK
+        else:
+            ret = iv & ((1<<64) -1) 
+            
+            if (iv != dp):
+                self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INEXACT_MASK
+        return ret
+
         
     def convert_dp_to_i32(self, v):
         fp = FloatingPointHelper()
