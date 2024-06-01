@@ -24,6 +24,7 @@ def sign(v):
 
 # @todo should be part of py4hw
 def signExtend(v, w):
+    v = v & ((1<<w)-1)
     sign_bit = w - 1
 
     if (get_bit(v, sign_bit) == 0x1):
