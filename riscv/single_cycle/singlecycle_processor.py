@@ -68,6 +68,15 @@ def gorc(x,  shamt ):
     if (shamt & 32): x |= ((x & 0x00000000FFFFFFFF) << 32) | ((x & 0xFFFFFFFF00000000) >> 32);
     return x
      
+def clmul(a, b):
+    x = 0
+    for i in range(64):
+        if (b >> i) & 1:
+            x += a << i
+    return x
+
+
+
 class SingleCycleRISCV(py4hw.Logic):
     
     def __init__(self, parent, name:str, memory:MemoryInterface, 
@@ -614,7 +623,7 @@ class SingleCycleRISCV(py4hw.Logic):
             self.reg[rd] = self.reg[rs1] | self.reg[rs2]      
             pr('r{} = r{} | r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'ORN'):
-            self.reg[rd] = self.reg[rs1] | ~self.reg[rs2]      
+            self.reg[rd] = (self.reg[rs1] | ~self.reg[rs2]) & ((1<<64)-1)     
             pr('r{} = r{} | ~r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'XOR'):
             self.reg[rd] = self.reg[rs1] ^ self.reg[rs2]      
@@ -630,10 +639,10 @@ class SingleCycleRISCV(py4hw.Logic):
             self.reg[rd] = (self.reg[rs1] * self.reg[rs2]) & ((1<<64)-1)      
             pr('r{} = r{} * r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'CLMUL'):
-            self.reg[rd] = (self.reg[rs1] * self.reg[rs2]) & ((1<<64)-1)      
+            self.reg[rd] = clmul(self.reg[rs1], self.reg[rs2]) & ((1<<64)-1)      
             pr('r{} = r{} * r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'CLMULH'):
-            self.reg[rd] = (self.reg[rs1] * self.reg[rs2]) & ((1<<64)-1)      
+            self.reg[rd] = clmul(self.reg[rs1], self.reg[rs2]) >> 64       
             pr('r{} = r{} * r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'CLMULR'):
             self.reg[rd] = (self.reg[rs1] * self.reg[rs2]) & ((1<<64)-1)      
@@ -874,7 +883,7 @@ class SingleCycleRISCV(py4hw.Logic):
             self.reg[rd] = ((zeroExtend(self.reg[rs1],32) << 3) + self.reg[rs2]) & ((1<<64)-1)  
             pr('r{} = r{} << 3 + r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'FADD.S'):
-            self.freg[rd] = self.fpu.fma_sp(fp.sp_to_ieee754(1.0), self.freg[rs1] , self.freg[rs2])      
+            self.freg[rd] = self.fpu.fadd_sp(self.freg[rs1] , self.freg[rs2])      
             pr('fr{} = fr{} + fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FADD.D'):
             self.freg[rd] = self.fpu.fma_dp(fp.dp_to_ieee754(1.0), self.freg[rs1] , self.freg[rs2])
@@ -892,8 +901,13 @@ class SingleCycleRISCV(py4hw.Logic):
             self.freg[rd] = fp.half_to_ieee754(fs1 / fs2)      
             pr('fr{} = fr{} / fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FDIV.S'):
-            self.freg[rd] = fp.sp_to_ieee754(fs1 / fs2)      
+            self.freg[rd] = self.fpu.fdiv_sp(self.freg[rs1], self.freg[rs2])
+            if (self.fpu.last_result.inexact): self.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
             pr('fr{} = fr{} / fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
+        elif (op == 'FSQRT.S'):
+            self.freg[rd] = self.fpu.fsqrt_sp(self.freg[rs1])
+            if (self.fpu.last_result.inexact): self.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
+            pr('fr{} = sqrt(fr{}) -> {:016X}'.format(rd, rs1, self.freg[rd]))
         elif (op == 'FMIN.H'):
             self.freg[rd] = self.fpu.min_half(self.freg[rs1], self.freg[rs2])
             pr('fr{} = min(fr{}, fr{}) -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
@@ -915,8 +929,8 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'FMUL.D'):
             self.freg[rd] = self.fpu.fma_dp(self.freg[rs1] , self.freg[rs2], fp.dp_to_ieee754(0.0))
             pr('fr{} = fr{} * fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
-        elif (op == 'FDIV.D'):
-            self.freg[rd] = fp.dp_to_ieee754(fd1 / fd2)
+        elif (op == 'FDIV.D'):            
+            self.freg[rd] = self.fpu.fdiv_dp(self.freg[rs1], self.freg[rs2])
             pr('fr{} = fr{} / fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FMAX.D'):
             self.freg[rd] = self.fpu.max_dp(self.freg[rs1], self.freg[rs2])
@@ -1170,9 +1184,9 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'SFENCE.VMA'):
             pr('flusing tlb')
             self.tlb = {}
-        elif (op == 'PACKW'):
-            self.reg[rd] = self.reg[rs2] << 32 | (self.reg[rs1] & ((1<<32)-1))    
-            pr('r{} = r{}[31:0]  | r{} << 32 -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+        elif (op == 'ZEXT.H'):
+            self.reg[rd] = zeroExtend(self.reg[rs1] , 16)    
+            pr('r{} = r{}[15:0]  -> {:016X}'.format(rd, rs1, self.reg[rd]))
         else:
             raise Exception('{} - R-Type instruction not supported!'.format(op))
             #self.parent.getSimulator().stop()
