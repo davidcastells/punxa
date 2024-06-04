@@ -112,11 +112,12 @@ CSR_FFLAGS_UNDERFLOW_MASK = 2
 CSR_FFLAGS_INEXACT_MASK = 1
 
 # 0x002 - FRM
-CSR_FRM_RNE = 0b000
-CSR_FRM_RTZ = 0b001
-CSR_FRM_RDN = 0b010
-CSR_FRM_RUP = 0b011
-CSR_FRM_RMM = 0b100
+CSR_FRM_RNE = 0b000 # Round to nearest, ties to Even
+CSR_FRM_RTZ = 0b001 # Round towards zero
+CSR_FRM_RDN = 0b010 # Round towards -infinity 
+CSR_FRM_RUP = 0b011 # Round towards infinity
+CSR_FRM_RMM = 0b100 # Round to nearest, ties to max magnitude
+CSR_FRM_DYN = 0x111 # Use instructions'm RM field
 
 # 0x003 - FCSR
 CSR_FCSR_ROUNDING_MODE_MASK = 0b111 << 5
