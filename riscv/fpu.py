@@ -1,12 +1,13 @@
 import sys
 import py4hw
+from py4hw.helper import FPNum
 import numpy as np
-        
+from decimal import Decimal
     
 from .temp_helper import *
 from .csr import *
 
-
+        
 def fclass_16(v):
     r = 0
     if (v == -math.inf):
@@ -212,7 +213,6 @@ class FPU:
     def sign_n_inject_sp(self, xa, xb):
         return self.sign_inject_sp(xa, self.sp_box(xb ^ (1<<31)))
 
-
     def fsub_dp(self, xa, xb):
         fp = FloatingPointHelper()
         return self.fma_dp(fp.dp_to_ieee754(1.0), xa , FloatingPointHelper.ieee754_dp_neg(xb))  
@@ -253,43 +253,149 @@ class FPU:
             xr = fp.dp_to_ieee754(r)
             
         return xr
-    
-    def fsub_sp(self, xa, xb):
-        return self.fma_sp(fp.sp_to_ieee754(1.0), self.freg[rs1] , FloatingPointHelper.ieee754_sp_neg(self.freg[rs2]))
 
+    def set_sp_result(self, r):
+        fp = FloatingPointHelper()
+
+        self.cpu.csr[CSR_FFLAGS] = 0
+
+        if (math.isnan(r)):
+            xr = 0x7FC00000 # Nan
+            self.cpu.csr[CSR_FFLAGS] |= CSR_FFLAGS_INVALID_OPERATION_MASK
+            '''            
+            elif (math.isinf(a) and math.isinf(b)):
+                if (math.copysign(1, a) == math.copysign(1, b)):
+                    r = a           
+                    xr = fp.sp_to_ieee754(r)
+                else:
+                    print('Invalid inf')
+                    xr = 0x7F800000 # signaling Nan
+                    self.cpu.csr[CSR_FFLAGS] |= CSR_FFLAGS_INVALID_OPERATION_MASK
+            '''
+        else:
+            xr = fp.sp_to_ieee754(r)
+            r2 = fp.ieee754_to_sp(xr)
+            
+            if (r != r2):
+                self.cpu.csr[CSR_FFLAGS] |= CSR_FFLAGS_INEXACT_MASK            
+            
+        return self.sp_box(xr)
+        
+    def set_dp_result(self, r, precisionLoss = None):
+        fp = FloatingPointHelper()
+
+        self.cpu.csr[CSR_FFLAGS] = 0
+
+        if (math.isnan(r)):
+            xr = 0x7FC0000000000000 # Nan
+            self.cpu.csr[CSR_FFLAGS] |= CSR_FFLAGS_INVALID_OPERATION_MASK
+            '''            
+            elif (math.isinf(a) and math.isinf(b)):
+                if (math.copysign(1, a) == math.copysign(1, b)):
+                    r = a           
+                    xr = fp.sp_to_ieee754(r)
+                else:
+                    print('Invalid inf')
+                    xr = 0x7F800000 # signaling Nan
+                    self.cpu.csr[CSR_FFLAGS] |= CSR_FFLAGS_INVALID_OPERATION_MASK
+            '''
+        else:
+            xr = fp.dp_to_ieee754(r)
+
+            if (precisionLoss is None):
+                r2 = fp.ieee754_to_dp(xr)
+                precisionLoss = (r != r2)
+            
+            if (precisionLoss):
+                self.cpu.csr[CSR_FFLAGS] |= CSR_FFLAGS_INEXACT_MASK            
+            
+        return xr
+
+    def fdiv_sp(self, xa, xb):
+        a = FPNum(self.sp_unbox(xa), 'sp')
+        b = FPNum(self.sp_unbox(xb), 'sp')
+
+        a.reducePrecision(23)
+        b.reducePrecision(23)
+        
+        r = a.div(b)
+
+        r.reducePrecision(23)
+        
+        self.last_result = r
+        
+        return self.sp_box(r.convert('sp'))
+
+    def fsqrt_sp(self, xa):
+        a = FPNum(self.sp_unbox(xa), 'sp')
+
+        a.reducePrecision(23)
+        
+        x1 = FPNum(a.s, a.e >> 1, a.m, a.p)
+        
+        x2 = a.div(x1)      
+        x2 = x2.add(x1)
+        x2 = x2.div2(1)
+        er = x1.sub(x2)
+        
+        
+        self.last_result = r
+        
+        return self.sp_box(r.convert('sp'))
+
+
+
+    def fdiv_dp(self, xa, xb):
+        a = FPNum(xa, 'dp')
+        b = FPNum(xb, 'dp')
+
+        rs = a.s * b.s
+        re = a.e - b.e
+        
+        rm = a.m * b.p / b.m
+        rp = a.p
+        
+        r = FPNum(rs, re, rm, rp)
+
+        return r.convert('dp')
+
+    def fsub_sp(self, xa, xb):
+        fp = FloatingPointHelper()
+        a = fp.ieee754_to_sp(xa)
+        b = fp.ieee754_to_sp(xb)
+
+        r = a-b
+
+        return self.set_sp_result(r)
+
+    def fadd_sp(self, xa, xb):
+        a = FPNum(self.sp_unbox(xa), 'sp')
+        b = FPNum(self.sp_unbox(xb), 'sp')
+
+        a.reducePrecision(23)
+        b.reducePrecision(23)
+        
+        r = a.add(b)
+
+        r.reducePrecision(23)
+        
+        self.last_result = r
+        
+        return self.sp_box(r.convert('sp'))
+
+    
     def fma_sp(self, xa, xb, xc):
         # fused multiply-add r = a*b +c
         # update floating point flags
-        from decimal import Decimal
         
         fp = FloatingPointHelper()
         a = fp.ieee754_to_sp(xa)
         b = fp.ieee754_to_sp(xb)
         c = fp.ieee754_to_sp(xc)
         
-        self.cpu.csr[CSR_FFLAGS] = 0
         r = a*b+c
             
-        if (math.isnan(r)):
-            xr = 0x7F800000 # signaling Nan
-            self.cpu.csr[CSR_FFLAGS] |= CSR_FFLAGS_INVALID_OPERATION_MASK
-        elif (math.isinf(a) and math.isinf(b)):
-            if (math.copysign(1, a) == math.copysign(1, b)):
-                r = a           
-                xr = fp.sp_to_ieee754(r)
-            else:
-                print('Invalid inf')
-                xr = 0x7F800000 # signaling Nan
-                self.cpu.csr[CSR_FFLAGS] |= CSR_FFLAGS_INVALID_OPERATION_MASK
-        else:
-            rd = Decimal(a)*Decimal(b)+Decimal(c)
-        
-            if (rd != r):
-                self.cpu.csr[CSR_FFLAGS] |= CSR_FFLAGS_INEXACT_MASK
-            
-            xr = fp.sp_to_ieee754(r)
-            
-        return self.sp_box(xr)
+        return self.set_sp_result(r)
         
     def fma_half(self, xa, xb, xc):
         # fused multiply-add r = a*b +c

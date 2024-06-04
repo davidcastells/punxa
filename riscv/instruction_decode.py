@@ -93,8 +93,8 @@ RTypeIns = ['AND','OR','XOR', 'XNOR',
             'CLMUL','CLMULH', 'CLMULR',
             'DIV', 'DIVU', 'DIVW', 'DIVUW', 'REM', 'REMU', 'REMW', 'REMUW',
             'ROL','ROLW','ROR','RORW','SLL','SLT','SLTU','SRA','SRL',
-            'FADD.S','FSUB.S','FMUL.S','FDIV.S','FMIN.S','FMAX.S','FCLASS.S','FEQ.S','FLT.S','FLE.S',
-            'FADD.D','FSUB.D','FMUL.D','FDIV.D','FMIN.D','FMAX.D','FCLASS.D','FEQ.D','FLT.D','FLE.D',
+            'FADD.S','FSUB.S','FMUL.S','FDIV.S','FMIN.S','FMAX.S','FCLASS.S','FEQ.S','FLT.S','FLE.S','FSQRT.S',
+            'FADD.D','FSUB.D','FMUL.D','FDIV.D','FMIN.D','FMAX.D','FCLASS.D','FEQ.D','FLT.D','FLE.D','FSQRT.D',
             'FADD.H','FSUB.H','FMUL.H','FDIV.H','FMIN.H','FMAX.H','FCLASS.H','FEQ.H','FLT.H','FLE.H',
             'FCVT.W.D','FCVT.W.S','FCVT.WU.S','FCVT.WU.D',  
             'FCVT.L.D','FCVT.L.S','FCVT.LU.D','FCVT.LU.S',
@@ -106,9 +106,9 @@ RTypeIns = ['AND','OR','XOR', 'XNOR',
             'AMOSWAP.D','AMOADD.D','AMOAND.D','AMOOR.D','AMOXOR.D','AMOMAX.D','AMOMIN.D','AMOMAXU.D','AMOMINU.D',
             'ADDW','SLLW','SRLW','SUBW','SRAW',
             'SFENCE.VMA',
-            'ANDN','ORN','ORC','XORC','MIN','MAX','MINU','MAXU', 'PACK', 'PACKU', 
+            'ANDN','ORN','ORC','XORC','MIN','MAX','MINU','MAXU', 
+            'ZEXT.H', 
             'SH1ADD','SH1ADD.UW','SH2ADD','SH2ADD.UW','SH3ADD','SH3ADD.UW',
-            'PACKH', 'PACKW', 'PACKUW',
             'BEXT','BINV','BSET', 'BCLR']
 R4TypeIns = ['FMADD.S', 'FMSUB.S', 'FNMSUB.S', 'FNMADD.S',
              'FMADD.D', 'FMSUB.D', 'FNMSUB.D', 'FNMADD.D',
@@ -412,11 +412,9 @@ def ins_to_str(ins, isa=32):
         if (func3 == 0x04):
             if (func7 == 0x00): return 'XOR'
             if (func7 == 0x01): return 'DIV'
-            if (func7 == 0x04): return 'PACK'
             if (func7 == 0x05): return 'MIN'
             if (func7 == 0x10): return 'SH2ADD'
             if (func7 == 0x20): return 'XNOR'
-            if (func7 == 0x24): return 'PACKU'
         if (func3 == 0x05):
             if (func7 == 0x00): return 'SRL'
             if (func7 == 0x01): return 'DIVU'
@@ -437,7 +435,6 @@ def ins_to_str(ins, isa=32):
         if (func3 == 0x07):
             if (func7 == 0x00): return 'AND'
             if (func7 == 0x01): return 'REMU'
-            if (func7 == 0x04): return 'PACKH'
             if (func7 == 0x05): return 'MAXU'
             if (func7 == 0x20): return 'ANDN'
             if (func7 == 0x24): return 'BFP'
@@ -459,9 +456,8 @@ def ins_to_str(ins, isa=32):
             if (func7 == 0x10): return 'SH1ADD.UW'
         if (func3 == 0x04):
             if (func7 == 0x01): return 'DIVW'
-            if (func7 == 0x04): return 'PACKW'
+            if (func7 == 0x04): return 'ZEXT.H'
             if (func7 == 0x10): return 'SH2ADD.UW'
-            if (func7 == 0x24): return 'PACKUW'
         if (func3 == 0x05):
             if (func7 == 0x00): return 'SRLW'
             if (func7 == 0x01): return 'DIVUW'
