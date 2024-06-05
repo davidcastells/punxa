@@ -22,3 +22,4 @@ check [riscv-tests](https://github.com/davidcastells/punxa/blob/main/test/riscv-
 ### Proxy-kernel Apps
 
 - Hello World
+- [Mandelbrot](https://github.com/davidcastells/punxa/blob/main/test/proxykernel_software/mandelbrot/README.md)
