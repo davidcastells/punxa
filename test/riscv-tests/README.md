@@ -1,4 +1,4 @@
-# Testing
+# Testing of RISC-V Tests
 
 
 We include the RISC-V ISA tests compiled binaries (compiled on 20/5/2024) to test the ISS.
@@ -12,7 +12,7 @@ To run them do
 Currently, we do not check all the tests. We do not run the rv32 tests, and we also bypass the vector instructions tests.
 Moreover, not all tests pass. 
 
-*** Summary ***
+***Summary***
 
 <pre>
 rv64mi-p        75.0 %   |██████████████████████████████████░░░░░░░░░░░|
