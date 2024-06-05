@@ -1,9 +1,6 @@
 import sys
 import py4hw
-from py4hw.helper import FPNum
-from py4hw.helper import IEEE754_HP_PRECISION
-from py4hw.helper import IEEE754_SP_PRECISION
-from py4hw.helper import IEEE754_DP_PRECISION
+from py4hw.helper import *
 import numpy as np
 from decimal import Decimal
     
@@ -326,6 +323,25 @@ class FPU:
             
         return xr
 
+    def fdiv_hp(self, xa, xb):
+        self.cpu.writeCSR(CSR_FFLAGS, 0)
+        a = FPNum(self.sp_unbox(xa), 'hp')
+        b = FPNum(self.sp_unbox(xb), 'hp')
+    
+        a.reducePrecision(IEEE754_HP_PRECISION)
+        b.reducePrecision(IEEE754_HP_PRECISION)
+        
+        r = a.div(b)
+    
+        r.reducePrecisionWithRounding(IEEE754_HP_PRECISION)
+        
+        if (r.inexact): self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
+        else:
+            r2 = r.mul(b)
+            if (r2.compare(a) != 0): self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
+        
+        return self.hp_box(r.convert('hp'))
+
     def fdiv_sp(self, xa, xb):
         self.cpu.writeCSR(CSR_FFLAGS, 0)
         a = FPNum(self.sp_unbox(xa), 'sp')
@@ -366,17 +382,43 @@ class FPU:
 
         return r.convert('dp')
 
+    def fsqrt_hp(self, xa):
+        self.cpu.writeCSR(CSR_FFLAGS, 0)
+        a = FPNum(self.hp_unbox(xa), 'hp')
+        
+        if (a.s == -1): 
+            self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+            r = FPNum(1, 0x1F, IEEE754_HP_NAN_MANTISA, 0) # nan
+            return self.hp_box(r.convert('hp'))
+        
+        a.reducePrecision(IEEE754_HP_PRECISION)
+        
+        r = a.sqrt()
+        r.reducePrecisionWithRounding(IEEE754_HP_PRECISION)
+        
+        r3 = FPNum(r.convert('hp'), 'hp')
+        
+        # check result to fix inexact flag
+        r2 = r3.mul(r3)
+        
+        if (r2.compare(a) != 0):
+            self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
+         
+        return self.hp_box(r.convert('hp'))
+
     def fsqrt_sp(self, xa):
         self.cpu.writeCSR(CSR_FFLAGS, 0)
         a = FPNum(self.sp_unbox(xa), 'sp')
         
         if (a.s == -1): 
             self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+            r = FPNum(1, 0xFF, IEEE754_SP_NAN_MANTISA, 0) # nan
+            return self.sp_box(r.convert('sp'))
             
         a.reducePrecision(IEEE754_SP_PRECISION)
         
         r = a.sqrt()
-        r.reducePrecisionWithRounding(23)
+        r.reducePrecisionWithRounding(IEEE754_SP_PRECISION)
         
         r3 = FPNum(r.convert('sp'), 'sp')
         
@@ -394,7 +436,7 @@ class FPU:
         
         if (a.s == -1): 
             self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
-            r = FPNum(1, 0x7FF, 0x8000000000000, 0) # nan
+            r = FPNum(1, 0x7FF, IEEE754_DP_NAN_MANTISA, 0) # nan
             return r.convert('dp')
             
         a.reducePrecision(IEEE754_DP_PRECISION)
@@ -569,45 +611,21 @@ class FPU:
             
         return self.sp_box(xr)
         
-    def min_half(self, xa, xb):
-        r = 0
-        fp = FloatingPointHelper()
-        a = fp.ieee754_to_sp(xa)
-        b = fp.ieee754_to_sp(xb)
+    def min_hp(self, xa, xb):
+        self.cpu.writeCSR(CSR_FFLAGS, 0)
+        a = FPNum(self.hp_unbox(xa), 'hp')
+        b = FPNum(self.hp_unbox(xb), 'hp')
         
-        any_nan = (math.isnan(a) or math.isnan(b))
-        all_nan = (math.isnan(a) and math.isnan(b))
-        signaling = 0
-        invalid = 0
+        r = a if (a.compare(b) <= 0) else b
         
-        if (any_nan):
-            signaling = self.is_sp_signaling_nan(xa, a)
-            signaling |= self.is_sp_signaling_nan(xb, b)
-            #print()
-            #print('signaling a: ', self.is_dp_signaling_nan(xa, a), get_bit(xa,51), a)
-            #print('signaling b: ', self.is_dp_signaling_nan(xb, b), get_bit(xb,51), b)
+        if (a.nan and b.nan): self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+        elif (a.nan): r = b
+        elif (b.nan): r = a
         
-        if (all_nan):
-            #print('all-nan')
-            r = IEEE754_SP_SIGNALING_NAN # signaling Nan
-            invalid = False
-        elif (math.isnan(a)):
-            r = fp.sp_to_ieee754(b)
-            invalid = signaling
-        elif (math.isnan(b)):
-            r = fp.sp_to_ieee754(a)
-            invalid = signaling
-        else:
-            r = fp.sp_to_ieee754(fp.min(a,b))
-            invalid = (math.isinf(a) or math.isinf(b))
+        # @todo remove
+        #print('min', a.to_float(), b.to_float(), '=', r.to_float())
         
-        
-        print('invalid:', a, b, invalid)
-            
-        if (invalid):
-            self.cpu.csr[CSR_FFLAGS] |= CSR_FFLAGS_INVALID_OPERATION_MASK
-            
-        return r
+        return self.hp_box(r.convert('hp'))
         
     def min_sp(self, xa, xb):
         r = 0
@@ -690,8 +708,28 @@ class FPU:
             
         return r
         
+    def max_hp(self, xa, xb):
+        self.cpu.writeCSR(CSR_FFLAGS, 0)
+        a = FPNum(self.hp_unbox(xa), 'hp')
+        b = FPNum(self.hp_unbox(xb), 'hp')
         
+        r, nr = (a,b) if (a.compare(b) >= 0) else (b,a)
+        
+        if (a.nan and b.nan): pass
+        elif (a.nan): r,nr = b,a
+        elif (b.nan): r,nr = a,b
+        
+        if (nr.nan and (nr.m == IEEE754_HP_SNAN_MANTISA)): 
+            # signaling nan
+            self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+        
+        # @todo remove
+        #print('min', a.to_float(), b.to_float(), '=', r.to_float())
+        
+        return self.hp_box(r.convert('hp'))
+    
     def max_sp(self, xa, xb):
+        # @todo implement as max_hp
         r = 0
         fp = FloatingPointHelper()
         a = fp.ieee754_to_sp(xa)
@@ -809,17 +847,52 @@ class FPU:
         return r
         
     def cmp_sp(self, op, xa, xb):
-        self.cpu.csr[CSR_FFLAGS] = 0
+        self.cpu.writeCSR(CSR_FFLAGS, 0)
         
         a = FPNum(self.sp_unbox(xa), 'sp')
         b = FPNum(self.sp_unbox(xb), 'sp')
 
-        if (a.nan or b.nan):
-            self.cpu.csr[CSR_FFLAGS] |= CSR_FFLAGS_INVALID_OPERATION_MASK
-            return 0
-        
         a.reducePrecision(IEEE754_SP_PRECISION)
         b.reducePrecision(IEEE754_SP_PRECISION)
+        
+        c = a.compare(b)
+
+        if (op == 'eq'):
+            r = (c == 0)
+            if (a.nan or b.nan):
+                if (a.nan and (a.m == IEEE754_SP_SNAN_MANTISA)): self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+                if (b.nan and (b.m == IEEE754_SP_SNAN_MANTISA)): self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+                return 0
+            
+        elif (op == 'le'):
+            r = (c == 0) or (c == -1)
+            if (a.nan or b.nan):
+                self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+                return 0
+        elif (op == 'lt'):
+            r = (c == -1)
+            if (a.nan or b.nan):
+                self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+                return 0
+        else:
+            raise Exception('unkwon op {}'.format(op))
+    
+        r = 1 if r else 0
+            
+        return r
+        
+    def cmp_hp(self, op, xa, xb):
+        self.cpu.writeCSR(CSR_FFLAGS,  0)
+        
+        a = FPNum(self.hp_unbox(xa), 'hp')
+        b = FPNum(self.hp_unbox(xb), 'hp')
+
+        if (a.nan or b.nan):
+            self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+            return 0
+        
+        a.reducePrecision(IEEE754_HP_PRECISION)
+        b.reducePrecision(IEEE754_HP_PRECISION)
         
         c = a.compare(b)
 
@@ -835,47 +908,40 @@ class FPU:
         r = 1 if r else 0
             
         return r
-        
-    def cmp_half(self, op, xa, xb):
-        self.cpu.csr[CSR_FFLAGS] = 0
+    
+    def convert_hp_to_sp(self, v):
+        return self.sp_box(FPNum(v, 'hp').convert('sp'))
+    
+    def convert_hp_to_dp(self, v):
+        return FPNum(v, 'hp').convert('dp')
+    
+    def convert_sp_to_hp(self, v):
+        return self.hp_box(FPNum(v, 'sp').convert('hp'))
+    
+    def convert_sp_to_dp(self, v):
+        return FPNum(v, 'sp').convert('dp')
+    
+    def convert_dp_to_hp(self, v):
+        return self.hp_box(FPNum(v, 'dp').convert('hp'))
+    
+    def convert_i32_to_hp(self, v):
+        sv = IntegerHelper.c2_to_signed(v, 32)
+        return self.hp_box(FPNum(sv).convert('hp'))
 
-        fp = FloatingPointHelper()
-        a = fp.ieee754_to_sp(self.sp_unbox(xa))
-        b = fp.ieee754_to_sp(self.sp_unbox(xb))
-        
-        any_nan = (math.isnan(a) or math.isnan(b))
-        signaling = 0
-        invalid = 0
-        
-        if (any_nan):
-            signaling = self.is_sp_signaling_nan(xa, a)
-            signaling |= self.is_sp_signaling_nan(xb, b)
-            
-        if (op == 'eq'):
-            r = (a == b)
-            
-            if (any_nan):
-                r = 0
-            
-            invalid = signaling
-        elif (op == 'le'):
-            r = (a <= b)
-            invalid = any_nan
-        elif (op == 'lt'):
-            r = (a < b)
-            invalid = any_nan
-        else:
-            raise Exception('unkwon op {}'.format(op))
-            
-        
-        if (invalid):
-            self.cpu.csr[CSR_FFLAGS] |= CSR_FFLAGS_INVALID_OPERATION_MASK
-            
-        return r
-        
+    def convert_u32_to_hp(self, v):
+        return self.hp_box(FPNum(v & ((1<<32)-1)).convert('hp'))
+    
+    def convert_i64_to_hp(self, v):
+        sv = IntegerHelper.c2_to_signed(v, 64)
+        return self.hp_box(FPNum(sv).convert('hp'))
+
+    def convert_u64_to_hp(self, v):
+        return self.hp_box(FPNum(v & ((1<<64)-1)).convert('hp'))
+    
     def convert_i64_to_dp(self, v):
         fp = FloatingPointHelper()
         return fp.dp_to_ieee754(signExtend(v, 64))
+
 
     def convert_dp_to_i64(self, v):
         fp = FloatingPointHelper()
@@ -908,6 +974,7 @@ class FPU:
                 self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INEXACT_MASK
         return ret
         
+
     def convert_sp_to_i64(self, v):
         fp = FloatingPointHelper()
         MIN_I64 = -(1<<63)
@@ -1005,38 +1072,130 @@ class FPU:
                 self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INEXACT_MASK
         return ret
 
-    def convert_half_to_i32(self, v):
-        fp = FloatingPointHelper()
+    def convert_hp_to_i32(self, v):
+        self.cpu.writeCSR(CSR_FFLAGS, 0)
+        a = FPNum(v, 'hp')
+        
         MIN_I32 = -(1<<31)
         MAX_I32 = (1<<31)-1
         
-        self.cpu.csr[CSR_FFLAGS] = 0
-        dp = fp.ieee754_to_dp(v)
-        
-        if (math.isnan(dp)):
-            iv = MAX_I32
-        elif (math.isinf(dp)):
-            if (dp < 0):
-                iv = MIN_I32
-            else:
-                iv = MAX_I32
+        if (a.nan):
+            r = MAX_I32
+        elif (a.infinity):
+            if (a.s == 1): r = MAX_I32
+            elif (a.s == -1): r = MIN_I32
+            else: raise Exception()
         else:
-            iv = int(dp)
-        
-        if (iv < MIN_I32):
-            ret = MIN_I32 & ((1<<64)-1) 
-            self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INVALID_OPERATION_MASK
-        elif (iv > MAX_I32):
-            ret = MAX_I32
-            self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INVALID_OPERATION_MASK
-        else:
-            ret = iv & ((1<<64) -1) 
+            iv = int(a.to_float())
+            b = FPNum(iv)
             
-            if (iv != dp):
+            if (iv < MIN_I32):
+                r = MIN_I32 
+                self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+            elif (iv > MAX_I32):
+                r = MAX_I32
+                self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+            else:
+                r = iv & ((1<<32) -1) 
+            
+            if (a.compare(b) != 0):
                 self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INEXACT_MASK
-        return ret
+                
+        return signExtend(r, 32) & ((1<<64)-1)
 
+    def convert_hp_to_u32(self, v):
+        self.cpu.writeCSR(CSR_FFLAGS, 0)
+        a = FPNum(v, 'hp')
         
+        MIN_U32 = 0
+        MAX_U32 = (1<<32)-1
+        
+        if (a.nan):
+            r = MAX_U32
+        elif (a.infinity):
+            if (a.s == 1): r = MAX_U32
+            elif (a.s == -1): r = MIN_U32
+            else: raise Exception()
+        else:
+            iv = int(a.to_float())
+            b = FPNum(iv)
+            
+            if (iv < MIN_U32):
+                r = MIN_U32 
+                self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+            elif (iv > MAX_U32):
+                r = MAX_U32
+                self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+            else:
+                r = iv & ((1<<32) -1) 
+            
+            if (a.compare(b) != 0):
+                self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INEXACT_MASK
+                
+        return signExtend(r, 32) & ((1<<64)-1)
+    
+    def convert_hp_to_i64(self, v):
+        self.cpu.writeCSR(CSR_FFLAGS, 0)
+        a = FPNum(v, 'hp')
+        
+        MIN_I64 = -(1<<63)
+        MAX_I64 = (1<<63)-1
+        
+        if (a.nan):
+            r = MAX_I64
+        elif (a.infinity):
+            if (a.s == 1): r = MAX_I64
+            elif (a.s == -1): r = MIN_I64
+            else: raise Exception()
+        else:
+            iv = int(a.to_float())
+            b = FPNum(iv)
+            
+            if (iv < MIN_I64):
+                r = MIN_I64 
+                self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+            elif (iv > MAX_I64):
+                r = MAX_I64
+                self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+            else:
+                r = iv & ((1<<64) -1) 
+            
+            if (a.compare(b) != 0):
+                self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INEXACT_MASK
+                
+        return r & ((1<<64)-1)
+
+    def convert_hp_to_u64(self, v):
+        self.cpu.writeCSR(CSR_FFLAGS, 0)
+        a = FPNum(v, 'hp')
+        
+        MIN_U64 = 0
+        MAX_U64 = (1<<64)-1
+        
+        if (a.nan):
+            r = MAX_U64
+        elif (a.infinity):
+            if (a.s == 1): r = MAX_U64
+            elif (a.s == -1): r = MIN_U64
+            else: raise Exception()
+        else:
+            iv = int(a.to_float())
+            b = FPNum(iv)
+            
+            if (iv < MIN_U64):
+                r = MIN_U64 
+                self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+            elif (iv > MAX_U64):
+                r = MAX_U64
+                self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+            else:
+                r = iv & ((1<<64) -1) 
+            
+            if (a.compare(b) != 0):
+                self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INEXACT_MASK
+                
+        return r & ((1<<64)-1)
+    
     def convert_dp_to_i32(self, v):
         fp = FloatingPointHelper()
         MIN_I32 = -(1<<31)
