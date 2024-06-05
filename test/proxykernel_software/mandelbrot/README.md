@@ -12,7 +12,7 @@ prepare()
 step(....)
 console()
 
-###Expected Output###
+### Expected Output ###
 
 ```
 ...
