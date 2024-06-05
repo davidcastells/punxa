@@ -536,23 +536,54 @@ def computeAllTests():
 
     return ret
 
+def asciiProgressBar(n, t):
+    p = n*100/t
+    pl = 45
+    pok = math.ceil(pl*n/t)
+    pko = pl - pok
+    sok = '█' * pok
+    sko = '░' * pko
+    sp = '{:.1f} %'.format(p)
+    s = '{:8} |{}{}|'.format(sp,sok,sko)
+    return s
+    
 def runAllTests():
     nOK = 0
     nTotal = 0
     ret = computeAllTests()
     
+    groupResults = {}
+    
     for prefix in selected_prefixes:
+        nOKGroup = 0
+        nTotalGroup = 0
+
         files = [name for name in ret.keys() if name.startswith(prefix) ]
         for t in files:
             nTotal += 1
+            nTotalGroup += 1
             if (ret[t] =='OK'):
                  print('Test {:30} = {}'.format(t, ret[t]))
                  nOK += 1
+                 nOKGroup += 1
             else:
                  print('Test {:30} = {} - {}'.format(t, ret[t][0], ret[t][1]))
 
+        groupResults[prefix]=(nOKGroup, nTotalGroup)
+        
     print('Total: {} Correct: {} ({:.1f} %)'.format(nTotal, nOK, nOK*100/nTotal))     
+    print(asciiProgressBar(nOK, nTotal))
 
+    for prefix in selected_prefixes:
+        nOKGroup = groupResults[prefix][0]
+        nTotalGroup = groupResults[prefix][1]
+        print('Group: {} Total: {} Correct: {} ({:.1f} %)'.format(prefix, nTotalGroup, nOKGroup, nOKGroup*100/nTotalGroup))     
+
+    for prefix in selected_prefixes:
+        nOKGroup = groupResults[prefix][0]
+        nTotalGroup = groupResults[prefix][1]
+        print(f'{prefix:15}', asciiProgressBar(nOKGroup, nTotalGroup))
+        
 test_file = 'rv64mi-p-ma_addr'
 runTest(test_file)
 

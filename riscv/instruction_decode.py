@@ -19,15 +19,7 @@ from .processor_exceptions import *
 
 #|  15 - 13  | 12 | 11 - 7     |  6 - 2    |  1 - 0   | Instruction Type |
 #|----------------|------------|-----------|----------|------------------|
-#| func4_c        | rd5_c      | r25_c     | opcode_c | C0-Type          |
-#| imm[11:5]      | rd5_c      | funct3    | opcode_c | C1-Type          |
-#| funct4         | rd5_c      | r25_c     | opcode_c | C2-Type          |
-#| funct4         | rd5_c      | r25_c     | opcode_c | C3-Type          |
-#| imm[12|10:5]   | rd5_c      | r25_c     | opcode_c | C4-Type          |
-#| funct4         | rd5_c      | r25_c     | opcode_c | C5-Type          |
-#| imm[12|10:5]   | rd5_c      | r25_c     | opcode_c | C6-Type          |
-#
-#| func3_c   |  imm      | r25_c     | opcode_c | CSS          |
+#| func3_c   |  imm            | r25_c     | opcode_c | CSS              |
  
 rv32i_instructions = ['LUI','AUIPC','JAL','JALR','BEQ','BNE','BLT','BGE','BLTU', 
                       'BGEU','LB','LH','LW','LBU','LHU','SB','SH','SW','ADDI',
@@ -48,7 +40,8 @@ rv32f_instructions = ['FLW','FSW','FMADD.S','FMSUB.S','FNMSUB.S','FNMADD.S',
                       'FMIN.H','FMAX.H',
                       'FCVT.W.S',
                       'FCVT.WU.S','FMV.X.W','FEQ.S','FLT.S','FLE.S','FCLASS.S',
-                      'FCVT.S.W','FCVT.S.WU','FMV.W.X']
+                      'FCVT.S.W','FCVT.S.WU','FCVT.S.H',
+                      'FMV.W.X']
 
 rv32d_instructions = ['FLD', 'FSD', 'FMADD.D', 'FMSUB.D', 'FNMSUB.D', 'FNMADD.D',
                       'FADD.D', 'FSUB.D', 'FMUL.D', 'FDIV.D', 'FSQRT.D', 'FSGNJ.D',
@@ -77,7 +70,7 @@ rvc_instructions = ['C.ADDI4SPN', 'C.FLD', 'C.LQ', 'C.LW', 'C.FLW', 'C.LD', 'C.F
 
 rvzbb_instructions = ['CLZ','CTZ','PCNT','ANDN','ORC','XORC','MIN','MAX','MINU','MAXU','CLZW','CTZW']
 
-rvzfh_instructions = ['FLH', 'FADD.H']
+rvzfh_instructions = ['FLH', 'FADD.H', 'FCVT.S.H', 'FCVT.D.H','FSQRT.H']
 
 # All instructions dealing with FPU
 fpu_instructions = []
@@ -93,14 +86,14 @@ RTypeIns = ['AND','OR','XOR', 'XNOR',
             'CLMUL','CLMULH', 'CLMULR',
             'DIV', 'DIVU', 'DIVW', 'DIVUW', 'REM', 'REMU', 'REMW', 'REMUW',
             'ROL','ROLW','ROR','RORW','SLL','SLT','SLTU','SRA','SRL',
+            'FADD.H','FSUB.H','FMUL.H','FDIV.H','FMIN.H','FMAX.H','FCLASS.H','FEQ.H','FLT.H','FLE.H','FSQRT.H',
             'FADD.S','FSUB.S','FMUL.S','FDIV.S','FMIN.S','FMAX.S','FCLASS.S','FEQ.S','FLT.S','FLE.S','FSQRT.S',
             'FADD.D','FSUB.D','FMUL.D','FDIV.D','FMIN.D','FMAX.D','FCLASS.D','FEQ.D','FLT.D','FLE.D','FSQRT.D',
-            'FADD.H','FSUB.H','FMUL.H','FDIV.H','FMIN.H','FMAX.H','FCLASS.H','FEQ.H','FLT.H','FLE.H',
-            'FCVT.W.D','FCVT.W.S','FCVT.WU.S','FCVT.WU.D',  
-            'FCVT.L.D','FCVT.L.S','FCVT.LU.D','FCVT.LU.S',
-            'FCVT.S.D','FCVT.S.W','FCVT.S.WU','FCVT.S.L','FCVT.S.LU',
-            'FCVT.D.L','FCVT.D.LU','FCVT.D.W','FCVT.D.WU','FCVT.D.S',
-            'FCVT.H.W','FCVT.W.H',
+            'FCVT.W.H','FCVT.W.S','FCVT.W.D','FCVT.WU.H','FCVT.WU.S','FCVT.WU.D',  
+            'FCVT.L.H','FCVT.L.S','FCVT.L.D','FCVT.LU.H','FCVT.LU.S','FCVT.LU.D',
+            'FCVT.H.S','FCVT.H.D','FCVT.H.W','FCVT.H.WU','FCVT.H.L','FCVT.H.LU',
+            'FCVT.S.H', 'FCVT.S.D','FCVT.S.W','FCVT.S.WU','FCVT.S.L','FCVT.S.LU',
+            'FCVT.D.S','FCVT.D.H','FCVT.D.L','FCVT.D.LU','FCVT.D.W','FCVT.D.WU',
             'LR.W', 'SC.W','LR.D', 'SC.D',
             'AMOSWAP.W','AMOADD.W','AMOAND.W','AMOOR.W','AMOXOR.W','AMOMAX.W','AMOMIN.W','AMOMAXU.W','AMOMINU.W',
             'AMOSWAP.D','AMOADD.D','AMOAND.D','AMOOR.D','AMOXOR.D','AMOMAX.D','AMOMIN.D','AMOMAXU.D','AMOMINU.D',
@@ -526,14 +519,22 @@ def ins_to_str(ins, isa=32):
             if (func3 == 0b001): return 'FMAX.D'
         if (func7 == 0x16):
             if (func3 == 0x00): return 'FMIN.H'
+            if (func3 == 0x01): return 'FMAX.H'
         if (func7 == 0x20):
-            if (rs2 == 0b00001): return 'FCVT.S.D'
-        if (func7 == 0x21 ):
-            if (rs2 == 0b00000): return 'FCVT.D.S'
+            if (rs2 == 0x01): return 'FCVT.S.D'
+            if (rs2 == 0x02): return 'FCVT.S.H'
+        if (func7 == 0x21):
+            if (rs2 == 0x00): return 'FCVT.D.S'
+            if (rs2 == 0x02): return 'FCVT.D.H'
+        if (func7 == 0x22):
+            if (rs2 == 0x00): return 'FCVT.H.S'
+            if (rs2 == 0x01): return 'FCVT.H.D'
         if (func7 == 0x2C):
-            if (rs2 == 0b000): return 'FSQRT.S'
+            if (rs2 == 0x00): return 'FSQRT.S'
         if (func7 == 0x2D):
-            if (rs2 == 0b000): return 'FSQRT.D'
+            if (rs2 == 0x00): return 'FSQRT.D'
+        if (func7 == 0x2E):
+            if (rs2 == 0x00): return 'FSQRT.H'
         if (func7 == 0x50):
             if (func3 == 0b010): return 'FEQ.S'
             if (func3 == 0b001): return 'FLT.S'
@@ -552,12 +553,15 @@ def ins_to_str(ins, isa=32):
             if (rs2 == 0x02): return 'FCVT.L.S'
             if (rs2 == 0x03): return 'FCVT.LU.S'
         if (func7 == 0x61):
-            if (rs2 == 0b0000): return 'FCVT.W.D'
-            if (rs2 == 0b0001): return 'FCVT.WU.D'
-            if (rs2 == 0b0010): return 'FCVT.L.D'
-            if (rs2 == 0b0011): return 'FCVT.LU.D'
+            if (rs2 == 0x00): return 'FCVT.W.D'
+            if (rs2 == 0x01): return 'FCVT.WU.D'
+            if (rs2 == 0x02): return 'FCVT.L.D'
+            if (rs2 == 0x03): return 'FCVT.LU.D'
         if (func7 == 0x62):
             if (rs2 == 0x00): return 'FCVT.W.H'
+            if (rs2 == 0x01): return 'FCVT.WU.H'
+            if (rs2 == 0x02): return 'FCVT.L.H'
+            if (rs2 == 0x03): return 'FCVT.LU.H'
         if (func7 == 0x68):
             if (rs2 == 0b000): return 'FCVT.S.W'
             if (rs2 == 0b001): return 'FCVT.S.WU'
@@ -570,6 +574,9 @@ def ins_to_str(ins, isa=32):
             if (rs2 == 0b00011): return 'FCVT.D.LU'
         if (func7 == 0x6A):
             if (rs2 == 0x00): return 'FCVT.H.W'
+            if (rs2 == 0x01): return 'FCVT.H.WU'
+            if (rs2 == 0x02): return 'FCVT.H.L'
+            if (rs2 == 0x03): return 'FCVT.H.LU'
         if (func7 == 0x70):
             if (rs2 == 0b000):
                 if (func3 == 0b000): return 'FMV.X.W'
