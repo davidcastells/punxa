@@ -35,10 +35,10 @@ clean_host:
 	rm -f $(OBJECTS) output.txt sort.host
 
 run_spike:
-	spike pk $(EXEC) -m -o eclair.jpg -t
+	spike pk $(EXEC) 
 
 run_qemu:
-	qemu-riscv64 $(EXEC) -m -o eclair.jpg -t -v
+	qemu-riscv64 $(EXEC) 
 
 run_punxa:
 	python3 tb_JpegEnc.py -c "runJpegEnc()"
