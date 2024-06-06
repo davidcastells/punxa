@@ -5,7 +5,7 @@ Created on Mon May 27 05:49:18 2024
 @author: dcastel1
 """
 
-from riscv.single_cycle.singlecycle_processor import SingleCycleRISCV
+from punxa.single_cycle.singlecycle_processor import SingleCycleRISCV
 
 import os
 
@@ -53,7 +53,7 @@ class SingleCycleRISCVProxyKernel(SingleCycleRISCV):
             if (syscall == SYSCALL_FSTAT):
                 fd = self.reg[10]
                 stat_ptr = self.reg[11]
-                print(f'FSTAT fd:0x{fd:X} stat:0x{stat:X}')
+                print(f'FSTAT fd:0x{fd:X} stat:0x{stat_ptr:X}')
                 
                 self.reg[10] = self.syscall_stat(fd, stat_ptr)
             elif (syscall == SYSCALL_BRK):
@@ -73,12 +73,18 @@ class SingleCycleRISCVProxyKernel(SingleCycleRISCV):
 
                 self.behavioural_memory.reallocArea(self.heap_base, self.heap_size)
 
+            elif (syscall == SYSCALL_READ):
+                fd = self.reg[10]
+                buf = self.reg[11]
+                count = self.reg[12]
+                print(f'READ fd:0x{fd:X} buf:0x{buf:X} count:0x{count:X}')                
+                self.reg[10] = self.syscall_read(fd, buf, count)
             elif (syscall == SYSCALL_WRITE):
                 fd = self.reg[10]
                 buf = self.reg[11]
                 count = self.reg[12]
                 print(f'WRITE fd:0x{fd:X} buf:0x{buf:X} count:0x{count:X}')
-                self.syscall_write(buf, count)                
+                self.syscall_write(fd, buf, count)                
                 self.reg[10] = 0
             elif (syscall == SYSCALL_EXIT):
                 print('EXIT')
@@ -89,21 +95,49 @@ class SingleCycleRISCVProxyKernel(SingleCycleRISCV):
                 mode = self.reg[12]
                 print(f'OPEN {filename} f:0x{flags:X} m:0x{mode:X}')
                 self.reg[10] = self.syscall_open(filename, flags, mode)
+            elif (syscall == SYSCALL_CLOSE):
+                fd = self.reg[10]
+                print(f'CLOSE fd:0x{fd:X}')
+                self.reg[10] = self.syscall_close(fd)
             else:
                 print('my syscall', syscall)
         else:
             yield from super().executeIIns()
             
-    def syscall_write(self, buf, count):
+    def syscall_write(self, fd, buf, count):
+        if (fd == 1): f = None
+        else: f = self.open_files[fd]
+        
         for i in range(count):
             b = self.behavioural_memory.readByte(buf+i)
-            self.addConsoleChar(chr(b))
+            
+            if (f is None): self.addConsoleChar(chr(b))
+            else: 
+                b = bytes([b])
+                # print('w bytes', b)
+                f.write(b)
+                        
+    def syscall_read(self, fd, buf, count):
+        f = self.open_files[fd]
+        
+        for i in range(count):
+            b = f.read(1)
+
+            if (len(b) == 0):
+                return i
+                
+            if (isinstance(b, str)):
+                b = ord(b)
+            elif (isinstance(b, bytes)):
+                b = int.from_bytes(b, byteorder='little')
+            
+            self.behavioural_memory.writeByte(buf+i, b)
             
     def syscall_open(self, filename, flags, mode):
         if (flags == 0x601 and mode ==0x1b6):
             py_mode = 'wb'
         elif (flags == 0x0 and mode == 0x1B6):
-            py_mode = 'r'
+            py_mode = 'rb'
         else:
             print(f'Unknown flags/mode 0x{flags:X}/0x{mode:X}')
             self.parent.getSimulator().stop()
@@ -112,7 +146,16 @@ class SingleCycleRISCVProxyKernel(SingleCycleRISCV):
         file = open(filename, py_mode)
         self.open_files[file.fileno()] = file
         return file.fileno()
-    
+        
+    def syscall_close(self, fd):
+        if not(fd in self.open_files.keys()):
+            print(f'WARNING! syscall stat on unknown file number: {fd}')
+            return -1
+
+        f = self.open_files.pop(fd)
+        f.close()  
+        return 0  
+        
     def syscall_stat(self, fd, stat_ptr):
         if not(fd in self.open_files.keys()):
             print(f'WARNING! syscall stat on unknown file number: {fd}')
@@ -120,10 +163,14 @@ class SingleCycleRISCVProxyKernel(SingleCycleRISCV):
         
         file_stat = os.stat(fd)
         
-        for i in range(256):
-            self.behavioural_memory.writei64(stat_ptr+i, i)
-        #self.behavioural_memory.writei64( file_stat.st_size
+        for i in range(100):
+            self.behavioural_memory.writeByte(stat_ptr+i, i)
+            
+        self.behavioural_memory.write_i64(stat_ptr+0x30, file_stat.st_size)
         
+        #self.behavioural_memory.writei64( file_stat.st_size
+    
+        return 0        
 
     def addConsoleChar(self, c):
         if (c == '\n'):
