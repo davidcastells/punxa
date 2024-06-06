@@ -1,0 +1,21 @@
+[build-system]
+# Optional: Specify the build system (defaults to setuptools)
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "punxa"
+version = "0.1"  # Change this to your desired version
+authors = [ {name= "David Castells-Rufas", email="david.castells@uab.cat" } ]
+description = "Python-based RISC-V Full System Simulator."
+readme="README.md"
+
+
+dependencies = ["py4hw","pyelftools"]
+
+
+[tool.black]
+# Optional: Specify configurations for linters or code formatters
+
+[tool.pytest]
+# Optional: Specify configurations for testing tools

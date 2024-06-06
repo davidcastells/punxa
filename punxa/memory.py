@@ -179,11 +179,18 @@ class SparseMemory(Logic):
         raise Exception('Address {:0X} not in memory'.format(address + self.mem_base))
         
     def read_i64(self, address):
+        # reads in little endian (LEAST SIGNIFICANT BYTE FIRST)
         v = 0
         for i in range(8):
             v |= self.readByte(address+i) << (8*i)
             
         return v
+    
+    def write_i64(self, address, value):
+        # writes in little endian (LEAST SIGNIFICANT BYTE FIRST)
+        
+        for i in range(8):
+            self.writeByte(address+i, (value >> (8*i)) & 0xFF) 
         
     def write(self, address:int, value:int, be:int):
         #self.values[address//4] = value
