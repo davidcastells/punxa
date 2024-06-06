@@ -7,6 +7,8 @@ Created on Mon May 27 05:49:18 2024
 
 from riscv.single_cycle.singlecycle_processor import SingleCycleRISCV
 
+import os
+
 # Proxy Kernel Syscalls are listed in
 # https://github.com/riscv-software-src/riscv-pk/blob/master/pk/syscall.h
 
@@ -50,10 +52,10 @@ class SingleCycleRISCVProxyKernel(SingleCycleRISCV):
             
             if (syscall == SYSCALL_FSTAT):
                 fd = self.reg[10]
-                stat = self.reg[11]
+                stat_ptr = self.reg[11]
                 print(f'FSTAT fd:0x{fd:X} stat:0x{stat:X}')
                 
-                self.reg[10] = 0
+                self.reg[10] = self.syscall_stat(fd, stat_ptr)
             elif (syscall == SYSCALL_BRK):
                 ptr = self.reg[10]
                 if (ptr == 0):
@@ -100,13 +102,28 @@ class SingleCycleRISCVProxyKernel(SingleCycleRISCV):
     def syscall_open(self, filename, flags, mode):
         if (flags == 0x601 and mode ==0x1b6):
             py_mode = 'wb'
+        elif (flags == 0x0 and mode == 0x1B6):
+            py_mode = 'r'
         else:
             print(f'Unknown flags/mode 0x{flags:X}/0x{mode:X}')
             self.parent.getSimulator().stop()
+            return -1
 
         file = open(filename, py_mode)
         self.open_files[file.fileno()] = file
         return file.fileno()
+    
+    def syscall_stat(self, fd, stat_ptr):
+        if not(fd in self.open_files.keys()):
+            print(f'WARNING! syscall stat on unknown file number: {fd}')
+            return -1
+        
+        file_stat = os.stat(fd)
+        
+        for i in range(256):
+            self.behavioural_memory.writei64(stat_ptr+i, i)
+        #self.behavioural_memory.writei64( file_stat.st_size
+        
 
     def addConsoleChar(self, c):
         if (c == '\n'):
