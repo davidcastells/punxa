@@ -23,8 +23,15 @@ def help():
     print('  go          - run until the temporal breakpoint')
     print('  regs        - display the registers of the processor')
     print('  reportCSR   - display the content of CSRs')
+    print('  console     - display the content of the console')
 
 
+def write_trace(filename='newtrace.json'):
+    cpu.tracer.write_json(filename)
+
+def console():
+    for line in _ci_cpu.console:
+        print(line)
 
 def isElf(filepath):
     from elftools.elf.elffile import ELFFile
@@ -149,6 +156,21 @@ def loadSymbols(cpu, filename, address_fix=0):
             print('Failed to parse', part)
 
 
+def step(steps = 1):
+    sim = _ci_hw.getSimulator()
+    sim.do_run = True
+    count = 0
+    
+    while (count < steps and sim.do_run == True ):
+        inipc = _ci_cpu.pc
+        while (_ci_cpu.pc == inipc and sim.do_run == True ):
+            sim.clk(1)
+            
+        count += 1
+        
+def finish():
+    tbreak(_ci_cpu.reg[1])
+    go()
 
 def tbreak(add):
     global tbreak_address
