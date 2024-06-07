@@ -206,9 +206,11 @@ class SingleCycleRISCV(py4hw.Logic):
                	   # always stop the simulation on exceptions
                	   self.parent.getSimulator().stop()
 
-    def functionEnter(self, f):
+    def functionEnter(self, f, jmp=False):
+        # jmp is True if the enter to the function was done with a jump, which
+        # should provoke to pop the parent from the stack when exiting
 
-        pair = (f, self.csr[CSR_CYCLE])
+        pair = (f, self.csr[CSR_CYCLE], jmp)
         self.stack.append(pair)
 
         if (not(self.enable_tracing)):
@@ -218,7 +220,7 @@ class SingleCycleRISCV(py4hw.Logic):
         if (fn in self.funcs.keys()):
             fn = self.funcs[f]
         
-        pairn = (fn, self.csr[CSR_CYCLE])        
+        pairn = (fn, self.csr[CSR_CYCLE], jmp)        
         self.tracer.start(pairn)
                 
     def functionExit(self):
@@ -231,12 +233,13 @@ class SingleCycleRISCV(py4hw.Logic):
             return
 
         f = finfo[0]
+        t0 = finfo[1]
+        jmp = finfo[2]
 
         fn = f
         if (fn in self.funcs.keys()):
             fn = self.funcs[f]
 
-        t0 = finfo[1]
         tf = self.csr[CSR_CYCLE]
         dur = tf - t0
         
@@ -245,6 +248,10 @@ class SingleCycleRISCV(py4hw.Logic):
             return
         
         self.tracer.complete((fn, t0, tf))
+        
+        if (jmp):
+            # repeat exit
+            self.functionExit()
 
     def fetchIns(self):
         # Check interrupts
