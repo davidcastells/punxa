@@ -472,10 +472,11 @@ def prepareTest(test_file):
     symbolFile = programFile + '.sym'
     
     loadElf(memory, programFile, mem_base ) # 32*4 - 0x10054)
+    loadSymbolsFromElf(cpu, programFile, 0)
     
-    if not(os.path.exists(symbolFile)):
-        os.system('/opt/riscv/bin/riscv64-unknown-elf-objdump -t {} > {}'.format(programFile, symbolFile))
-    loadSymbols(cpu,  symbolFile, 0) # 32*4 - 0x10054)
+    #if not(os.path.exists(symbolFile)):
+    #    os.system('/opt/riscv/bin/riscv64-unknown-elf-objdump -t {} > {}'.format(programFile, symbolFile))
+    #loadSymbols(cpu,  symbolFile, 0) # 32*4 - 0x10054)
 
 
 def runTest(test_file):
@@ -484,12 +485,15 @@ def runTest(test_file):
     write_tohost = findFunction('write_tohost')
     tohost_adr = findFunction('tohost')
 
+    if (tohost_adr is None):
+        print('tohost symbol not found in', cpu.funcs)
+        return
+
     #run(passAdr, verbose=False)
     run(write_tohost, maxclks=10000, verbose=False)
     run(0, maxclks=20, verbose=False)
 
     # print('Test', test_file, end='')
-
     #if (cpu.pc != passAdr):
     value = memory.readByte(tohost_adr-mem_base)
     
@@ -508,18 +512,19 @@ prefixes = ['rv32mi-p', 'rv32si-p', 'rv32ua-p',
             'rv64uzba-p', 'rv64uzba-v', 'rv64uzbb-p', 'rv64uzbb-v', 'rv64uzbc-p', 'rv64uzbc-v', 'rv64uzbs-p', 'rv64uzbs-v',
             'rv64uzfh-p', 'rv64uzfh-v']
 
-selected_prefixes = ['rv32mi-p', 'rv32si-p', 'rv32ua-p',
-            'rv32ua-v', 'rv32uc-p', 'rv32uc-v', 'rv32ud-p', 'rv32ud-v', 'rv32uf-p', 'rv32uf-v',
-            'rv32ui-p', 'rv32ui-v', 'rv32um-p', 'rv32um-v', 'rv32uzba-p', 'rv32uzba-v', 'rv32uzbb-p', 
-            'rv32uzbb-v', 'rv32uzbc-p', 'rv32uzbc-v', 'rv32uzbs-p', 'rv32uzbs-v', 'rv32uzfh-p', 'rv32uzfh-v', 
-            'rv64mi-p', 'rv64mzicbo-p', 'rv64si-p', 'rv64ssvnapot-p', 'rv64ua-p', 'rv64ua-v', 'rv64uc-p', 
-            'rv64uc-v', 'rv64ud-p', 'rv64ud-v', 'rv64uf-p', 'rv64uf-v', 'rv64ui-p', 'rv64ui-v', 'rv64um-p', 'rv64um-v',
-            'rv64uzba-p', 'rv64uzba-v', 'rv64uzbb-p', 'rv64uzbb-v', 'rv64uzbc-p', 'rv64uzbc-v', 'rv64uzbs-p', 'rv64uzbs-v',
-            'rv64uzfh-p', 'rv64uzfh-v']
+#selected_prefixes = ['rv32mi-p', 'rv32si-p', 'rv32ua-p',
+#            'rv32uc-p', 'rv32ud-p', 'rv32uf-p', 
+#            'rv32ui-p', 'rv32um-p', 'rv32uzba-p', 'rv32uzbb-p', 
+#            'rv32uzbc-p', 'rv32uzbs-p', 'rv32uzfh-p', 
+#            'rv64mi-p', 'rv64mzicbo-p', 'rv64si-p', 'rv64ssvnapot-p', 
+#            'rv64ua-p', 'rv64uc-p', 
+#            'rv64ud-p', 'rv64uf-p', 'rv64ui-p', 'rv64um-p', 
+#            'rv64uzba-p', 'rv64uzbb-p', 'rv64uzbc-p', 'rv64uzbs-p', 
+#            'rv64uzfh-p']
 
             
-#selected_prefixes = ['rv64mi-p', 'rv64si-p', 'rv64ssvnapot-p', 'rv64ua-p', 'rv64uc-p', 
-#                     'rv64ud-p', 'rv64uf-p',  'rv64ui-p',  'rv64um-p', 'rv64uzba-p', 'rv64uzbb-p', 'rv64uzbc-p', 'rv64uzbs-p', 'rv64uzfh-p']
+selected_prefixes = ['rv64mi-p', 'rv64si-p', 'rv64ssvnapot-p', 'rv64ua-p', 'rv64uc-p', 
+                     'rv64ud-p', 'rv64uf-p',  'rv64ui-p',  'rv64um-p', 'rv64uzba-p', 'rv64uzbb-p', 'rv64uzbc-p', 'rv64uzbs-p', 'rv64uzfh-p']
 
 def computeAllTests():
     files = os.listdir(ex_dir)
