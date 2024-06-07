@@ -13,13 +13,13 @@ with open("README.md", "r") as fh:
                          
 setup(
     name='py4hw',
-    version='0.1',
+    version='0.2',
     author='David Castells-Rufas',
     author_email='david.castells@uab.cat',
     description='Python-based RISC-V Full System Simulator.',
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url='https://github.com/davidcastells/py4hw',
+    url='https://github.com/davidcastells/punxa',
     install_requires=['py4hw>=2024.3', 'pyelftools'],
     tests_require=['py4hw>=2024.3', 'pyelftools'],
     packages=find_packages(),
