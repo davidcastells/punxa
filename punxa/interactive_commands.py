@@ -70,12 +70,13 @@ def loadSymbolsFromElf(cpu,  filename, offset):
 
         # Iterate through sections to find the symbol table
         for section in elffile.iter_sections():
-            if section.name == '.symtab':  # Commonly, the symbol table section is named '.symtab'
+            #if section.name == '.symtab':  # Commonly, the symbol table section is named '.symtab'
+            if hasattr(section, 'iter_symbols'):
                 for symbol in section.iter_symbols():
-                    if symbol['st_info']['type'] == 'STT_FUNC':
-                        addr = symbol['st_value'] + offset
-                        name = symbol.name
-                        cpu.funcs[addr]= name
+                    #if symbol['st_info']['type'] == 'STT_FUNC':
+                    addr = symbol['st_value'] + offset
+                    name = symbol.name
+                    cpu.funcs[addr]= name
 
 
 def loadProgram(memory, filename, offset):
