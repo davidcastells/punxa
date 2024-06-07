@@ -923,6 +923,9 @@ class FPU:
     
     def convert_dp_to_hp(self, v):
         return self.hp_box(FPNum(v, 'dp').convert('hp'))
+
+    def convert_dp_to_sp(self, v):
+        return self.sp_box(FPNum(v, 'dp').convert('sp'))
     
     def convert_i32_to_hp(self, v):
         sv = IntegerHelper.c2_to_signed(v, 32)

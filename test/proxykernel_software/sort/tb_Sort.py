@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Nov 26 13:13:48 2022
+Created on Sat May 25 14:57:50 2024
 
-@author: dcr
+@author: dcastel1
 """
+
 
 import sys
 import os
 
-baseDir = '../..'
+baseDir = '../../../'
 
 mem_width = 64
 
@@ -16,27 +17,27 @@ if not(baseDir in sys.path):
     print('appending .. to path')
     sys.path.append(baseDir)
 
-ex_dir = 'isa/'
+ex_dir = ''
 
-if not(os.path.exists(ex_dir)):
-    raise Exception('ISA tests not found')
 
 from punxa.memory import *
 from punxa.bus import *
 from punxa.uart import *
 from punxa.clint import *
 from punxa.plic import *
-from punxa.single_cycle.singlecycle_processor import *
+from punxa.single_cycle.singlecycle_processor_proxy_kernel import *
 from punxa.instruction_decode import *
 from punxa.interactive_commands import *
+    
 
 import py4hw    
 import py4hw.debug
 import py4hw.gui as gui
 import zlib
 
-mem_base =  0x80000000
-test_base = 0x80001000
+
+mem_base =  0x00000000
+#test_base = 0x80001000
 
     
 def is_hex(s):
@@ -48,12 +49,7 @@ def is_hex(s):
 
 
     
-from elftools.elf.elffile import ELFFile
 
-
-
-def write_trace(filename=ex_dir + 'newtrace.json'):
-    cpu.tracer.write_json(filename)
 
 def checkpoint(filename=ex_dir + 'checkpoint.dat'):
     import shutil
@@ -190,19 +186,7 @@ def run(upto, maxclks=100000, verbose=True, autoCheckpoint=False):
 
     print('clks: {} time: {} simulation freq: {}'.format(clkf-clk0, tf-t0, freq))
         
-        
-def step(steps = 1):
-    sim = hw.getSimulator()
-    sim.do_run = True
-    count = 0
-    
-    while (count < steps and sim.do_run == True ):
-        inipc = cpu.pc
-        while (cpu.pc == inipc and sim.do_run == True ):
-            sim.clk(1)
-            
-        count += 1
-        
+
 def regs():
     print('pc: {:016X}'.format(cpu.pc))
     for i in range(8):
@@ -233,9 +217,6 @@ def stack():
         else:
             print(' '*idx, '{:016X}'.format(f))
                   
-def console():
-    for line in uart.console:
-        print(line)
         
 def dump(address, size=0x100):
     pos = address 
@@ -254,6 +235,7 @@ def dump(address, size=0x100):
         print('| "{}"'.format(sline))
 #    memory.write(32*4+0x00, 0xfe010113) # addi    sp,sp,-32
 #    memory.write(32*4+0x04, 0x00112e23) # sw      ra,28(sp)
+
 
 
 def get_va_parts(v):
@@ -357,6 +339,7 @@ def memoryMap():
         print('* {:016X} - {:016X} {:.0f} {}'.format(bus.start[i], bus.stop[i], size, units))
         
         if (bus.start[i] == mem_base):
+            # we assume thereis a sparse-memory starting at memory area
             # details on memory
             for block in memory.area:
                 size = block[1]
@@ -371,6 +354,7 @@ def memoryMap():
                     size = size/1024
                     units = 'GiB'
                 print('  {:016X} - {:016X} {:.0f} {}'.format(mem_base + block[0], mem_base + block[0] + block[1] - 1, size, units))
+                #print('??', hex(block[0]), hex(block[1]))
                 
 def reallocMem(add, size):
     memory.reallocArea(add - mem_base, size)
@@ -409,7 +393,7 @@ def buildHw():
     hw = HWSystem()
 
     port_c = MemoryInterface(hw, 'port_c', mem_width, 40)
-    port_m = MemoryInterface(hw, 'port_m', mem_width, 14)     # 14	bits = 
+    port_m = MemoryInterface(hw, 'port_m', mem_width, 24)     # 22	bits = 
     port_u = MemoryInterface(hw, 'port_u', mem_width, 8)      # 8 bits = 256
     port_l = MemoryInterface(hw, 'port_l', mem_width, 16)      # 8 bits = 256
     port_p = MemoryInterface(hw, 'port_p', mem_width, 24)      # 8 bits = 256
@@ -418,7 +402,7 @@ def buildHw():
 
     memory = SparseMemory(hw, 'main_memory', mem_width, 32, port_m, mem_base=mem_base)
 
-    memory.reallocArea(0, 1 << 16)
+    #memory.reallocArea(0, 1 << 16)
 
     #test = ISATestCommunication(hw, 'test', mem_width, 8, port_t)
 
@@ -453,9 +437,10 @@ def buildHw():
                                           (port_p, 0xFFF1100000),
                                           (port_l, 0xFFF1020000)])
 
-    cpu = SingleCycleRISCV(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
+    cpu = SingleCycleRISCVProxyKernel(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
 
     cpu.min_clks_for_trace_event = 1000
+    cpu.behavioural_memory = memory
 
     # pass objects to interactive commands module
     import punxa.interactive_commands
@@ -464,139 +449,104 @@ def buildHw():
     
     return hw
 
+def pushString(s):
+    memory.writeByte(cpu.reg[2], 0)
+    cpu.reg[2] -= 1
+    for k in range(len(s)):
+        memory.writeByte(cpu.reg[2], ord(s[len(s)-1-k]) )
+        cpu.reg[2] -= 1
 
-def prepareTest(test_file):
+def pushInt64(v):
+    for k in range(8):
+        memory.writeByte(cpu.reg[2], (v >> 56) & 0xFF)
+        cpu.reg[2] -= 1
+        v = v << 8
+
+def pushInt32(v):
+    for k in range(4):
+        memory.writeByte(cpu.reg[2], (v >> 24) & 0xFF)
+        cpu.reg[2] -= 1
+        v = v << 8
+
+def prepareTest(test_file, args):
     global hw
     hw = buildHw()
     programFile = ex_dir + test_file
-    symbolFile = programFile + '.sym'
     
-    loadElf(memory, programFile, mem_base ) # 32*4 - 0x10054)
+
+    memory.reallocArea(0x10000, 0x80000)
+
+    loadElf(memory, programFile, 0 )     
+    loadSymbolsFromElf(cpu,  programFile, mem_base) 
+
+
+    start_adr = findFunction('_start')
+
+    cpu.pc = start_adr
     
-    if not(os.path.exists(symbolFile)):
-        os.system('/opt/riscv/bin/riscv64-unknown-elf-objdump -t {} > {}'.format(programFile, symbolFile))
-    loadSymbols(cpu,  symbolFile, 0) # 32*4 - 0x10054)
+    stack_base = 0x90000
+    stack_size = 0X50000
+    cpu.reg[2] = mem_base + stack_base + stack_size - 8
 
+    memory.reallocArea(stack_base, stack_size)
 
-def runTest(test_file):
-    prepareTest(test_file)
-    #passAdr = findFunction('pass')
-    write_tohost = findFunction('write_tohost')
-    tohost_adr = findFunction('tohost')
+    cpu.heap_base = 0x100000
+    cpu.heap_size = 0x040000 
 
+    memory.reallocArea(cpu.heap_base, cpu.heap_size)
+    
+    print('')
+    print(f'\tStack base: 0x{stack_base:016X} size: 0x{stack_size:016X}')
+    print(f'\tHeap base:  0x{cpu.heap_base:016X} size: 0x{cpu.heap_size:016X}')
+
+    # Now push the arguments to the stack
+    args = [programFile] + args
+    argc = len(args)
+    argsp = [0] * argc
+
+    for i in range(argc):
+        param = args[argc-1-i]
+        pushString(param)
+        argsp[i] = cpu.reg[2] + 1
+
+    pushInt64(0)
+
+    for i in range(argc):
+        add = argsp[i]
+        pushInt64(add)
+
+    pushInt64(argc)
+
+    cpu.reg[2] += 1
+    
+
+def runTest():
+    prepareTest('sort.elf', [])
+    exit_adr = findFunction('exit')
+
+    run(0, maxclks=89800, verbose=True)
     #run(passAdr, verbose=False)
-    run(write_tohost, maxclks=10000, verbose=False)
-    run(0, maxclks=20, verbose=False)
+    #run(exit_adr, maxclks=100000, verbose=True)
+    #run(0, maxclks=20, verbose=False)
 
     # print('Test', test_file, end='')
 
     #if (cpu.pc != passAdr):
-    value = memory.readByte(tohost_adr-mem_base)
+    #value = memory.readByte(tohost_adr-mem_base)
     
-    if (value != 1):
-        raise Exception('Test return value = {}'.format(value))
-    else:
-        print('Test return value = {}'.format(value))
+    #if (value != 1):
+    #    raise Exception('Test return value = {}'.format(value))
+    #else:
+    #    print('Test return value = {}'.format(value))
 
 
-prefixes = ['rv32mi-p', 'rv32si-p', 'rv32ua-p',
-            'rv32ua-v', 'rv32uc-p', 'rv32uc-v', 'rv32ud-p', 'rv32ud-v', 'rv32uf-p', 'rv32uf-v',
-            'rv32ui-p', 'rv32ui-v', 'rv32um-p', 'rv32um-v', 'rv32uzba-p', 'rv32uzba-v', 'rv32uzbb-p', 
-            'rv32uzbb-v', 'rv32uzbc-p', 'rv32uzbc-v', 'rv32uzbs-p', 'rv32uzbs-v', 'rv32uzfh-p', 'rv32uzfh-v', 
-            'rv64mi-p', 'rv64mzicbo-p', 'rv64si-p', 'rv64ssvnapot-p', 'rv64ua-p', 'rv64ua-v', 'rv64uc-p', 
-            'rv64uc-v', 'rv64ud-p', 'rv64ud-v', 'rv64uf-p', 'rv64uf-v', 'rv64ui-p', 'rv64ui-v', 'rv64um-p', 'rv64um-v',
-            'rv64uzba-p', 'rv64uzba-v', 'rv64uzbb-p', 'rv64uzbb-v', 'rv64uzbc-p', 'rv64uzbc-v', 'rv64uzbs-p', 'rv64uzbs-v',
-            'rv64uzfh-p', 'rv64uzfh-v']
-
-selected_prefixes = ['rv32mi-p', 'rv32si-p', 'rv32ua-p',
-            'rv32ua-v', 'rv32uc-p', 'rv32uc-v', 'rv32ud-p', 'rv32ud-v', 'rv32uf-p', 'rv32uf-v',
-            'rv32ui-p', 'rv32ui-v', 'rv32um-p', 'rv32um-v', 'rv32uzba-p', 'rv32uzba-v', 'rv32uzbb-p', 
-            'rv32uzbb-v', 'rv32uzbc-p', 'rv32uzbc-v', 'rv32uzbs-p', 'rv32uzbs-v', 'rv32uzfh-p', 'rv32uzfh-v', 
-            'rv64mi-p', 'rv64mzicbo-p', 'rv64si-p', 'rv64ssvnapot-p', 'rv64ua-p', 'rv64ua-v', 'rv64uc-p', 
-            'rv64uc-v', 'rv64ud-p', 'rv64ud-v', 'rv64uf-p', 'rv64uf-v', 'rv64ui-p', 'rv64ui-v', 'rv64um-p', 'rv64um-v',
-            'rv64uzba-p', 'rv64uzba-v', 'rv64uzbb-p', 'rv64uzbb-v', 'rv64uzbc-p', 'rv64uzbc-v', 'rv64uzbs-p', 'rv64uzbs-v',
-            'rv64uzfh-p', 'rv64uzfh-v']
-
-            
-#selected_prefixes = ['rv64mi-p', 'rv64si-p', 'rv64ssvnapot-p', 'rv64ua-p', 'rv64uc-p', 
-#                     'rv64ud-p', 'rv64uf-p',  'rv64ui-p',  'rv64um-p', 'rv64uzba-p', 'rv64uzbb-p', 'rv64uzbc-p', 'rv64uzbs-p', 'rv64uzfh-p']
-
-def computeAllTests():
-    files = os.listdir(ex_dir)
-    ret = {}
-
-    files = [name for name in files if  any(name.startswith(prefix) for prefix in selected_prefixes)]
-
-
-    for f in files:
-        if (isElf(ex_dir + f)):
-            #if (f[0:4] != 'rv64'):
-            #    continue
-
-            print('Run test', f, end=' ')
-            try:
-                runTest(f)
-                print('PASSED')
-                ret[f] = ('OK')
-            except Exception as e:
-                print('FAILED')
-                ret[f] = ('FAILED', e)
-        else:
-            print(f'{f} not ELF')
-
-    return ret
-
-def asciiProgressBar(n, t):
-    p = n*100/t
-    pl = 45
-    pok = math.ceil(pl*n/t)
-    pko = pl - pok
-    sok = '█' * pok
-    sko = '░' * pko
-    sp = '{:.1f} %'.format(p)
-    s = '{:8} |{}{}|'.format(sp,sok,sko)
-    return s
-    
-def runAllTests():
-    nOK = 0
-    nTotal = 0
-    ret = computeAllTests()
-    
-    groupResults = {}
-    
-    for prefix in selected_prefixes:
-        nOKGroup = 0
-        nTotalGroup = 0
-
-        files = [name for name in ret.keys() if name.startswith(prefix) ]
-        for t in files:
-            nTotal += 1
-            nTotalGroup += 1
-            if (ret[t] =='OK'):
-                 print('Test {:30} = {}'.format(t, ret[t]))
-                 nOK += 1
-                 nOKGroup += 1
-            else:
-                 print('Test {:30} = {} - {}'.format(t, ret[t][0], ret[t][1]))
-
-        groupResults[prefix]=(nOKGroup, nTotalGroup)
-        
-    print('Total: {} Correct: {} ({:.1f} %)'.format(nTotal, nOK, nOK*100/nTotal))     
-    print(asciiProgressBar(nOK, nTotal))
-
-    for prefix in selected_prefixes:
-        nOKGroup = groupResults[prefix][0]
-        nTotalGroup = groupResults[prefix][1]
-        print('Group: {} Total: {} Correct: {} ({:.1f} %)'.format(prefix, nTotalGroup, nOKGroup, nOKGroup*100/nTotalGroup))     
-
-    for prefix in selected_prefixes:
-        nOKGroup = groupResults[prefix][0]
-        nTotalGroup = groupResults[prefix][1]
-        print(f'{prefix:15}', asciiProgressBar(nOKGroup, nTotalGroup))
-        
-test_file = 'rv64mi-p-ma_addr'
-runTest(test_file)
-
+def prepare():
+    prepareTest('sort.elf', ['-v' ])
+    #step(10000000)
+    #print()
+    #print('Console Output')
+    #print('-'*80)
+    #console()
 
 if __name__ == "__main__":
     print(sys.argv)

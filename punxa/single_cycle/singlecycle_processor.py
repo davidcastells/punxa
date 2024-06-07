@@ -1051,7 +1051,7 @@ class SingleCycleRISCV(py4hw.Logic):
             self.freg[rd] = self.fpu.convert_hp_to_sp(self.freg[rs1])
             pr('fr{} = fr{} -> {:016X}'.format(rd, rs1, self.freg[rd]))
         elif (op == 'FCVT.S.D'):
-            self.freg[rd] = fp.sp_to_ieee754(fd1)
+            self.freg[rd] = self.fpu.convert_dp_to_sp(self.freg[rs1])
             pr('fr{} = fr{} -> {:016X}'.format(rd, rs1, self.freg[rd]))
         elif (op == 'FCVT.S.W'):
             self.freg[rd] = self.fpu.sp_box(fp.sp_to_ieee754(signExtend(self.reg[rs1] & ((1<<32)-1), 32)))
