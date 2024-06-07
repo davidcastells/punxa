@@ -20,14 +20,14 @@ if not(baseDir in sys.path):
 ex_dir = ''
 
 
-from riscv.memory import *
-from riscv.bus import *
-from riscv.uart import *
-from riscv.clint import *
-from riscv.plic import *
-from riscv.single_cycle.singlecycle_processor_proxy_kernel import *
-from riscv.instruction_decode import *
-from riscv.interactive_commands import *
+from punxa.memory import *
+from punxa.bus import *
+from punxa.uart import *
+from punxa.clint import *
+from punxa.plic import *
+from punxa.single_cycle.singlecycle_processor_proxy_kernel import *
+from punxa.instruction_decode import *
+from punxa.interactive_commands import *
     
 
 import py4hw    
@@ -553,9 +553,9 @@ def buildHw():
     cpu.behavioural_memory = memory
 
     # pass objects to interactive commands module
-    import riscv.interactive_commands
-    riscv.interactive_commands._ci_hw = hw
-    riscv.interactive_commands._ci_cpu = cpu
+    import punxa.interactive_commands
+    punxa.interactive_commands._ci_hw = hw
+    punxa.interactive_commands._ci_cpu = cpu
     
     return hw
 
