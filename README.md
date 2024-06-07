@@ -23,3 +23,4 @@ check [riscv-tests](https://github.com/davidcastells/punxa/blob/main/test/riscv-
 
 - Hello World
 - [Mandelbrot](https://github.com/davidcastells/punxa/blob/main/test/proxykernel_software/mandelbrot/README.md)
+- [File sort](https://github.com/davidcastells/punxa/tree/main/test/proxykernel_software/sort/README.md)
