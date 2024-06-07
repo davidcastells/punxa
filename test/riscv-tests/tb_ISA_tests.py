@@ -21,14 +21,14 @@ ex_dir = 'isa/'
 if not(os.path.exists(ex_dir)):
     raise Exception('ISA tests not found')
 
-from riscv.memory import *
-from riscv.bus import *
-from riscv.uart import *
-from riscv.clint import *
-from riscv.plic import *
-from riscv.single_cycle.singlecycle_processor import *
-from riscv.instruction_decode import *
-from riscv.interactive_commands import *
+from punxa.memory import *
+from punxa.bus import *
+from punxa.uart import *
+from punxa.clint import *
+from punxa.plic import *
+from punxa.single_cycle.singlecycle_processor import *
+from punxa.instruction_decode import *
+from punxa.interactive_commands import *
 
 import py4hw    
 import py4hw.debug
@@ -458,9 +458,9 @@ def buildHw():
     cpu.min_clks_for_trace_event = 1000
 
     # pass objects to interactive commands module
-    import riscv.interactive_commands
-    riscv.interactive_commands._ci_hw = hw
-    riscv.interactive_commands._ci_cpu = cpu
+    import punxa.interactive_commands
+    punxa.interactive_commands._ci_hw = hw
+    punxa.interactive_commands._ci_cpu = cpu
     
     return hw
 
@@ -507,9 +507,19 @@ prefixes = ['rv32mi-p', 'rv32si-p', 'rv32ua-p',
             'rv64uc-v', 'rv64ud-p', 'rv64ud-v', 'rv64uf-p', 'rv64uf-v', 'rv64ui-p', 'rv64ui-v', 'rv64um-p', 'rv64um-v',
             'rv64uzba-p', 'rv64uzba-v', 'rv64uzbb-p', 'rv64uzbb-v', 'rv64uzbc-p', 'rv64uzbc-v', 'rv64uzbs-p', 'rv64uzbs-v',
             'rv64uzfh-p', 'rv64uzfh-v']
+
+selected_prefixes = ['rv32mi-p', 'rv32si-p', 'rv32ua-p',
+            'rv32ua-v', 'rv32uc-p', 'rv32uc-v', 'rv32ud-p', 'rv32ud-v', 'rv32uf-p', 'rv32uf-v',
+            'rv32ui-p', 'rv32ui-v', 'rv32um-p', 'rv32um-v', 'rv32uzba-p', 'rv32uzba-v', 'rv32uzbb-p', 
+            'rv32uzbb-v', 'rv32uzbc-p', 'rv32uzbc-v', 'rv32uzbs-p', 'rv32uzbs-v', 'rv32uzfh-p', 'rv32uzfh-v', 
+            'rv64mi-p', 'rv64mzicbo-p', 'rv64si-p', 'rv64ssvnapot-p', 'rv64ua-p', 'rv64ua-v', 'rv64uc-p', 
+            'rv64uc-v', 'rv64ud-p', 'rv64ud-v', 'rv64uf-p', 'rv64uf-v', 'rv64ui-p', 'rv64ui-v', 'rv64um-p', 'rv64um-v',
+            'rv64uzba-p', 'rv64uzba-v', 'rv64uzbb-p', 'rv64uzbb-v', 'rv64uzbc-p', 'rv64uzbc-v', 'rv64uzbs-p', 'rv64uzbs-v',
+            'rv64uzfh-p', 'rv64uzfh-v']
+
             
-selected_prefixes = ['rv64mi-p', 'rv64si-p', 'rv64ssvnapot-p', 'rv64ua-p', 'rv64uc-p', 
-                     'rv64ud-p', 'rv64uf-p',  'rv64ui-p',  'rv64um-p', 'rv64uzba-p', 'rv64uzbb-p', 'rv64uzbc-p', 'rv64uzbs-p', 'rv64uzfh-p']
+#selected_prefixes = ['rv64mi-p', 'rv64si-p', 'rv64ssvnapot-p', 'rv64ua-p', 'rv64uc-p', 
+#                     'rv64ud-p', 'rv64uf-p',  'rv64ui-p',  'rv64um-p', 'rv64uzba-p', 'rv64uzbb-p', 'rv64uzbc-p', 'rv64uzbs-p', 'rv64uzfh-p']
 
 def computeAllTests():
     files = os.listdir(ex_dir)
@@ -520,8 +530,8 @@ def computeAllTests():
 
     for f in files:
         if (isElf(ex_dir + f)):
-            if (f[0:4] != 'rv64'):
-                continue
+            #if (f[0:4] != 'rv64'):
+            #    continue
 
             print('Run test', f, end=' ')
             try:
