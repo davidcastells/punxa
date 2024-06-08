@@ -10,12 +10,9 @@ When completed, next goal is Linux boot.
 
 ### RISC-V ISA Tests
 
-Some instructions from the rv64uzbs and rv64uzfh are not implemented. 
-We have some bugs in floating point operations.
-
 RV64 (excluding vector and cache management instructions) progress: 
 
-90.3 %   |█████████████████████████████████████████░░░░|
+94.1 %   |███████████████████████████████████████████░░|
 
 check [riscv-tests](https://github.com/davidcastells/punxa/blob/main/test/riscv-tests/README.md) for a complete list
 
