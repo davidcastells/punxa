@@ -34,7 +34,24 @@ class Tracer:
     
     def instant(self, tup):
         self.instants.append(tup)
-    
+
+    def demangleEvents(self):
+        from itanium_demangler import parse as demangle
+
+        newevents = []
+        
+        for event in self.events:
+            name = event[0]
+            try:
+                name = str(demangle(name))                
+            except Exception as e:
+                print('could not demangle', event[0], name, str(e))
+                
+            newevents.append((name, event[1], event[2]))
+            
+        self.events = newevents
+            
+            
     def write_json(self, filename):
         import datetime
         
@@ -44,13 +61,18 @@ class Tracer:
             
         events = []
         
-        events.append(self.processInfo(1, 'kernel'))
-        events.append(self.threadInfo(1, 1, 'main'))
+        self.demangleEvents()
+        
+        events.append(self.processInfo(1, 'punxa RISC-V ISS'))
+        events.append(self.threadInfo(1, 1, 'HART-0'))
 
         if (len(self.events) > 0):
             events.append(self.processUptime(1, self.events[-1][2] / self.clk_freq))
 
         for event in self.pending.values():
+            if (isinstance(event[0], int)):
+                # ignore function addresses
+                continue
             events.append(self.formatPendingEvent(1, 1, event))
             
         for event in self.events:
