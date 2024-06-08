@@ -18,17 +18,17 @@ Moreover, not all tests pass.
 rv64mi-p        75.0 %   |██████████████████████████████████░░░░░░░░░░░|
 rv64si-p        57.1 %   |██████████████████████████░░░░░░░░░░░░░░░░░░░|
 rv64ssvnapot-p  0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
-rv64ua-p        94.7 %   |███████████████████████████████████████████░░|
+rv64ua-p        100.0 %  |█████████████████████████████████████████████|
 rv64uc-p        100.0 %  |█████████████████████████████████████████████|
-rv64ud-p        91.7 %   |██████████████████████████████████████████░░░|
-rv64uf-p        81.8 %   |█████████████████████████████████████░░░░░░░░|
+rv64ud-p        100.0 %  |█████████████████████████████████████████████|
+rv64uf-p        100.0 %  |█████████████████████████████████████████████|
 rv64ui-p        100.0 %  |█████████████████████████████████████████████|
 rv64um-p        100.0 %  |█████████████████████████████████████████████|
 rv64uzba-p      100.0 %  |█████████████████████████████████████████████|
 rv64uzbb-p      100.0 %  |█████████████████████████████████████████████|
 rv64uzbc-p      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64uzbs-p      100.0 %  |█████████████████████████████████████████████|
-rv64uzfh-p      72.7 %   |█████████████████████████████████░░░░░░░░░░░░|
+rv64uzfh-p      100.0 %  |█████████████████████████████████████████████|
 </pre>
 
 The detailed current output is:
@@ -76,7 +76,7 @@ Test rv64ua-p-amoswap_d             = OK
 Test rv64ua-p-amoswap_w             = OK
 Test rv64ua-p-amoxor_d              = OK
 Test rv64ua-p-amoxor_w              = OK
-Test rv64ua-p-lrsc                  = FAILED - Test return value = 5
+Test rv64ua-p-lrsc                  = OK
 Test rv64uc-p-rvc                   = OK
 Test rv64ud-p-fadd                  = OK
 Test rv64ud-p-fclass                = OK
@@ -88,15 +88,15 @@ Test rv64ud-p-fmadd                 = OK
 Test rv64ud-p-fmin                  = OK
 Test rv64ud-p-ldst                  = OK
 Test rv64ud-p-move                  = OK
-Test rv64ud-p-recoding              = FAILED - Test return value = 21
+Test rv64ud-p-recoding              = OK
 Test rv64ud-p-structural            = OK
 Test rv64uf-p-fadd                  = OK
-Test rv64uf-p-fclass                = FAILED - Test return value = 5
+Test rv64uf-p-fclass                = OK
 Test rv64uf-p-fcmp                  = OK
 Test rv64uf-p-fcvt                  = OK
 Test rv64uf-p-fcvt_w                = OK
 Test rv64uf-p-fdiv                  = OK
-Test rv64uf-p-fmadd                 = FAILED - Test return value = 5
+Test rv64uf-p-fmadd                 = OK
 Test rv64uf-p-fmin                  = OK
 Test rv64uf-p-ldst                  = OK
 Test rv64uf-p-move                  = OK
@@ -210,16 +210,16 @@ Test rv64uzbs-p-binvi               = OK
 Test rv64uzbs-p-bset                = OK
 Test rv64uzbs-p-bseti               = OK
 Test rv64uzfh-p-fadd                = OK
-Test rv64uzfh-p-fclass              = FAILED - Test return value = 5
+Test rv64uzfh-p-fclass              = OK
 Test rv64uzfh-p-fcmp                = OK
 Test rv64uzfh-p-fcvt                = OK
 Test rv64uzfh-p-fcvt_w              = OK
 Test rv64uzfh-p-fdiv                = OK
-Test rv64uzfh-p-fmadd               = FAILED - Test return value = 5
+Test rv64uzfh-p-fmadd               = OK
 Test rv64uzfh-p-fmin                = OK
-Test rv64uzfh-p-ldst                = FAILED - Test return value = 0
+Test rv64uzfh-p-ldst                = OK
 Test rv64uzfh-p-move                = OK
 Test rv64uzfh-p-recoding            = OK
-Total: 186 Correct: 168 (90.3 %)
+Total: 186 Correct: 175 (94.1 %)
 ```
 
