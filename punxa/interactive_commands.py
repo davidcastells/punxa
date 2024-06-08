@@ -24,7 +24,7 @@ def help():
     print('  regs        - display the registers of the processor')
     print('  reportCSR   - display the content of CSRs')
     print('  console     - display the content of the console')
-
+    print('  stack       - display the stack')
 
 def write_trace(filename='newtrace.json'):
     cpu.tracer.write_json(filename)
@@ -32,6 +32,23 @@ def write_trace(filename='newtrace.json'):
 def console():
     for line in _ci_cpu.console:
         print(line)
+
+def stack():
+    indent = 0
+    for idx, finfo in enumerate(_ci_cpu.stack):
+        
+        #f = cpu.getPhysicalAddressQuick(finfo[0])
+        f = finfo[0]    # no need to translate, since symbols are provided in 
+                        # virtual memory addresses for kernel
+        j = finfo[2]    # indicates it is a jump
+
+        ec = '|' if j else '+->'        
+        if (f in _ci_cpu.funcs.keys()):
+            print(' '*indent, ec, _ci_cpu.funcs[f])
+        else:
+            print(' '*indent, ec, '{:016X}'.format(f))
+            
+        if not(j): indent += 1
 
 def isElf(filepath):
     from elftools.elf.elffile import ELFFile
@@ -63,8 +80,7 @@ def loadElf(memory, filename, offset):
 
 def loadSymbolsFromElf(cpu,  filename, offset):
     from elftools.elf.elffile import ELFFile
-
-
+    
     with open(filename, 'rb') as f:
         elffile = ELFFile(f)
 
