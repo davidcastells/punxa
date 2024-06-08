@@ -20,8 +20,8 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url='https://github.com/davidcastells/punxa',
-    install_requires=['py4hw>=2024.3', 'pyelftools'],
-    tests_require=['py4hw>=2024.3', 'pyelftools'],
+    install_requires=['py4hw>=2024.3', 'pyelftools', 'itanium-demangler'],
+    tests_require=['py4hw>=2024.3', 'pyelftools', 'itanium-demangler'],
     packages=find_packages(),
     package_data={'': ['*.png']}
 )
