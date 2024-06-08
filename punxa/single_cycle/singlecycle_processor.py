@@ -112,6 +112,7 @@ class SingleCycleRISCV(py4hw.Logic):
         self.tracer = Tracer()
         self.enable_tracing = True
         self.min_clks_for_trace_event = 0
+        self.ignore_unknown_functions = True
         
         self.initStaticCSRs()
         self.initDynamicCSRs()
@@ -233,25 +234,27 @@ class SingleCycleRISCV(py4hw.Logic):
     		
         finfo = self.stack.pop()
 
-        if (not(self.enable_tracing)):
-            return
-
+        
         f = finfo[0]
         t0 = finfo[1]
         jmp = finfo[2]
 
-        fn = f
-        if (fn in self.funcs.keys()):
-            fn = self.funcs[f]
+        if (self.enable_tracing):
+    
+            fn = f
+            if (fn in self.funcs.keys()):
+                fn = self.funcs[f]
 
-        tf = self.csr[CSR_CYCLE]
-        dur = tf - t0
-        
-        if (dur < self.min_clks_for_trace_event):
-            self.tracer.ignore(fn)
-            return
-        
-        self.tracer.complete((fn, t0, tf))
+            if (isinstance(fn, int) and self.ignore_unknown_functions):
+                fn = None
+
+            tf = self.csr[CSR_CYCLE]
+            dur = tf - t0
+            
+            if (dur < self.min_clks_for_trace_event) or (fn is None):
+                self.tracer.ignore(fn)
+            else:            
+                self.tracer.complete((fn, t0, tf))
         
         if (jmp):
             # repeat exit
@@ -1607,13 +1610,13 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'JALR'):
             self.should_jump = True
             self.jmp_address = (self.reg[rs1] + simm12) & ((1<<64)-2)
+            jmpCall = (rd == 0)
             if (rd == 0):
                 pr('r{} +  {} -> {}'.format(rs1, simm12, self.addressFmt(self.jmp_address)))
-                self.functionExit()
             else:
                 self.reg[rd] = self.pc + 4
                 pr('r{} + {} , r{} = pc+4 -> {},{}'.format(rs1, simm12, rd, self.addressFmt(self.jmp_address), self.addressFmt(self.reg[rd])))
-                self.functionEnter(self.jmp_address)
+            self.functionEnter(self.jmp_address, jmpCall)
         elif (op == 'FLD'):
             off = simm12 
             address = self.reg[rs1] + off
@@ -1649,11 +1652,12 @@ class SingleCycleRISCV(py4hw.Logic):
         off21_J = compose_sign(ins, [[31,1], [12,8], [20,1], [21,10]]) << 1  
 
         if (op == 'JAL'):
+            jmpCall = (rd == 0)
             if (rd != 0):
                 self.reg[rd] = self.pc + 4
             self.should_jump = True
             self.jmp_address = self.pc + off21_J
-            self.functionEnter(self.jmp_address)
+            self.functionEnter(self.jmp_address, jmpCall)
             
             if (rd== 0):
                 pr('pc + {} ->  {}'.format(off21_J, self.addressFmt(self.jmp_address)))
@@ -1782,6 +1786,8 @@ class SingleCycleRISCV(py4hw.Logic):
             self.jmp_address = self.reg[c_rs1]
             if (c_rs1 == 1):
                 self.functionExit()
+            else:
+                self.functionEnter(self.jmp_address, True)
             pr('r{} -> {:016X}'.format(c_rs1, self.jmp_address))
         elif (op == 'C.JALR'):
             self.should_jump = True
@@ -1987,6 +1993,7 @@ class SingleCycleRISCV(py4hw.Logic):
             self.should_jump = True
             self.jmp_address = self.pc + off12
             pr('{} -> {:016X}'.format(off12, self.jmp_address))
+            self.functionEnter(self.jmp_address, True)
         else:
             print(' - CJ-Type instruction not supported!')
             self.parent.getSimulator().stop()
