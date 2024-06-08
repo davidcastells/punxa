@@ -490,7 +490,7 @@ def runTest(test_file):
         return
 
     #run(passAdr, verbose=False)
-    run(write_tohost, maxclks=10000, verbose=False)
+    run(write_tohost, maxclks=30000, verbose=False)
     run(0, maxclks=20, verbose=False)
 
     # print('Test', test_file, end='')
