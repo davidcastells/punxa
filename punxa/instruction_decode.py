@@ -70,7 +70,7 @@ rvc_instructions = ['C.ADDI4SPN', 'C.FLD', 'C.LQ', 'C.LW', 'C.FLW', 'C.LD', 'C.F
 
 rvzbb_instructions = ['CLZ','CTZ','PCNT','ANDN','ORC','XORC','MIN','MAX','MINU','MAXU','CLZW','CTZW']
 
-rvzfh_instructions = ['FLH', 'FADD.H', 'FCVT.S.H', 'FCVT.D.H','FSQRT.H']
+rvzfh_instructions = ['FLH', 'FADD.H', 'FCVT.S.H', 'FCVT.D.H','FSQRT.H', 'FMSUB.H', 'FNMSUB.H']
 
 # All instructions dealing with FPU
 fpu_instructions = []
@@ -105,7 +105,7 @@ RTypeIns = ['AND','OR','XOR', 'XNOR',
             'BEXT','BINV','BSET', 'BCLR']
 R4TypeIns = ['FMADD.S', 'FMSUB.S', 'FNMSUB.S', 'FNMADD.S',
              'FMADD.D', 'FMSUB.D', 'FNMSUB.D', 'FNMADD.D',
-             'FMADD.H',
+             'FMADD.H', 'FMSUB.H', 'FNMSUB.H', 'FNMADD.H',
              'FSGNJ.S', 'FSGNJN.S', 'FSGNJX.S',
              'FSGNJ.D', 'FSGNJN.D', 'FSGNJX.D',
              'FSGNJ.H', 'FSGNJN.H', 'FSGNJX.H',
@@ -473,18 +473,24 @@ def ins_to_str(ins, isa=32):
             return 'FMSUB.S'
         if (func2 == 0x01):
             return 'FMSUB.D'
+        if (func2 == 0x02):
+            return 'FMSUB.H'
         
     if (opcode == 0x4b):
         if (func2 == 0x00):
             return 'FNMSUB.S'
         if (func2 == 0x01):
             return 'FNMSUB.D'
+        if (func2 == 0x02):
+            return 'FNMSUB.H'
         
     if (opcode == 0x4f):
         if (func2 == 0x00):
             return 'FNMADD.S'
         if (func2 == 0x01):
             return 'FNMADD.D'
+        if (func2 == 0x02):
+            return 'FNMADD.H'
         
     if (opcode == 0x53):
         if (func7 == 0x00): return 'FADD.S'
