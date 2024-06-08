@@ -223,17 +223,6 @@ def regs():
         
 #     cpu.stack = newstack
     
-def stack():
-    for idx, finfo in enumerate(cpu.stack):
-        
-        #f = cpu.getPhysicalAddressQuick(finfo[0])
-        f = finfo[0]    # no need to translate, since symbols are provided in 
-                        # virtual memory addresses for kernel
-        
-        if (f in cpu.funcs.keys()):
-            print(' '*idx, cpu.funcs[f])
-        else:
-            print(' '*idx, '{:016X}'.format(f))
                   
 def console():
     for line in cpu.console:
@@ -668,11 +657,13 @@ if __name__ == "__main__":
              eval(sys.argv[2])
              os._exit(0)
          elif (sys.argv[1] == '-trace'):
-             cpu.min_clks_for_trace_event=5000
+             prepare()
+             exit_adr = findFunction('exit')
 
-             for i in range(10*60//2):
-                 # 120 minutes // 2
-                 #run(0xffffffe00060074c, maxclks=10000000000, verbose=False)
-                 run(0, maxclks=50000*60*2, verbose=False) # run simulation for 2 minutesº
-                 write_trace() 
-                 checkpoint()
+             cpu.min_clks_for_trace_event=100
+             
+             run(exit_adr, maxclks=1000000, verbose=False)
+             run(0, maxclks=1000, verbose=True)
+             console()
+             write_trace()
+
