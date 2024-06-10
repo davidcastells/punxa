@@ -1903,6 +1903,12 @@ class SingleCycleRISCV(py4hw.Logic):
             value = self.reg[c_rs2] 
             yield from self.virtualMemoryWrite(address, 64//8, value)
             pr('[r{}+{}]=r{} -> [{}]={:016X}'.format(c_rs1, off, c_rs2, self.addressFmt(address), value))
+        elif (op == 'C.FSD'):
+            off = compose(ins, [[5,2],[10,3]]) << 3
+            address = self.reg[c_rs1] + off
+            value = self.freg[c_rs2] 
+            yield from self.virtualMemoryWrite(address, 64//8, value)
+            pr('[r{}+{}]=fr{} -> [{}]={:016X}'.format(c_rs1, off, c_rs2, self.addressFmt(address), value))
         else:
             print(' - CS-Type instruction not supported!')
             self.parent.getSimulator().stop()
@@ -2020,6 +2026,11 @@ class SingleCycleRISCV(py4hw.Logic):
             off = compose(ins, [[5,1],[10,3],[6,1]]) << 2
             address = self.reg[c_rs1] + off
             self.freg[c_rd] = yield from self.virtualMemoryLoad(address, 32//8)
+            pr('fr{} = [r{} + {}] -> {:016X}'.format(c_rd, c_rs1, off, self.freg[c_rd]))
+        elif (op == 'C.FLD'):
+            off = compose(ins, [[5,2],[10,3]]) << 3
+            address = self.reg[c_rs1] + off
+            self.freg[c_rd] = yield from self.virtualMemoryLoad(address, 64//8)
             pr('fr{} = [r{} + {}] -> {:016X}'.format(c_rd, c_rs1, off, self.freg[c_rd]))
         else:
             print(' - CL-Type instruction not supported!')
