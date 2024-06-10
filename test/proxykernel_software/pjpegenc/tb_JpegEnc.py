@@ -662,8 +662,8 @@ if __name__ == "__main__":
 
              cpu.min_clks_for_trace_event=100
              
-             run(exit_adr, maxclks=1000000, verbose=False)
-             run(0, maxclks=1000, verbose=True)
+             run(exit_adr, maxclks=10000000, verbose=False)
+             run(0, maxclks=100, verbose=True)
              console()
              write_trace()
 
