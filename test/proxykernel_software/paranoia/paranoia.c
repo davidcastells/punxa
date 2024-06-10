@@ -1,3 +1,9 @@
+/**
+ *  I try to reduce the verbosity and produce a cleaner output
+ *  of the information of the test
+ * David Castells-Rufas david.castells@uab.cat (Universitat Autònoma de Barcelona) 2024
+ *
+ */
 /*      A C version of Kahan's Floating Point Test "Paranoia"
 
                         Thos Sumner, UCSF, Feb. 1985
@@ -219,71 +225,77 @@ q
 
 */
 
+
 #include <stdio.h>
 #ifndef NOSIGNAL
-#include <signal.h>
+    #include <signal.h>
 #endif
 #include <setjmp.h>
 
 #ifdef Single
-#define FLOAT float
-#define FABS(x) (float)fabs((double)(x))
-#define FLOOR(x) (float)floor((double)(x))
-#define LOG(x) (float)log((double)(x))
-#define POW(x,y) (float)pow((double)(x),(double)(y))
-#define SQRT(x) (float)sqrt((double)(x))
+    #define FLOAT float
+    #define FABS(x) (float)fabs((double)(x))
+    #define FLOOR(x) (float)floor((double)(x))
+    #define LOG(x) (float)log((double)(x))
+    #define POW(x,y) (float)pow((double)(x),(double)(y))
+    #define SQRT(x) (float)sqrt((double)(x))
 #else
-#define FLOAT double
-#define FABS(x) fabs(x)
-#define FLOOR(x) floor(x)
-#define LOG(x) log(x)
-#define POW(x,y) pow(x,y)
-#define SQRT(x) sqrt(x)
+    #define FLOAT double
+    #define FABS(x) fabs(x)
+    #define FLOOR(x) floor(x)
+    #define LOG(x) log(x)
+    #define POW(x,y) pow(x,y)
+    #define SQRT(x) sqrt(x)
 #endif
 
 jmp_buf ovfl_buf;
 #ifdef KR_headers
-#define VOID /* void */
-#define INT /* int */
-#define FP /* FLOAT */
-#define CHARP /* char * */
-#define CHARPP /* char ** */
-extern double fabs(), floor(), log(), pow(), sqrt();
-extern void exit();
-typedef void (*Sig_type)();
-FLOAT Sign(), Random();
-extern void BadCond();
-extern void SqXMinX();
-extern void TstCond();
-extern void notify();
-extern int read();
+    #define VOID /* void */
+    #define INT /* int */
+    #define FP /* FLOAT */
+    #define CHARP /* char * */
+    #define CHARPP /* char ** */
+    extern double fabs(), floor(), log(), pow(), sqrt();
+    extern void exit();
+    typedef void (*Sig_type)();
+    FLOAT Sign(), Random();
+    extern void BadCond();
+    extern void SqXMinX();
+    extern void TstCond();
+    extern void notify();
+    #ifndef NOPAUSE
+        extern int read();
+    #endif
 #else
-#define VOID void
-#define INT int
-#define FP FLOAT
-#define CHARP char *
-#define CHARPP char **
-#ifdef __STDC__
-#include <stdlib.h>
-#include <math.h>
+    #define VOID void
+    #define INT int
+    #define FP FLOAT
+    #define CHARP const char *
+    #define CHARPP const char **
+    #ifdef __STDC__
+    #include <stdlib.h>
+    #include <math.h>
 #else
 #ifdef __cplusplus
-extern "C" {
+    extern "C" {
 #endif
 extern double fabs(double), floor(double), log(double);
 extern double pow(double,double), sqrt(double);
 extern void exit(INT);
 #ifdef __cplusplus
-        }
-#endif
-#endif
-typedef void (*Sig_type)(int);
-FLOAT Sign(FLOAT), Random(void);
-extern void BadCond(int, char*);
-extern void SqXMinX(int);
-extern void TstCond(int, int, char*);
-extern void notify(char*);
-extern int read(int, char*, int);
+            }
+    #endif
+    #endif
+    typedef void (*Sig_type)(int);
+    FLOAT Sign(FLOAT), Random(void);
+    extern void BadCond(int, const char*);
+    extern void SqXMinX(int);
+    extern void TstCond(int, int, const char*);
+    extern void notify(const char*);
+    
+    #ifndef NOPAUSE
+        extern int read(int, char*, int);
+    #endif
 #endif
 #undef V9
 extern void Characteristics(VOID);
@@ -300,7 +312,9 @@ extern void TstPtUf(VOID);
 
 Sig_type sigsave;
 
-#define KEYBOARD 0
+#ifndef NOPAUSE
+    #define KEYBOARD 0
+#endif
 
 FLOAT Radix, BInvrse, RadixD2, BMinusU2;
 
@@ -396,7 +410,7 @@ sigfpe(INT x)
         exit(1);
 }
 
-main(VOID)
+int main(int argc, char* args[])
 {
         /* First two assignments use integer right-hand sides. */
         Zero = 0;
@@ -424,18 +438,18 @@ main(VOID)
 #ifndef NOSIGNAL
         signal(SIGFPE, sigfpe);
 #endif
-        Instructions();
-        Pause();
+        // Instructions();
+        // Pause();
         Heading();
-        Pause();
-        Characteristics();
-        Pause();
-        History();
-        Pause();
+        //Pause();
+        //Characteristics();
+        //Pause();
+        //History();
+        //Pause();
         /*=============================================*/
         Milestone = 7;
         /*=============================================*/
-        printf("Program is now RUNNING tests on small integers:\n");
+        printf("[PROGRESS] Program is now RUNNING tests on small integers:\n");
 
         TstCond (Failure, (Zero + Zero == Zero) && (One - One == Zero)
                    && (One > Zero) && (One + One == Two),
@@ -492,10 +506,10 @@ void part2(VOID){
                    && ( TwoForty / Five - Four * Three * Four == Zero),
                   "5 != 4+1, 240/3 != 80, 240/4 != 60, or 240/5 != 48");
         if (ErrCnt[Failure] == 0) {
-                printf("-1, 0, 1/2, 1, 2, 3, 4, 5, 9, 27, 32 & 240 are O.K.\n");
-                printf("\n");
+                printf("[CHECK   ] -1, 0, 1/2, 1, 2, 3, 4, 5, 9, 27, 32 & 240\t\t[OK]\n");
+                //printf("\n");
                 }
-        printf("Searching for Radix and Precision.\n");
+        printf("[PROGRESS] Searching for Radix and Precision.\n");
         W = One;
         do  {
                 W = W + W;
@@ -512,7 +526,7 @@ void part2(VOID){
                 Radix = Radix - W;
                 } while ( Radix == Zero);
         if (Radix < Two) Radix = One;
-        printf("Radix = %f .\n", Radix);
+        printf("[INFO    ]\t\t\t\t\t\t\tRadix = %f \n", Radix);
         if (Radix != 1) {
                 W = One;
                 do  {
@@ -525,8 +539,8 @@ void part2(VOID){
                                                       ...*/
         U1 = One / W;
         U2 = Radix * U1;
-        printf("Closest relative separation found is U1 = %.7e .\n\n", U1);
-        printf("Recalculating radix and precision\n ");
+        printf("[INFO    ] Closest relative separation found \t\t\tU1 = %.7e \n", U1);
+        printf("[PROGRESS] Recalculating radix and precision\n");
 
         /*save old values*/
         E0 = Radix;
@@ -567,13 +581,13 @@ void part2(VOID){
                 X = Half + Y;
                 } while ( ! ((U1 <= X) || (X <= Zero)));
         /*... now U1 == 1 ulp of 1 - ... */
-        if (U1 == E1) printf("confirms closest relative separation U1 .\n");
+        if (U1 == E1) printf("[CHECK   ] confirms closest relative separation U1 \t\t[OK]\n");
         else printf("gets better closest relative separation U1 = %.7e .\n", U1);
         W = One / U1;
         F9 = (Half - U1) + Half;
         Radix = FLOOR(0.01 + U2 / U1);
-        if (Radix == E0) printf("Radix confirmed.\n");
-        else printf("MYSTERY: recalculated Radix = %.7e .\n", Radix);
+        if (Radix == E0) printf("[CHECK   ] Radix confirmed.\t\t\t\t\t[OK]\n");
+        else printf("[CHECK   ] MYSTERY: recalculated Radix = %.7e .\n", Radix);
         TstCond (Defect, Radix <= Eight + Eight,
                    "Radix is too big: roundoff problems");
         TstCond (Flaw, (Radix == Two) || (Radix == 10)
@@ -612,7 +626,7 @@ void part2(VOID){
                 }
         if (Radix == One)
                 printf("logarithmic encoding has precision characterized solely by U1.\n");
-        else printf("The number of significant digits of the Radix is %f .\n",
+        else printf("[INFO    ] Significant digits \t\t\t\t\tPrecision =  %f \n",
                         Precision);
         TstCond (Serious, U2 * Nine * Nine * TwoForty < One,
                    "Precision worse than 5 decimal figures  ");
@@ -679,7 +693,7 @@ void part2(VOID){
                                 }
                         }
                 }
-        Pause();
+        //Pause();
         /*=============================================*/
         /*SPLIT
         }
@@ -695,11 +709,11 @@ void part3(VOID){
                 T = Z + U2;
                 X = T - Z;
                 TstCond (Failure, X == U2,
-                        "Subtraction is not normalized X=Y,X+Z != Y+Z!");
+                        "[CHECK   ] Subtraction is not normalized X=Y,X+Z != Y+Z!");
                 if (X == U2) printf(
-                        "Subtraction appears to be normalized, as it should be.");
+                        "[CHECK   ] Subtraction appears to be normalized.\t\t[OK]\n");
                 }
-        printf("\nChecking for guard digit in *, /, and -.\n");
+        printf("[PROGRESS] Checking for guard digit in *, /, and -.\n");
         Y = F9 * One;
         Z = One * F9;
         X = F9 - Half;
@@ -783,13 +797,13 @@ or  1/3  and  3/9  and  9/27 may disagree");
                 printf("  such precautions against division by zero as\n");
                 printf("  ...  if (X == 1.0) {.....} else {.../(X-1.0)...}\n");
                 }
-        if (GMult == Yes && GDiv == Yes && GAddSub == Yes) printf(
-                "     *, /, and - appear to have guard digits, as they should.\n");
+        if (GMult == Yes && GDiv == Yes && GAddSub == Yes) 
+            printf("[CHECK   ] *, /, and - appear to have guard digits.\t\t[OK]\n");
         /*=============================================*/
         Milestone = 40;
         /*=============================================*/
-        Pause();
-        printf("Checking rounding on multiply, divide and add/subtract.\n");
+        //Pause();
+        printf("[PROGRESS] Checking rounding on *,/,+,-.\n");
         RMult = Other;
         RDiv = Other;
         RAddSub = Other;
@@ -859,7 +873,7 @@ or  1/3  and  3/9  and  9/27 may disagree");
                         else printf("* is neither chopped nor correctly rounded.\n");
                 if ((RMult == Rounded) && (GMult == No)) notify("Multiplication");
                 }
-        else printf("* is neither chopped nor correctly rounded.\n");
+        else printf("[CHECK   ] * is neither chopped nor correctly rounded.\t\t[FLAW]\n");
         /*=============================================*/
         Milestone = 45;
         /*=============================================*/
@@ -893,7 +907,7 @@ or  1/3  and  3/9  and  9/27 may disagree");
                         && (Y2 == Zero) && (Y2 == Zero)
                         && (Y1 - Half == F9 - Half )) {
                         RDiv = Rounded;
-                        printf("Division appears to round correctly.\n");
+                        printf("[CHECK   ] Division appears to round correctly.\t\t\t[OK]\n");
                         if (GDiv == No) notify("Division");
                         }
                 else if ((X < Zero) && (Y < Zero) && (Z < Zero) && (T < Zero)
@@ -902,7 +916,7 @@ or  1/3  and  3/9  and  9/27 may disagree");
                         printf("Division appears to chop.\n");
                         }
                 }
-        if (RDiv == Other) printf("/ is neither chopped nor correctly rounded.\n");
+        if (RDiv == Other) printf("[CHECK   ] / is neither chopped nor correctly rounded.\n");
         BInvrse = One / Radix;
         TstCond (Failure, (BInvrse * Radix - Half == Half),
                    "Radix * ( 1 / Radix ) differs from 1");
@@ -942,7 +956,7 @@ void part4(VOID){
                         Y = One - Y;
                         if ((X == Zero) && (Y == Zero)) {
                                 RAddSub = Rounded;
-                                printf("Addition/Subtraction appears to round correctly.\n");
+                                printf("[CHECK   ] Addition/Subtraction appears to round correctly.\t[OK]\n");
                                 if (GAddSub == No) notify("Add/Subtract");
                                 }
                         else printf("Addition/Subtraction neither rounds nor chops.\n");
@@ -1000,8 +1014,10 @@ void part4(VOID){
                                 }
                         }
                 }
-        if (StickyBit == One) printf("Sticky bit apparently used correctly.\n");
-        else printf("Sticky bit used incorrectly or not at all.\n");
+        if (StickyBit == One) 
+            printf("Sticky bit apparently used correctly.\n");
+        else 
+            printf("[CHECK   ] Sticky bit used incorrectly or not at all.\t\t[FLAW]\n");
         TstCond (Flaw, !(GMult == No || GDiv == No || GAddSub == No ||
                         RMult == Other || RDiv == Other || RAddSub == Other),
                 "lack(s) of guard digits or failure(s) to correctly round or chop\n\
@@ -1010,8 +1026,8 @@ void part4(VOID){
         Milestone = 60;
         /*=============================================*/
         printf("\n");
-        printf("Does Multiplication commute?  ");
-        printf("Testing on %d random pairs.\n", NoTrials);
+        printf("[PROGRESS] Does Multiplication commute?\n");
+        printf("[PROGRESS] Testing on %d random pairs.\n", NoTrials);
         Random9 = SQRT(3.0);
         Random1 = Third;
         I = 1;
@@ -1033,11 +1049,11 @@ void part4(VOID){
                 }
         if (! ((I == NoTrials) || (Z9 == Zero)))
                 BadCond(Defect, "X * Y == Y * X trial fails.\n");
-        else printf("     No failures found in %d integer pairs.\n", NoTrials);
+        else printf("[CHECK   ] No failures found in %d integer pairs.\t\t[OK]\n", NoTrials);
         /*=============================================*/
         Milestone = 70;
         /*=============================================*/
-        printf("\nRunning test of square root(x).\n");
+        printf("[PROGRESS] Running test of square root(x).\n");
         TstCond (Failure, (Zero == SQRT(Zero))
                    && (- Zero == SQRT(- Zero))
                    && (One == SQRT(One)), "Square root of 0.0, -0.0 or 1.0 wrong");
@@ -1054,7 +1070,7 @@ void part4(VOID){
         OneUlp = U1 * U1;
         SqXMinX (Serious);
         if (J != Zero) Pause();
-        printf("Testing if sqrt(X * X) == X for %d Integers X.\n", NoTrials);
+        printf("[PROGRESS] Testing if sqrt(X * X) == X for %d Integers X.\n", NoTrials);
         J = Zero;
         X = Two;
         Y = Radix;
@@ -1070,7 +1086,7 @@ void part4(VOID){
                 if (J > Zero) break;
                 I = I + 1;
                 }
-        printf("Test for sqrt monotonicity.\n");
+        printf("[PROGRESS] Test for sqrt monotonicity.\n");
         I = - 1;
         X = BMinusU2;
         Y = Radix;
@@ -1101,7 +1117,7 @@ void part4(VOID){
                                 }
                         }
                 }
-        if (Monot) printf("sqrt has passed a test for Monotonicity.\n");
+        if (Monot) printf("[CHECK   ] sqrt has passed a test for Monotonicity.\t\t[OK]\n");
         else {
                 BadCond(Defect, "");
                 printf("sqrt(X) is non-monotonic for X near %.7e .\n", Y);
@@ -1150,7 +1166,7 @@ void part5(VOID){
         Anomaly = False;
         RSqrt = Other; /* ~dgh */
         if (Radix != One) {
-                printf("Testing whether sqrt is rounded or chopped.\n");
+                printf("[PROGRESS] Testing whether sqrt is rounded or chopped.\n");
                 D = FLOOR(Half + POW(Radix, One + Precision - FLOOR(Precision)));
         /* ... == Radix^(1 + fract) if (Precision == Integer + fract. */
                 X = D / Radix;
@@ -1240,7 +1256,7 @@ void part5(VOID){
         if (! Anomaly) {
                 if (! ((MinSqEr < Zero) || (MaxSqEr > Zero))) {
                         RSqrt = Rounded;
-                        printf("Square root appears to be correctly rounded.\n");
+                        printf("[CHECK   ] Square root appears to be correctly rounded.\t\t[OK]\n");
                         }
                 else  {
                         if ((MaxSqEr + U2 > U2 - Half) || (MinSqEr > Half)
@@ -1261,8 +1277,8 @@ void part5(VOID){
         /*=============================================*/
         Milestone = 90;
         /*=============================================*/
-        Pause();
-        printf("Testing powers Z^i for small Integers Z and i.\n");
+        //Pause();
+        printf("[PROGRESS] Testing powers Z^i for small Integers Z and i.\n");
         N = 0;
         /* ... test powers of zero. */
         I = 0;
@@ -1317,9 +1333,9 @@ void part5(VOID){
                 }
         PrintIfNPositive();
         N += N1;
-        if (N == 0) printf("... no discrepancies found.\n");
-        if (N > 0) Pause();
-        else printf("\n");
+        if (N == 0) printf("[CHECK   ] Z^i ... no discrepancies found.\t\t\t[OK]\n");
+        //if (N > 0) Pause();
+        //else printf("\n");
         /*=============================================*/
         /*SPLIT
         }
@@ -1328,7 +1344,7 @@ void part6(VOID){
 */
         Milestone = 110;
         /*=============================================*/
-        printf("Seeking Underflow thresholds UfThold and E0.\n");
+        printf("[PROGRESS] Seeking Underflow thresholds UfThold and E0.\n");
         D = U1;
         if (Precision != FLOOR(Precision)) {
                 D = BInvrse;
@@ -1444,7 +1460,7 @@ void part6(VOID){
                         printf(" threshold than products.\n");
                         }
                 }
-        printf("Smallest strictly positive number found is E0 = %g .\n", E0);
+        printf("[INFO    ] Smallest strictly positive number \t\t\tE0 = %g \n", E0);
         Z = E0;
         TstPtUf();
         Underflow = E0;
@@ -1482,8 +1498,7 @@ void part6(VOID){
                 if ((Q == UfThold) && (E1 == E0)
                         && (FABS( UfThold - E1 / E9) <= E1)) {
                         UfNGrad = False;
-                        printf("Underflow is gradual; it incurs Absolute Error =\n");
-                        printf("(roundoff in UfThold) < E0.\n");
+                        printf("[CHECK   ] Underflow is gradual; Abs.Err. (rndoff UfThold) < E0.[OK]\n");
                         Y = E0 * CInvrse;
                         Y = Y * (OneAndHalf + U2);
                         X = CInvrse * (One + U2);
@@ -1525,10 +1540,9 @@ void part6(VOID){
                         sigsave = 0;
                         }
                 }
-        printf("The Underflow threshold is %.17e, %s\n", UfThold,
-                   " below which");
-        printf("calculation may suffer larger Relative error than ");
-        printf("merely roundoff.\n");
+        printf("[INFO    ] Underflow threshold  \t\t\t\tUfThold=%.17e \n", UfThold);
+        //printf("calculation may suffer larger Relative error than ");
+        //printf("merely roundoff.\n");
         Y2 = U1 * U1;
         Y = Y2 * Y2;
         Y2 = Y * U1;
@@ -1553,35 +1567,44 @@ void part7(VOID){
         /*=============================================*/
         Y = - FLOOR(Half - TwoForty * LOG(UfThold) / LOG(HInvrse)) / TwoForty;
         Y2 = Y + Y;
-        printf("Since underflow occurs below the threshold\n");
-        printf("UfThold = (%.17e) ^ (%.17e)\nonly underflow ", HInvrse, Y);
-        printf("should afflict the expression\n\t(%.17e) ^ (%.17e);\n",
-                HInvrse, Y2);
-        printf("actually calculating yields:");
-        if (setjmp(ovfl_buf)) {
-                sigsave = 0;
-                BadCond(Serious, "trap on underflow.\n");
-                }
-        else {
-                sigsave = sigfpe;
-                V9 = POW(HInvrse, Y2);
-                sigsave = 0;
-                printf(" %.17e .\n", V9);
-                if (! ((V9 >= Zero) && (V9 <= (Radix + Radix + E9) * UfThold))) {
-                        BadCond(Serious, "this is not between 0 and underflow\n");
+        printf("[PROGRESS] Checking underflow effect\n");
+        //printf("Since underflow occurs below the threshold\n");
+        //printf("UfThold = (%.17e) ^ (%.17e)\nonly underflow ", HInvrse, Y);
+        printf("[INFO    ] \t\t\t\t\t\t\tHInverse = %.17e\n", HInvrse);
+        printf("[INFO    ] \t\t\t\t\t\t\tY = %.17e\n", Y);
+        printf("[INFO    ] \t\t\t\t\t\t\tY2 = %.17e\n", Y2);
+        
+        //printf("should afflict the expression\n\t(%.17e) ^ (%.17e);\n", HInvrse, Y2);
+        printf("[INFO    ] actually calculating yields.\t\t\t\tV9 = ");
+        if (setjmp(ovfl_buf)) 
+        {
+            sigsave = 0;
+            BadCond(Serious, "trap on underflow.\n");
+        }
+        else 
+        {
+            sigsave = sigfpe;
+            V9 = POW(HInvrse, Y2);
+            sigsave = 0;
+            printf(" %.17e \n", V9);
+            if (! ((V9 >= Zero) && (V9 <= (Radix + Radix + E9) * UfThold))) 
+            {
+                BadCond(Serious, "this is not between 0 and underflow\n");
+                printf("   threshold = %.17e \n", UfThold);
+            }
+            else if (! (V9 > UfThold * (One + E9)))
+                printf("[CHECK   ] This computed value is O.K.\t\t\t\t[OK]\n");
+            else 
+            {
+                BadCond(Defect, "this is not between 0 and underflow\n");
                 printf("   threshold = %.17e .\n", UfThold);
-                }
-                else if (! (V9 > UfThold * (One + E9)))
-                        printf("This computed value is O.K.\n");
-                else {
-                        BadCond(Defect, "this is not between 0 and underflow\n");
-                        printf("   threshold = %.17e .\n", UfThold);
-                        }
-                }
+            }
+        }
+
         /*=============================================*/
         Milestone = 140;
         /*=============================================*/
-        printf("\n");
+        //printf("\n");
         /* ...calculate Exp2 == exp(2) == 7.389056099... */
         X = Zero;
         I = 2;
@@ -1601,8 +1624,7 @@ void part7(VOID){
         Exp2 = X * X;
         X = F9;
         Y = X - U1;
-        printf("Testing X^((X + 1) / (X - 1)) vs. exp(2) = %.17e as X -> 1.\n",
-                Exp2);
+        printf("[PROGRESS] Testing X^((X + 1) / (X - 1)) vs. exp(2) as X -> 1.\n");
         for(I = 1;;) {
                 Z = X - BInvrse;
                 Z = (X + One) / (Z - (One - BInvrse));
@@ -1627,7 +1649,7 @@ void part7(VOID){
                         else  {
                                 if (X > One) {
                                         if (N == 0)
-                                           printf("Accuracy seems adequate.\n");
+                                           printf("[CHECK   ] Accuracy seems adequate.\t\t\t\t[OK]\n");
                                         break;
                                         }
                                 else {
@@ -1642,7 +1664,7 @@ void part7(VOID){
         /*=============================================*/
         Milestone = 150;
         /*=============================================*/
-        printf("Testing powers Z^Q at four nearly extreme values.\n");
+        printf("[PROGRESS] Testing powers Z^Q at four nearly extreme values.\n");
         N = 0;
         Z = A1;
         Q = FLOOR(Half - LOG(C) / LOG(A1));
@@ -1659,15 +1681,15 @@ void part7(VOID){
                 else Z = AInvrse;
                 } while ( ! (Break));
         PrintIfNPositive();
-        if (N == 0) printf(" ... no discrepancies found.\n");
-        printf("\n");
+        if (N == 0) printf("[CHECK   ] ... no discrepancies found.\t\t\t\t[OK]\n");
+        // printf("\n");
 
         /*=============================================*/
         Milestone = 160;
         /*=============================================*/
-        Pause();
-        printf("Searching for Overflow threshold:\n");
-        printf("This may generate an error.\n");
+        //Pause();
+        printf("[PROGRESS] Searching for Overflow threshold:\n");
+        // printf("This may generate an error.\n");
         Y = - CInvrse;
         V9 = HInvrse * Y;
         sigsave = sigfpe;
@@ -1681,11 +1703,11 @@ void part7(VOID){
 overflow:
         sigsave = 0;
         Z = V9;
-        printf("Can `Z = -Y' overflow?\n");
-        printf("Trying it on Y = %.17e .\n", Y);
+        printf("[PROGRESS] Can `Z = -Y' overflow?\n");
+        printf("[PROGRESS] Trying it on Y = %.17e .\n", Y);
         V9 = - Y;
         V0 = V9;
-        if (V - Y == V + V0) printf("Seems O.K.\n");
+        if (V - Y == V + V0) printf("[CHECK   ] Z = -Y overflow.\t\t\t\t\t[OK]\n");
         else {
                 printf("finds a ");
                 BadCond(Flaw, "-(-Y) differs from Y.\n");
@@ -1705,16 +1727,16 @@ overflow:
                 V = Y * (HInvrse * U2 - HInvrse);
                 V = V + ((One - HInvrse) * U2) * Y;
                 }
-        printf("Overflow threshold is V  = %.17e .\n", V);
-        if (I) printf("Overflow saturates at V0 = %.17e .\n", V0);
+        printf("[INFO    ] Overflow threshold is \t\t\t\tV  = %.17e \n", V);
+        if (I) printf("[INFO    ] Overflow saturates at \t\t\t\tV0 = %.17e \n", V0);
         else printf("There is no saturation value because \
 the system traps on overflow.\n");
         V9 = V * One;
-        printf("No Overflow should be signaled for V * 1 = %.17e\n", V9);
+        printf("[INFO    ] No Overflow should be signaled for V * 1 = \t\tV9 = %.17e\n", V9);
         V9 = V / One;
-        printf("                           nor for V / 1 = %.17e .\n", V9);
-        printf("Any overflow signal separating this * from the one\n");
-        printf("above is a DEFECT.\n");
+        printf("[INFO    ]                            nor for V / 1 =\t\tV9 = %.17e \n", V9);
+        //printf("Any overflow signal separating this * from the one\n");
+        //printf("above is a DEFECT.\n");
         /*=============================================*/
         Milestone = 170;
         /*=============================================*/
@@ -1726,7 +1748,7 @@ the system traps on overflow.\n");
         /*=============================================*/
         Milestone = 175;
         /*=============================================*/
-        printf("\n");
+        //printf("\n");
         for(Indx = 1; Indx <= 3; ++Indx) {
                 switch (Indx)  {
                         case 1: Z = UfThold; break;
@@ -1770,7 +1792,7 @@ int part8(VOID){
 */
         Milestone = 190;
         /*=============================================*/
-        Pause();
+        //Pause();
         X = UfThold * V;
         Y = Radix * Radix;
         if (X*Y < One || X > Y) {
@@ -1809,8 +1831,8 @@ int part8(VOID){
         Milestone = 210;
         /*=============================================*/
         MyZero = Zero;
-        printf("\n");
-        printf("What message and/or values does Division by Zero produce?\n") ;
+        //printf("\n");
+        printf("[PROGRESS] What message and/or values does Division by Zero produce?\n") ;
 #ifndef NOPAUSE
         printf("This can interupt your program.  You can ");
         printf("skip this part if you wish.\n");
@@ -1820,8 +1842,8 @@ int part8(VOID){
         if ((ch[0] == 'Y') || (ch[0] == 'y')) {
 #endif
                 sigsave = sigfpe;
-                printf("    Trying to compute 1 / 0 produces ...");
-                if (!setjmp(ovfl_buf)) printf("  %.7e .\n", One / MyZero);
+                printf("[INFO    ] Trying to compute 1 / 0 produces ...\t\t\t");
+                if (!setjmp(ovfl_buf)) printf("V = %.7e \n", One / MyZero);
                 sigsave = 0;
 #ifndef NOPAUSE
                 }
@@ -1832,8 +1854,8 @@ int part8(VOID){
         if ((ch[0] == 'Y') || (ch[0] == 'y')) {
 #endif
                 sigsave = sigfpe;
-                printf("\n    Trying to compute 0 / 0 produces ...");
-                if (!setjmp(ovfl_buf)) printf("  %.7e .\n", Zero / MyZero);
+                printf("[INFO    ] Trying to compute 0 / 0 produces ...\t\t\t");
+                if (!setjmp(ovfl_buf)) printf("V = %.7e \n", Zero / MyZero);
                 sigsave = 0;
 #ifndef NOPAUSE
                 }
@@ -1842,10 +1864,10 @@ int part8(VOID){
         /*=============================================*/
         Milestone = 220;
         /*=============================================*/
-        Pause();
+        //Pause();
         printf("\n");
         {
-                static char *msg[] = {
+                static const char *msg[] = {
                         "FAILUREs  encountered =",
                         "SERIOUS DEFECTs  discovered =",
                         "DEFECTs  discovered =",
@@ -1942,7 +1964,9 @@ TstCond (INT K, INT Valid, CHARP T)
 int K, Valid;
 char *T;
 #endif
-{ if (! Valid) { BadCond(K,T); printf(".\n"); } }
+{
+     if (! Valid) { BadCond(K,T); printf(".\n"); } 
+}
 
  void
 BadCond(INT K, CHARP T)
@@ -1951,7 +1975,7 @@ int K;
 char *T;
 #endif
 {
-        static char *msg[] = { "FAILURE", "SERIOUS DEFECT", "DEFECT", "FLAW" };
+        static const char *msg[] = { "FAILURE", "SERIOUS DEFECT", "DEFECT", "FLAW" };
 
         ErrCnt [K] = ErrCnt [K] + 1;
         printf("%s:  %s", msg[K], T);
@@ -2069,16 +2093,13 @@ TstPtUf(VOID)
 {
         N = 0;
         if (Z != Zero) {
-                printf("Since comparison denies Z = 0, evaluating ");
-                printf("(Z + Z) / Z should be safe.\n");
+                printf("[PROGRESS] Z != 0, evaluating (Z + Z) / Z.\n");
                 sigsave = sigfpe;
                 if (setjmp(ovfl_buf)) goto very_serious;
                 Q9 = (Z + Z) / Z;
-                printf("What the machine gets for (Z + Z) / Z is  %.17e .\n",
-                        Q9);
+                printf("[INFO    ] What the machine gets for (Z+Z)/Z \t\t\tQ9 = %.17e \n", Q9);
                 if (FABS(Q9 - Two) < Radix * U2) {
-                        printf("This is O.K., provided Over/Underflow");
-                        printf(" has NOT just been signaled.\n");
+                        printf("[CHECK   ] Assuming Over/Underflow was not signaled.\t\t[OK]\n");
                         }
                 else {
                         if ((Q9 < One) || (Q9 > Two)) {
@@ -2137,8 +2158,7 @@ notify(CHARP s)
 #include "paranoia.h"
 */
 
- void
-msglist(CHARPP s)
+void msglist(const char* s[])
 #ifdef KR_headers
 char **s;
 #endif
@@ -2147,7 +2167,7 @@ char **s;
  void
 Instructions(VOID)
 {
-  static char *instr[] = {
+  static const char *instr[] = {
         "Lest this program stop prematurely, i.e. before displaying\n",
         "    `END OF TEST',\n",
         "try to persuade the computer NOT to terminate execution when an",
@@ -2165,7 +2185,7 @@ Instructions(VOID)
  void
 Heading(VOID)
 {
-  static char *head[] = {
+/*  static const char *head[] = {
         "Users are invited to help debug and augment this program so it will",
         "cope with unanticipated and newly uncovered arithmetic pathologies.\n",
         "Please send suggestions and interesting results to",
@@ -2186,13 +2206,16 @@ Heading(VOID)
         "\tOther relevant compiler options:",
         0};
 
-        msglist(head);
-        }
+        msglist(head);*/
+        
+    printf("Paranoia\n");
+
+}
 
  void
 Characteristics(VOID)
 {
-        static char *chars[] = {
+        static const char *chars[] = {
          "Running this program should reveal these characteristics:",
         "     Radix = 1, 2, 4, 8, 10, 16, 100, 256 ...",
         "     Precision = number of significant digits carried.",
@@ -2223,7 +2246,7 @@ History(VOID)
  /* Converted from Brian Wichmann's Pascal version to C by Thos Sumner,
         with further massaging by David M. Gay. */
 
-  static char *hist[] = {
+  static const char *hist[] = {
         "The program attempts to discriminate among",
         "   FLAWs, like lack of a sticky bit,",
         "   Serious DEFECTs, like lack of a guard digit, and",
