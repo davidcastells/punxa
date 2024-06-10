@@ -11,7 +11,7 @@ description = "Python-based RISC-V Full System Simulator."
 readme="README.md"
 
 
-dependencies = ["py4hw","pyelftools", "demangle"]
+dependencies = ["py4hw","pyelftools", "itanium-demangler"]
 
 
 [tool.black]
