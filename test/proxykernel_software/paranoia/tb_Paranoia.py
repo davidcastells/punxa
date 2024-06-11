@@ -513,7 +513,7 @@ def runParanoia():
     prepareTest('paranoia.elf', [])
     #exit_adr = findFunction('exit')
 
-    step(380000)
+    step(390000)
     console()
     #run(0, maxclks=89800, verbose=True)
     #run(passAdr, verbose=False)
