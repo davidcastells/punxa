@@ -50,8 +50,6 @@ def is_hex(s):
 
     
 
-def write_trace(filename=ex_dir + 'newtrace.json'):
-    cpu.tracer.write_json(filename)
 
 def checkpoint(filename=ex_dir + 'checkpoint.dat'):
     import shutil
@@ -188,22 +186,6 @@ def run(upto, maxclks=100000, verbose=True, autoCheckpoint=False):
 
     print('clks: {} time: {} simulation freq: {}'.format(clkf-clk0, tf-t0, freq))
         
-        
-def step(steps = 1):
-    sim = hw.getSimulator()
-    sim.do_run = True
-    count = 0
-    
-    while (count < steps and sim.do_run == True ):
-        inipc = cpu.pc
-        while (cpu.pc == inipc and sim.do_run == True ):
-            sim.clk(1)
-            
-        count += 1
-        
-def finish():
-    tbreak(cpu.reg[1])
-    go()
 
 def regs():
     print('pc: {:016X}'.format(cpu.pc))
@@ -223,21 +205,7 @@ def regs():
         
 #     cpu.stack = newstack
     
-def stack():
-    for idx, finfo in enumerate(cpu.stack):
-        
-        #f = cpu.getPhysicalAddressQuick(finfo[0])
-        f = finfo[0]    # no need to translate, since symbols are provided in 
-                        # virtual memory addresses for kernel
-        
-        if (f in cpu.funcs.keys()):
-            print(' '*idx, cpu.funcs[f])
-        else:
-            print(' '*idx, '{:016X}'.format(f))
                   
-def console():
-    for line in cpu.console:
-        print(line)
         
 def dump(address, size=0x100):
     pos = address 
@@ -257,100 +225,7 @@ def dump(address, size=0x100):
 #    memory.write(32*4+0x00, 0xfe010113) # addi    sp,sp,-32
 #    memory.write(32*4+0x04, 0x00112e23) # sw      ra,28(sp)
 
-def reportCSR(csr):
-    if (not(isinstance(csr, str))):
-        ncsr = csr
-        csr = cpu.implemented_csrs[ncsr]
-        
-    if (isinstance(csr, str)):
-         rlist = [k for k, v in cpu.implemented_csrs.items() if v == csr]
-         if (len(rlist) == 0):
-             return
-         ncsr = rlist[0]
 
-    v = cpu.csr[ncsr]
-    
-    if (csr == 'mstatus'):
-        print('mstatus: {:016X}'.format(v))
-        part = [[63,1],[34,2],[32,2],[22,1],[21,1],[20,1],[19,1],[18,1],[17,1],[15,2],[13,2],
-                [11,2],[8,1],[7,1],[5,1],[4,1],[3,1],[1,1],[0,1]]
-        pname = ['SD - Dirty summary', 'SXL - XLEN in S-Mode', 'UXL - XLEN in U-Mode',
-                 'TSR - Trap SRET', 'TW - Timeout Wait', 'TVM - Trap Virtual Memory',
-                 'MXR - Make Executable Readable', 'SUM - Permit Supervisor User Memory Access',
-                 'MPRV - Modify Privilege', 'XS - Extensions status', 'FS - Floating point status',
-                 'MPP - M-Mode Previous Privilege','SPP - S-Mode Previous Privilege',
-                 'MPIE', 'SPIE','UPIE','MIE','SIE','UIE']
-        
-        for i in range(len(pname)):
-            x = (v >> part[i][0]) & ((1<<part[i][1])-1)
-            print('  * {}: {}'.format(pname[i], x))    
-        
-    elif (csr == 'mepc'):
-        print('mepc: {}'.format(cpu.addressFmt(v)))
-    elif (csr == 'satp'):
-        print('satp: {:016X}'.format(v))
-        n = (v >> 60) & ((1<<4)-1)
-        sn = ['Base', '','','','','','','','Sv39','Sv48','Sv57','Sv64'][n]
-        print('  * Mode: {} {}'.format(n, sn))
-        n = (v >> 44) & ((1<<16)-1)
-        print('  * ASID: {:04X}'.format(n))
-        n = v & ((1<<44)-1)
-        n2 = n << 12
-        print('  * PPN: {:016X} -> {:016X}'.format(n, n2))
-            
-    elif (csr == 'privlevel'):
-        print('privlevel: {}'.format(v), end=' ')
-        if (v == 0): print('USER')
-        if (v == 1): print('SUPERVISOR')
-        if (v == 3): print('MACHINE')
-    elif (csr == 'mip'):
-        print('mip: {:016X}'.format(v))
-        print('   MEIP: machine-mode external interrup pending', get_bit(v, 11))
-        print('   SEIP: supervisor-mode external interrup pending', get_bit(v, 9))
-        print('   UEIP: user-mode external interrup pending', get_bit(v, 8))
-        print('   MTIP: machine-mode timer interrup pending', get_bit(v, 7))
-        print('   STIP: supervisor-mode timer interrup pending', get_bit(v, 5))
-        print('   UTIP: user-mode timer interrup pending', get_bit(v, 4))
-        print('   MSIP: machine-mode software interrup pending', get_bit(v, 3))
-        print('   SSIP: supervisor-mode software interrup pending', get_bit(v, 1))
-        print('   USIP: user-mode software interrup pending', get_bit(v, 0))
-    elif (csr == 'mie'):
-        print('mie: {:016X}'.format(v))
-        print('   MEIE: machine-mode external interrup enable', get_bit(v, 11))
-        print('   SEIE: supervisor-mode external interrup enable', get_bit(v, 9))
-        print('   UEIE: user-mode external interrup enable', get_bit(v, 8))
-        print('   MTIE: machine-mode timer interrup enable', get_bit(v, 7))
-        print('   STIE: supervisor-mode timer interrup enable', get_bit(v, 5))
-        print('   UTIE: user-mode timer interrup enable', get_bit(v, 4))
-        print('   MSIE: machine-mode software interrup enable', get_bit(v, 3))
-        print('   SSIE: supervisor-mode software interrup enable', get_bit(v, 1))
-        print('   USIE: user-mode software interrup enable', get_bit(v, 0))
-        
-    elif (csr == 'medeleg'): 
-        print('medeleg:')
-        print(' delegate exceptions to lower privilege modes.')
-        msg = ['Instruction address misaligned',
-               'Instruction access fault',
-               'Illegal instruction',
-               'Breakpoint',
-                'Load address misaligned',
-                'Load access fault',
-                'Store/AMO address misaligned',
-                'Store/AMO access fault',
-                'Environment call from U-mode',
-                'Environment call from S-mode',
-                'Reserved',
-                'Environment call from M-mode',
-                'Instruction page fault',
-                'Load page fault',
-                'Reserved',
-                'Store/AMO page fault' ]
-        
-        for i in range(16):
-            if (get_bit(v, i)): print('  * {}'.format(msg[i]))
-            
-    else:
-        print('{}: {}'.format(csr, v))
 
 def get_va_parts(v):
     ret = {}
@@ -634,13 +509,15 @@ def prepareTest(test_file, args):
     cpu.reg[2] += 1
     
 
-def runTest(test_file):
-    prepareTest(test_file)
-    exit_adr = findFunction('exit')
+def runParanoia():
+    prepareTest('paranoia.elf', [])
+    #exit_adr = findFunction('exit')
 
-    
+    step(380000)
+    console()
+    #run(0, maxclks=89800, verbose=True)
     #run(passAdr, verbose=False)
-    run(exit_adr, maxclks=10000, verbose=False)
+    #run(exit_adr, maxclks=100000, verbose=True)
     #run(0, maxclks=20, verbose=False)
 
     # print('Test', test_file, end='')
@@ -654,23 +531,13 @@ def runTest(test_file):
     #    print('Test return value = {}'.format(value))
 
 
-def runMandelbrot():
-    import time
-    prepareTest('mandelbrot.elf', [])
-    exit_adr = findFunction('exit')
-    t0 = time.time()
-    run(exit_adr, maxclks=100000000, verbose=True)
-    run(0, maxclks=20, verbose=True)
-    tf = time.time()
-    print('Execution time:', tf-t0)
-    print()
-    print('Console')
-    print('-'*80)
-    console()
-
-
 def prepare():
-    prepareTest('mandelbrot.elf', ['-v', '-o', 'eclair.jpg'])
+    prepareTest('paranoia.elf', ['-v' ])
+    #step(10000000)
+    #print()
+    #print('Console Output')
+    #print('-'*80)
+    #console()
 
 if __name__ == "__main__":
     print(sys.argv)

@@ -223,17 +223,6 @@ def regs():
         
 #     cpu.stack = newstack
     
-def stack():
-    for idx, finfo in enumerate(cpu.stack):
-        
-        #f = cpu.getPhysicalAddressQuick(finfo[0])
-        f = finfo[0]    # no need to translate, since symbols are provided in 
-                        # virtual memory addresses for kernel
-        
-        if (f in cpu.funcs.keys()):
-            print(' '*idx, cpu.funcs[f])
-        else:
-            print(' '*idx, '{:016X}'.format(f))
                   
 def console():
     for line in cpu.console:
@@ -507,7 +496,7 @@ def buildHw():
     hw = HWSystem()
 
     port_c = MemoryInterface(hw, 'port_c', mem_width, 40)
-    port_m = MemoryInterface(hw, 'port_m', mem_width, 24)     # 22	bits = 
+    port_m = MemoryInterface(hw, 'port_m', mem_width, 22)     # 22	bits = 
     port_u = MemoryInterface(hw, 'port_u', mem_width, 8)      # 8 bits = 256
     port_l = MemoryInterface(hw, 'port_l', mem_width, 16)      # 8 bits = 256
     port_p = MemoryInterface(hw, 'port_p', mem_width, 24)      # 8 bits = 256
@@ -587,25 +576,21 @@ def prepareTest(test_file, args):
     hw = buildHw()
     programFile = ex_dir + test_file
     
-
-    memory.reallocArea(0x10000, 0x80000)
-
     loadElf(memory, programFile, 0 )     
     loadSymbolsFromElf(cpu,  programFile, mem_base) 
-
 
     start_adr = findFunction('_start')
 
     cpu.pc = start_adr
     
     stack_base = 0x90000
-    stack_size = 0X50000
+    stack_size = 0x10000
     cpu.reg[2] = mem_base + stack_base + stack_size - 8
 
     memory.reallocArea(stack_base, stack_size)
 
-    cpu.heap_base = 0x100000
-    cpu.heap_size = 0x040000 
+    cpu.heap_base = 0xA0000
+    cpu.heap_size = 0x20000 
 
     memory.reallocArea(cpu.heap_base, cpu.heap_size)
     
@@ -653,24 +638,16 @@ def runTest(test_file):
     #else:
     #    print('Test return value = {}'.format(value))
 
-
-def runMandelbrot():
-    import time
-    prepareTest('mandelbrot.elf', [])
-    exit_adr = findFunction('exit')
-    t0 = time.time()
-    run(exit_adr, maxclks=100000000, verbose=True)
-    run(0, maxclks=20, verbose=True)
-    tf = time.time()
-    print('Execution time:', tf-t0)
-    print()
-    print('Console')
-    print('-'*80)
-    console()
-
-
 def prepare():
-    prepareTest('mandelbrot.elf', ['-v', '-o', 'eclair.jpg'])
+    prepareTest('pjpegenc_baseline.elf', ['-m', '-o', 'eclair.jpg'])
+
+def runJpegEnc():
+    prepareTest('pjpegenc_baseline.elf', ['-m', '-o', 'eclair.jpg'])
+    step(10000000)
+    #print()
+    #print('Console Output')
+    #print('-'*80)
+    #console()
 
 if __name__ == "__main__":
     print(sys.argv)
@@ -680,11 +657,13 @@ if __name__ == "__main__":
              eval(sys.argv[2])
              os._exit(0)
          elif (sys.argv[1] == '-trace'):
-             cpu.min_clks_for_trace_event=5000
+             prepare()
+             exit_adr = findFunction('exit')
 
-             for i in range(10*60//2):
-                 # 120 minutes // 2
-                 #run(0xffffffe00060074c, maxclks=10000000000, verbose=False)
-                 run(0, maxclks=50000*60*2, verbose=False) # run simulation for 2 minutesº
-                 write_trace() 
-                 checkpoint()
+             cpu.min_clks_for_trace_event=100
+             
+             run(exit_adr, maxclks=10000000, verbose=False)
+             run(0, maxclks=100, verbose=True)
+             console()
+             write_trace()
+

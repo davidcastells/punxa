@@ -112,6 +112,7 @@ class SingleCycleRISCV(py4hw.Logic):
         self.tracer = Tracer()
         self.enable_tracing = True
         self.min_clks_for_trace_event = 0
+        self.ignore_unknown_functions = True
         
         self.initStaticCSRs()
         self.initDynamicCSRs()
@@ -123,6 +124,10 @@ class SingleCycleRISCV(py4hw.Logic):
         self.fpu = FPU(self)
         
         self.setCSR(CSR_MSTATUS, 3 << CSR_MSTATUS_FS_POS)   # Enable FPU by default
+        
+        self.reserved_address_start = -1
+        self.reserved_address_stop = -1
+        self.reserved_accessed = False
         
         self.co = self.run()
         
@@ -206,9 +211,11 @@ class SingleCycleRISCV(py4hw.Logic):
                	   # always stop the simulation on exceptions
                	   self.parent.getSimulator().stop()
 
-    def functionEnter(self, f):
+    def functionEnter(self, f, jmp=False):
+        # jmp is True if the enter to the function was done with a jump, which
+        # should provoke to pop the parent from the stack when exiting
 
-        pair = (f, self.csr[CSR_CYCLE])
+        pair = (f, self.csr[CSR_CYCLE], jmp)
         self.stack.append(pair)
 
         if (not(self.enable_tracing)):
@@ -218,7 +225,7 @@ class SingleCycleRISCV(py4hw.Logic):
         if (fn in self.funcs.keys()):
             fn = self.funcs[f]
         
-        pairn = (fn, self.csr[CSR_CYCLE])        
+        pairn = (fn, self.csr[CSR_CYCLE], jmp)        
         self.tracer.start(pairn)
                 
     def functionExit(self):
@@ -227,24 +234,31 @@ class SingleCycleRISCV(py4hw.Logic):
     		
         finfo = self.stack.pop()
 
-        if (not(self.enable_tracing)):
-            return
-
+        
         f = finfo[0]
-
-        fn = f
-        if (fn in self.funcs.keys()):
-            fn = self.funcs[f]
-
         t0 = finfo[1]
-        tf = self.csr[CSR_CYCLE]
-        dur = tf - t0
+        jmp = finfo[2]
+
+        if (self.enable_tracing):
+    
+            fn = f
+            if (fn in self.funcs.keys()):
+                fn = self.funcs[f]
+
+            if (isinstance(fn, int) and self.ignore_unknown_functions):
+                fn = None
+
+            tf = self.csr[CSR_CYCLE]
+            dur = tf - t0
+            
+            if (dur < self.min_clks_for_trace_event) or (fn is None):
+                self.tracer.ignore(fn)
+            else:            
+                self.tracer.complete((fn, t0, tf))
         
-        if (dur < self.min_clks_for_trace_event):
-            self.tracer.ignore(fn)
-            return
-        
-        self.tracer.complete((fn, t0, tf))
+        if (jmp):
+            # repeat exit
+            self.functionExit()
 
     def fetchIns(self):
         # Check interrupts
@@ -359,6 +373,8 @@ class SingleCycleRISCV(py4hw.Logic):
         return address
             
     def virtualMemoryLoad(self, address, b):
+        self.checkReservedAddress(address, b)
+        
         address = yield from self.getPhysicalAddress(address)    
         if (self.mem_width == 32):
             value = yield from self.memoryLoad32(address, b)
@@ -369,6 +385,8 @@ class SingleCycleRISCV(py4hw.Logic):
         return value
 
     def virtualMemoryWrite(self, va, b, v):
+        self.checkReservedAddress(va, b)
+        
         pa = yield from self.getPhysicalAddress(va)
         #print('\nWR va: {:016X} -> pa: {:016X}'.format(va,pa)) 
         if (self.mem_width == 32):
@@ -951,10 +969,10 @@ class SingleCycleRISCV(py4hw.Logic):
             self.freg[rd] = self.fpu.max_dp(self.freg[rs1], self.freg[rs2])
             pr('fr{} = max(fr{}, fr{}) -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FCLASS.H'):
-            self.reg[rd] = fclass_16(fs1)
+            self.reg[rd] = self.fpu.class_hp(self.freg[rs1])
             pr('r{} = class(fr{}) -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCLASS.S'):
-            self.reg[rd] = fclass_32(fs1)
+            self.reg[rd] = self.fpu.class_sp(self.freg[rs1])
             pr('r{} = class(fr{}) -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCLASS.D'):
             self.reg[rd] = self.fpu.class_dp(self.freg[rs1])
@@ -1077,26 +1095,37 @@ class SingleCycleRISCV(py4hw.Logic):
             self.freg[rd] = fp.sp_to_ieee754(self.reg[rs1])
             pr('fr{} = r{} -> {:016X}'.format(rd, rs1, self.freg[rd]))
 
-        elif (op == 'LR.D'):
-            address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
-            pr('r{} = [r{}] -> [{}]={:016X}'.format(rd, rs1, self.addressFmt(address), self.reg[rd]))
         elif (op == 'LR.W'):
             address = self.reg[rs1]
             self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
+            self.reserveAddress(address, 32//8)
             pr('r{} = [r{}] -> [{}]={:08X}'.format(rd, rs1, self.addressFmt(address), self.reg[rd]))
+        elif (op == 'LR.D'):
+            address = self.reg[rs1]
+            self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
+            self.reserveAddress(address, 64//8)
+            pr('r{} = [r{}] -> [{}]={:016X}'.format(rd, rs1, self.addressFmt(address), self.reg[rd]))
         elif (op == 'SC.D'):
             address = self.reg[rs1]
             newvalue = self.reg[rs2]
-            yield from self.virtualMemoryWrite(address, 64//8, newvalue)
-            self.reg[rd] = 0    # always success
-            pr('[r{}] = r{} -> [{}]={:016X}'.format(rs1, rs2, self.addressFmt(address), newvalue))
+            if (self.isReserved(address, 64//8)):
+                yield from self.virtualMemoryWrite(address, 64//8, newvalue)
+                self.reg[rd] = 0    
+                self.reserveAddress(-1,-1)
+                pr('[r{}] = r{}, r[{}]=0 -> [{}]={:016X}'.format(rs1, rs2, rd, self.addressFmt(address), newvalue))
+            else:
+                self.reg[rd] = 1
+                pr('[r{}] = r{}, r[{}]=1 -> not reserved'.format(rs1, rs2, rd))
         elif (op == 'SC.W'):
             address = self.reg[rs1]
             newvalue = self.reg[rs2]
-            yield from self.virtualMemoryWrite(address, 32//8, newvalue)
-            self.reg[rd] = 0    # always success
-            pr('[r{}] = r{} -> [{}]={:08X}'.format(rs1, rs2, self.addressFmt(address), newvalue))
+            if (self.isReserved(address, 32//8)):
+                yield from self.virtualMemoryWrite(address, 32//8, newvalue)
+                self.reg[rd] = 0    
+                pr('[r{}] = r{}, r{}=0 -> [{}]={:016X}'.format(rs1, rs2, rd, self.addressFmt(address), newvalue))
+            else:
+                self.reg[rd] = 1
+                pr('[r{}] = r{}, r{}=1 -> [{}] not reserved'.format(rs1, rs2, rd, self.addressFmt(address)))
         elif (op == 'AMOADD.D'):
             address = self.reg[rs1]
             self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
@@ -1256,23 +1285,32 @@ class SingleCycleRISCV(py4hw.Logic):
         fd3 = fp.ieee754_to_dp(self.freg[rs3])
 
         
-        if (op == 'FMADD.S'):
-            self.freg[rd] = fp.dp_to_ieee754(fs1 * fs2 + fs3)      
+        if (op == 'FMADD.H'):
+            self.freg[rd] = self.fpu.fma_hp(self.freg[rs1] , self.freg[rs2] , self.freg[rs3])
+            pr('fr{} = fr{} * fr{} + fr{} -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
+        elif (op == 'FMADD.S'):
+            self.freg[rd] = self.fpu.fma_sp(self.freg[rs1] , self.freg[rs2] , self.freg[rs3]) 
             pr('fr{} = fr{} * fr{} + fr{} -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
         elif (op == 'FMADD.D'):
             self.freg[rd] = self.fpu.fma_dp(self.freg[rs1] , self.freg[rs2] , self.freg[rs3])
             pr('fr{} = fr{} * fr{} + fr{} -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
-        elif (op == 'FMADD.H'):
-            self.freg[rd] = self.fpu.fma_half(self.freg[rs1] , self.freg[rs2] , self.freg[rs3])
+        elif (op == 'FMSUB.H'):
+            self.freg[rd] = self.fpu.fms_hp(self.freg[rs1] , self.freg[rs2] , self.freg[rs3])
             pr('fr{} = fr{} * fr{} + fr{} -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
         elif (op == 'FMSUB.S'):
-            self.freg[rd] = fp.dp_to_ieee754(fs1 * fs2 - fs3)      
+            self.freg[rd] = self.fpu.fms_sp(self.freg[rs1] , self.freg[rs2] , self.freg[rs3])
             pr('r{} = r{} * r{} - r{} -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
+        elif (op == 'FNMSUB.H'):
+            self.freg[rd] = self.fpu.fnms_hp(self.freg[rs1] , self.freg[rs2] , self.freg[rs3])
+            pr('fr{} = fr{} * fr{} + fr{} -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
         elif (op == 'FNMSUB.S'):
-            self.freg[rd] = fp.dp_to_ieee754(-(fs1 * fs2 - fs3))      
+            self.freg[rd] = self.fpu.fnms_sp(self.freg[rs1] , self.freg[rs2] , self.freg[rs3])
             pr('r{} = -(r{} * r{} - r{}) -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
+        elif (op == 'FNMADD.H'):
+            self.freg[rd] = self.fpu.fnma_hp(self.freg[rs1] , self.freg[rs2] , self.freg[rs3])      
+            pr('r{} = -(r{} * r{} + r{}) -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
         elif (op == 'FNMADD.S'):
-            self.freg[rd] = fp.dp_to_ieee754(-(fs1 * fs2 + fs3))      
+            self.freg[rd] = self.fpu.fnma_sp(self.freg[rs1] , self.freg[rs2] , self.freg[rs3])      
             pr('r{} = -(r{} * r{} + r{}) -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
         elif (op == 'FMSUB.D'):
             self.freg[rd] = self.fpu.fms_dp(self.freg[rs1] , self.freg[rs2], self.freg[rs3])
@@ -1287,7 +1325,7 @@ class SingleCycleRISCV(py4hw.Logic):
             self.reg[rd] = signExtend(self.freg[rs1] & ((1<<16)-1), 16) & ((1<<64)-1)
             pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FMV.H.X'):
-            self.freg[rd] = self.reg[rs1]
+            self.freg[rd] = self.fpu.hp_box(self.reg[rs1])
             pr('fr{} = r{} -> {:016X}'.format(rd, rs1, self.freg[rd]))
         elif (op == 'FMV.X.D'):
             self.reg[rd] = self.freg[rs1] 
@@ -1510,7 +1548,7 @@ class SingleCycleRISCV(py4hw.Logic):
             self.writeCSR(csr, rs1)
             csrname = self.implemented_csrs[csr]
             if (rd == 0):
-                pr('{} = {} -> {:016X}'.format(csrname, rs1, self.reg[rd]))
+                pr('{} = {}'.format(csrname, rs1))
             else:
                 pr('r{} = {}, {} = {} -> {:016X}'.format(rd, csrname, csrname, rs1, self.reg[rd]))
         elif (op == 'CSRRSI'):
@@ -1572,13 +1610,13 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'JALR'):
             self.should_jump = True
             self.jmp_address = (self.reg[rs1] + simm12) & ((1<<64)-2)
+            jmpCall = (rd == 0)
             if (rd == 0):
                 pr('r{} +  {} -> {}'.format(rs1, simm12, self.addressFmt(self.jmp_address)))
-                self.functionExit()
             else:
                 self.reg[rd] = self.pc + 4
                 pr('r{} + {} , r{} = pc+4 -> {},{}'.format(rs1, simm12, rd, self.addressFmt(self.jmp_address), self.addressFmt(self.reg[rd])))
-                self.functionEnter(self.jmp_address)
+            self.functionEnter(self.jmp_address, jmpCall)
         elif (op == 'FLD'):
             off = simm12 
             address = self.reg[rs1] + off
@@ -1614,11 +1652,12 @@ class SingleCycleRISCV(py4hw.Logic):
         off21_J = compose_sign(ins, [[31,1], [12,8], [20,1], [21,10]]) << 1  
 
         if (op == 'JAL'):
+            jmpCall = (rd == 0)
             if (rd != 0):
                 self.reg[rd] = self.pc + 4
             self.should_jump = True
             self.jmp_address = self.pc + off21_J
-            self.functionEnter(self.jmp_address)
+            self.functionEnter(self.jmp_address, jmpCall)
             
             if (rd== 0):
                 pr('pc + {} ->  {}'.format(off21_J, self.addressFmt(self.jmp_address)))
@@ -1686,6 +1725,9 @@ class SingleCycleRISCV(py4hw.Logic):
         if (op == 'SD'):
             pr('[r{} + {}] = r{} -> [{}]={:016X}'.format(rs1, soff12, rs2, saddr, self.reg[rs2]))
             yield from self.virtualMemoryWrite(address, 64//8, self.reg[rs2])
+        elif (op == 'FSH'):
+            pr('[r{} + {}] = fr{} -> [{}]={:016X}'.format(rs1, soff12, rs2, saddr, self.freg[rs2]))
+            yield from self.virtualMemoryWrite(address, 16//8, self.freg[rs2])
         elif (op == 'FSD'):
             pr('[r{} + {}] = fr{} -> [{}]={:016X}'.format(rs1, soff12, rs2, saddr, self.freg[rs2]))
             yield from self.virtualMemoryWrite(address, 64//8, self.freg[rs2])
@@ -1744,6 +1786,8 @@ class SingleCycleRISCV(py4hw.Logic):
             self.jmp_address = self.reg[c_rs1]
             if (c_rs1 == 1):
                 self.functionExit()
+            else:
+                self.functionEnter(self.jmp_address, True)
             pr('r{} -> {:016X}'.format(c_rs1, self.jmp_address))
         elif (op == 'C.JALR'):
             self.should_jump = True
@@ -1859,6 +1903,12 @@ class SingleCycleRISCV(py4hw.Logic):
             value = self.reg[c_rs2] 
             yield from self.virtualMemoryWrite(address, 64//8, value)
             pr('[r{}+{}]=r{} -> [{}]={:016X}'.format(c_rs1, off, c_rs2, self.addressFmt(address), value))
+        elif (op == 'C.FSD'):
+            off = compose(ins, [[5,2],[10,3]]) << 3
+            address = self.reg[c_rs1] + off
+            value = self.freg[c_rs2] 
+            yield from self.virtualMemoryWrite(address, 64//8, value)
+            pr('[r{}+{}]=fr{} -> [{}]={:016X}'.format(c_rs1, off, c_rs2, self.addressFmt(address), value))
         else:
             print(' - CS-Type instruction not supported!')
             self.parent.getSimulator().stop()
@@ -1949,6 +1999,7 @@ class SingleCycleRISCV(py4hw.Logic):
             self.should_jump = True
             self.jmp_address = self.pc + off12
             pr('{} -> {:016X}'.format(off12, self.jmp_address))
+            self.functionEnter(self.jmp_address, True)
         else:
             print(' - CJ-Type instruction not supported!')
             self.parent.getSimulator().stop()
@@ -1975,6 +2026,11 @@ class SingleCycleRISCV(py4hw.Logic):
             off = compose(ins, [[5,1],[10,3],[6,1]]) << 2
             address = self.reg[c_rs1] + off
             self.freg[c_rd] = yield from self.virtualMemoryLoad(address, 32//8)
+            pr('fr{} = [r{} + {}] -> {:016X}'.format(c_rd, c_rs1, off, self.freg[c_rd]))
+        elif (op == 'C.FLD'):
+            off = compose(ins, [[5,2],[10,3]]) << 3
+            address = self.reg[c_rs1] + off
+            self.freg[c_rd] = yield from self.virtualMemoryLoad(address, 64//8)
             pr('fr{} = [r{} + {}] -> {:016X}'.format(c_rd, c_rs1, off, self.freg[c_rd]))
         else:
             print(' - CL-Type instruction not supported!')
@@ -2153,6 +2209,30 @@ class SingleCycleRISCV(py4hw.Logic):
         vcsr, allowed = self.readCSR(idx)
         self.writeCSR(idx, vcsr & (~v & ((1<<64)-1)))
     
+    def reserveAddress(self, add, count):
+        self.reserved_address_start = add
+        self.reserved_address_stop = add + count
+        self.reserved_accessed = False        
+        
+    def checkReservedAddress(self, add, count):
+        # activates the access flag is anyone access the range
+        a = add
+        b = add + count
+        ra = self.reserved_address_start
+        rb = self.reserved_address_stop
+        if  (a < rb and b > ra):
+            self.reserved_accessed = True
+    
+    def isReserved(self, add, count):
+        if (self.reserved_accessed): return False
+        a = add
+        b = add + count
+        ra = self.reserved_address_start
+        rb = self.reserved_address_stop
+        if (a >= ra and a < rb) and (b > ra and b <= rb):
+            return True
+        return False
+            
     def clock(self):
         next(self.co)
         # @todo the acquisition of values should be done before the block edge
