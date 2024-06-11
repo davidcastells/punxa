@@ -380,6 +380,9 @@ FLOAT W;
 FLOAT X, X1, X2, X8, Random1;
 FLOAT Y, Y1, Y2, Random2;
 FLOAT Z, PseudoZero, Z1, Z2, Z9;
+
+FLOAT SQRTV; // Sqrt temporal value
+
 int ErrCnt[4];
 int fpecount;
 int Milestone;
@@ -511,7 +514,7 @@ int main(int argc, char* args[])
             Radix = Radix - W;
         } while ( Radix == Zero);
         if (Radix < Two) Radix = One;
-        printf("[INFO    ]\t\t\t\t\t\t\tRadix = %f \n", Radix);
+        printf("[INFO    ]\t\t\t\t\t\t\tRadix = %g \n", Radix);
         if (Radix != 1) 
         {
             W = One;
@@ -526,7 +529,7 @@ int main(int argc, char* args[])
 
         U1 = One / W;
         U2 = Radix * U1;
-        printf("[INFO    ] Closest relative separation found \t\t\tU1 = %.7e \n", U1);
+        printf("[INFO    ] Closest relative separation found \t\t\tU1 = %g \n", U1);
         printf("[PROGRESS] Recalculating radix and precision\n");
 
         /*save old values*/
@@ -620,19 +623,22 @@ int main(int argc, char* args[])
         }
         if (Radix == One)
             printf("[INFO    ] logarithmic encoding has precision characterized solely by U1.\n");
-        else printf("[INFO    ] Significant digits \t\t\t\t\tPrecision =  %f \n", Precision);
+        else printf("[INFO    ] Significant digits \t\t\t\t\tPrecision =  %g \n", Precision);
         TstCond (Serious, U2 * Nine * Nine * TwoForty < One, "Precision worse than 5 decimal figures  ");
         /*=============================================*/
         Milestone = 30;
         /*=============================================*/
         /* Test for extra-precise subepressions */
         X = FABS(((Four / Three - One) - One / Four) * Three - One / Four);
+
         do  
         {
             Z2 = X;
             X = (One + (Half * Z2 + ThirtyTwo * Z2 * Z2)) - One;
         } while ( ! ((Z2 <= X) || (X <= Zero)));
+
         X = Y = Z = FABS((Three / Four - Two / Three) * Three - One / Four);
+
         do
         {
             Z1 = Z;
@@ -682,7 +688,8 @@ int main(int argc, char* args[])
                                         printf("Z1 = %.7e, or Z2 = %.7e ", Z1, Z2);
                                         notify("of an\nextra-precision");
                                         }
-                                if (Z1 != Z2 || Z1 > Zero) {
+                                if (Z1 != Z2 || Z1 > Zero) 
+                                {
                                         X = Z1 / U1;
                                         Y = Z2 / U2;
                                         if (Y > X) X = Y;
@@ -740,8 +747,7 @@ int main(int argc, char* args[])
         Y = FABS((X + Z) - X * X) - U2;
         X = One - U2;
         Z = FABS((X - U2) - X * X) - U1;
-        TstCond (Failure, (Y <= Zero)
-                   && (Z <= Zero), "* gets too many final digits wrong.\n");
+        TstCond (Failure, (Y <= Zero) && (Z <= Zero), "* gets too many final digits wrong.\n");
         Y = One - U2;
         X = One + U2;
         Z = One / Y;
@@ -751,8 +757,7 @@ int main(int argc, char* args[])
         X = X - Z;
         T = Nine / TwentySeven;
         Z = Z - T;
-        TstCond(Defect, X == Zero && Y == Zero && Z == Zero,
-                "Division lacks a Guard Digit, so error can exceed 1 ulp\n\
+        TstCond(Defect, X == Zero && Y == Zero && Z == Zero, "Division lacks a Guard Digit, so error can exceed 1 ulp\n\
 or  1/3  and  3/9  and  9/27 may disagree");
         Y = F9 / One;
         X = F9 - Half;
@@ -761,15 +766,14 @@ or  1/3  and  3/9  and  9/27 may disagree");
         T = X / One;
         X = T - X;
         if ((X == Zero) && (Y == Zero) && (Z == Zero)) GDiv = Yes;
-        else {
-                GDiv = No;
-                TstCond (Serious, False,
-                        "Division lacks a Guard Digit, so X/1 != X");
-                }
+        else 
+        {
+            GDiv = No;
+            TstCond (Serious, False, "Division lacks a Guard Digit, so X/1 != X");
+        }
         X = One / (One + U2);
         Y = X - Half - Half;
-        TstCond (Serious, Y < Zero,
-                   "Computed value of 1/1.000..1 >= 1");
+        TstCond (Serious, Y < Zero, "Computed value of 1/1.000..1 >= 1");
         X = One - U2;
         Y = One + Radix * U2;
         Z = X * Radix;
@@ -778,8 +782,7 @@ or  1/3  and  3/9  and  9/27 may disagree");
         StickyBit = T / Radix;
         X = R - X;
         Y = StickyBit - Y;
-        TstCond (Failure, X == Zero && Y == Zero,
-                        "* and/or / gets too many last digits wrong");
+        TstCond (Failure, X == Zero && Y == Zero, "* and/or / gets too many last digits wrong");
         Y = One - U1;
         X = One - F9;
         Y = One - Y;
@@ -787,11 +790,11 @@ or  1/3  and  3/9  and  9/27 may disagree");
         Z = Radix - BMinusU2;
         T = Radix - T;
         if ((X == U1) && (Y == U1) && (Z == U2) && (T == U2)) GAddSub = Yes;
-        else {
-                GAddSub = No;
-                TstCond (Serious, False,
-                        "- lacks Guard Digit, so cancellation is obscured");
-                }
+        else 
+        {
+            GAddSub = No;
+            TstCond (Serious, False, "- lacks Guard Digit, so cancellation is obscured");
+        }
                 
         if (F9 != One && F9 - One >= Zero) 
         {
@@ -1074,9 +1077,18 @@ void part4(VOID){
         Milestone = 70;
         /*=============================================*/
         printf("[PROGRESS] Running test of square root(x).\n");
+        SQRTV = SQRT(Zero);
+        printf("[INFO    ] SQRT(0) \t\t\t\t\t\tSQRTV = %g\n", SQRTV);
         TstCond (Failure, (Zero == SQRT(Zero)), "Square root of 0.0 == 0 ?");
+
+        SQRTV = SQRT(- Zero);
+        printf("[INFO    ] SQRT(-0) \t\t\t\t\t\tSQRTV = %g\n", SQRTV);
         TstCond (Failure, (- Zero == SQRT(- Zero)), "Square root of -0.0 == -0 ?");
+
+        SQRTV = SQRT(One);
+        printf("[INFO    ] SQRT(1) \t\t\t\t\t\tSQRTV = %g\n", SQRTV);
         TstCond (Failure, (One == SQRT(One)), "Square root 1.0 == 1 ?");
+        
         MinSqEr = Zero;
         MaxSqEr = Zero;
         J = Zero;
@@ -1185,7 +1197,8 @@ void part5(VOID){
         SqRWrng = False;
         Anomaly = False;
         RSqrt = Other; /* ~dgh */
-        if (Radix != One) {
+        if (Radix != One)
+        {
                 printf("[PROGRESS] Testing whether sqrt is rounded or chopped.\n");
                 D = FLOOR(Half + POW(Radix, One + Precision - FLOOR(Precision)));
         /* ... == Radix^(1 + fract) if (Precision == Integer + fract. */
@@ -1266,34 +1279,40 @@ void part5(VOID){
                                         }
                                 }
                         }
-                if ((I == 0) || Anomaly) {
-                        BadCond(Failure, "Anomalous arithmetic with Integer < ");
-                        printf("Radix^Precision = %.7e\n", W);
-                        printf(" fails test whether sqrt rounds or chops.\n");
-                        SqRWrng = True;
-                        }
+                if ((I == 0) || Anomaly) 
+                {
+                    BadCond(Failure, "Anomalous arithmetic with Integer < ");
+                    printf("Radix^Precision = %.7e\n", W);
+                    printf(" fails test whether sqrt rounds or chops.\n");
+                    SqRWrng = True;
                 }
-        if (! Anomaly) {
-                if (! ((MinSqEr < Zero) || (MaxSqEr > Zero))) {
-                        RSqrt = Rounded;
-                        printf("[CHECK   ] Square root appears to be correctly rounded.\t\t[OK]\n");
-                        }
-                else  {
-                        if ((MaxSqEr + U2 > U2 - Half) || (MinSqEr > Half)
-                                || (MinSqEr + Radix < Half)) SqRWrng = True;
-                        else {
-                                RSqrt = Chopped;
-                                printf("Square root appears to be chopped.\n");
-                                }
-                        }
+            }
+        if (! Anomaly) 
+        {
+            if (! ((MinSqEr < Zero) || (MaxSqEr > Zero))) 
+            {
+                RSqrt = Rounded;
+                printf("[CHECK   ] Square root appears to be correctly rounded.\t\t[OK]\n");
+            }
+            else  
+            {
+                if ((MaxSqEr + U2 > U2 - Half) || (MinSqEr > Half)
+                        || (MinSqEr + Radix < Half)) SqRWrng = True;
+                else 
+                {
+                    RSqrt = Chopped;
+                    printf("Square root appears to be chopped.\n");
                 }
-        if (SqRWrng) {
-                printf("Square root is neither chopped nor correctly rounded.\n");
-                printf("Observed errors run from %.7e ", MinSqEr - Half);
-                printf("to %.7e ulps.\n", Half + MaxSqEr);
-                TstCond (Serious, MaxSqEr - MinSqEr < Radix * Radix,
-                        "sqrt gets too many last digits wrong");
-                }
+            }
+        }
+
+        if (SqRWrng) 
+        {
+            printf("[INFO    ] Square root is neither chopped nor correctly rounded.\n");
+            printf("[INFO    ] Observed errors run from \t\t\t\tErrDown = %.7e \n", MinSqEr - Half);
+            printf("[INFO    ] Observed errors run from \t\t\t\tErrUp = %.7e \n", Half + MaxSqEr);
+            TstCond (Serious, MaxSqEr - MinSqEr < Radix * Radix, "sqrt gets too many last digits wrong");
+        }
         /*=============================================*/
         Milestone = 90;
         /*=============================================*/
@@ -1305,55 +1324,69 @@ void part5(VOID){
         Z = -Zero;
         M = 3;
         Break = False;
-        do  {
-                X = One;
+        do  
+        {
+            X = One;
+            SR3980();
+            if (I <= 10) 
+            {
+                I = 1023;
                 SR3980();
-                if (I <= 10) {
-                        I = 1023;
-                        SR3980();
-                        }
-                if (Z == MinusOne) Break = True;
-                else {
-                        Z = MinusOne;
-                        /* .. if(-1)^N is invalid, replace MinusOne by One. */
-                        I = - 4;
-                        }
-                } while ( ! Break);
+            }
+            
+            if (Z == MinusOne) Break = True;
+            else 
+            {
+                Z = MinusOne;
+                /* .. if(-1)^N is invalid, replace MinusOne by One. */
+                I = - 4;
+            }
+        } while ( ! Break);
+
         PrintIfNPositive();
         N1 = N;
         N = 0;
         Z = A1;
-        M = (int)FLOOR(Two * LOG(W) / LOG(A1));
+        M = (int) FLOOR(Two * LOG(W) / LOG(A1));
+
         Break = False;
-        do  {
-                X = Z;
-                I = 1;
-                SR3980();
-                if (Z == AInvrse) Break = True;
-                else Z = AInvrse;
-                } while ( ! (Break));
+        do  
+        {
+            X = Z;
+            I = 1;
+            SR3980();
+            if (Z == AInvrse) Break = True;
+            else Z = AInvrse;
+        } while ( ! (Break));
+        
         /*=============================================*/
-                Milestone = 100;
+        Milestone = 100;
         /*=============================================*/
         /*  Powers of Radix have been tested, */
         /*         next try a few primes     */
         M = NoTrials;
         Z = Three;
-        do  {
-                X = Z;
-                I = 1;
-                SR3980();
-                do  {
-                        Z = Z + Two;
-                        } while ( Three * FLOOR(Z / Three) == Z );
-                } while ( Z < Eight * Three );
-        if (N > 0) {
-                printf("Errors like this may invalidate financial calculations\n");
-                printf("\tinvolving interest rates.\n");
-                }
+        do  
+        {
+            X = Z;
+            I = 1;
+            SR3980();
+            do  
+            {
+                Z = Z + Two;
+            } while ( Three * FLOOR(Z / Three) == Z );
+        } while ( Z < Eight * Three );
+
+        if (N > 0) 
+        {
+            printf("Errors like this may invalidate financial calculations\n");
+            printf("\tinvolving interest rates.\n");
+        }
         PrintIfNPositive();
         N += N1;
-        if (N == 0) printf("[CHECK   ] Z^i ... no discrepancies found.\t\t\t[OK]\n");
+
+        if (N == 0) 
+            printf("[CHECK   ] Z^i ... no discrepancies found.\t\t\t[OK]\n");
         //if (N > 0) Pause();
         //else printf("\n");
         /*=============================================*/
@@ -1366,14 +1399,16 @@ void part6(VOID){
         /*=============================================*/
         printf("[PROGRESS] Seeking Underflow thresholds UfThold and E0.\n");
         D = U1;
-        if (Precision != FLOOR(Precision)) {
-                D = BInvrse;
-                X = Precision;
-                do  {
-                        D = D * BInvrse;
-                        X = X - One;
-                        } while ( X > Zero);
-                }
+        if (Precision != FLOOR(Precision)) 
+        {
+            D = BInvrse;
+            X = Precision;
+            do  
+            {
+                D = D * BInvrse;
+                X = X - One;
+            } while ( X > Zero);
+        }
         Y = One;
         Z = D;
         /* ... D is power of 1/Radix < 1. */
@@ -1526,25 +1561,32 @@ void part6(VOID){
                         IEEE = (Y == E0);
                         }
                 }
-        if (UfNGrad) {
-                printf("\n");
-                sigsave = sigfpe;
-                if (setjmp(ovfl_buf)) {
-                        printf("Underflow / UfThold failed!\n");
-                        R = H + H;
-                        }
-                else R = SQRT(Underflow / UfThold);
-                sigsave = 0;
-                if (R <= H) {
-                        Z = R * UfThold;
-                        X = Z * (One + R * H * (One + H));
-                        }
-                else {
-                        Z = UfThold;
-                        X = Z * (One + H * H * (One + H));
-                        }
-                if (! ((X == Z) || (X - Z != Zero))) {
-                        BadCond(Flaw, "");
+                
+        if (UfNGrad) 
+        {
+            printf("\n");
+            sigsave = sigfpe;
+            if (setjmp(ovfl_buf)) 
+            {
+                printf("Underflow / UfThold failed!\n");
+                R = H + H;
+            }
+            else R = SQRT(Underflow / UfThold);
+            sigsave = 0;
+
+            if (R <= H) 
+            {
+                Z = R * UfThold;
+                X = Z * (One + R * H * (One + H));
+            }
+            else 
+            {
+                Z = UfThold;
+                X = Z * (One + H * H * (One + H));
+            }
+            if (! ((X == Z) || (X - Z != Zero))) 
+            {
+                BadCond(Flaw, "");
                         printf("X = %.17e\n\tis not equal to Z = %.17e .\n", X, Z);
                         Z9 = X - Z;
                         printf("yet X - Z yields %.17e .\n", Z9);
@@ -1853,34 +1895,25 @@ int part8(VOID){
         MyZero = Zero;
         //printf("\n");
         printf("[PROGRESS] What message and/or values does Division by Zero produce?\n") ;
-#ifndef NOPAUSE
-        printf("This can interupt your program.  You can ");
-        printf("skip this part if you wish.\n");
-        printf("Do you wish to compute 1 / 0? ");
-        fflush(stdout);
-        read (KEYBOARD, ch, 8);
-        if ((ch[0] == 'Y') || (ch[0] == 'y')) {
-#endif
-                sigsave = sigfpe;
-                printf("[INFO    ] Trying to compute 1 / 0 produces ...\t\t\t");
-                if (!setjmp(ovfl_buf)) printf("V = %.7e \n", One / MyZero);
-                sigsave = 0;
-#ifndef NOPAUSE
-                }
-        else printf("O.K.\n");
-        printf("\nDo you wish to compute 0 / 0? ");
-        fflush(stdout);
-        read (KEYBOARD, ch, 80);
-        if ((ch[0] == 'Y') || (ch[0] == 'y')) {
-#endif
-                sigsave = sigfpe;
-                printf("[INFO    ] Trying to compute 0 / 0 produces ...\t\t\t");
-                if (!setjmp(ovfl_buf)) printf("V = %.7e \n", Zero / MyZero);
-                sigsave = 0;
-#ifndef NOPAUSE
-                }
-        else printf("O.K.\n");
-#endif
+
+        sigsave = sigfpe;
+        printf("[INFO    ] Trying to compute 1 / 0 produces ...\t\t\t");
+        if (!setjmp(ovfl_buf)) 
+        {
+            printf("V = %.7e \n", One / MyZero);
+            TstCond (Flaw, (isinf(One/MyZero) ), "1/0 != Infinity");
+        }
+        sigsave = 0;
+
+        sigsave = sigfpe;
+        printf("[INFO    ] Trying to compute 0 / 0 produces ...\t\t\t");
+        if (!setjmp(ovfl_buf)) 
+        {   
+            printf("V = %.7e \n", Zero / MyZero);
+            TstCond (Flaw, (isnan(Zero/MyZero) ), "0/0 != Nan");
+        }
+        sigsave = 0;
+
         /*=============================================*/
         Milestone = 220;
         /*=============================================*/
@@ -1919,31 +1952,33 @@ int part8(VOID){
                         printf(" program's subsequent diagnoses.\n");
                         }
                 }
-        else {
-                printf("No failures, defects nor flaws have been discovered.\n");
-                if (! ((RMult == Rounded) && (RDiv == Rounded)
-                        && (RAddSub == Rounded) && (RSqrt == Rounded)))
-                        printf("The arithmetic diagnosed seems Satisfactory.\n");
-                else {
-                        if (StickyBit >= One &&
-                                (Radix - Two) * (Radix - Nine - One) == Zero) {
-                                printf("Rounding appears to conform to ");
-                                printf("the proposed IEEE standard P");
-                                if ((Radix == Two) &&
-                                         ((Precision - Four * Three * Two) *
-                                          ( Precision - TwentySeven -
+        else 
+        {
+            printf("No failures, defects nor flaws have been discovered.\n");
+            if (! ((RMult == Rounded) && (RDiv == Rounded)
+                    && (RAddSub == Rounded) && (RSqrt == Rounded)))
+                    printf("The arithmetic diagnosed seems Satisfactory.\n");
+            else 
+            {
+                if (StickyBit >= One && (Radix - Two) * (Radix - Nine - One) == Zero) 
+                {
+                    printf("Rounding appears to conform to ");
+                    printf("the proposed IEEE standard P");
+                    if ((Radix == Two) && ((Precision - Four * Three * Two) * ( Precision - TwentySeven -
                                            TwentySeven + One) == Zero))
-                                        printf("754");
-                                else printf("854");
-                                if (IEEE) printf(".\n");
-                                else {
-                                        printf(",\nexcept for possibly Double Rounding");
-                                        printf(" during Gradual Underflow.\n");
-                                        }
-                                }
-                        printf("The arithmetic diagnosed appears to be Excellent!\n");
-                        }
+                            printf("754");
+                    else printf("854");
+                    
+                    if (IEEE) printf(".\n");
+                    else 
+                    {
+                        printf(",\nexcept for possibly Double Rounding");
+                        printf(" during Gradual Underflow.\n");
+                    }
                 }
+                printf("The arithmetic diagnosed appears to be Excellent!\n");
+            }
+        }   
         if (fpecount)
                 printf("\nA total of %d floating point exceptions were registered.\n",
                         fpecount);
