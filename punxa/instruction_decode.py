@@ -142,6 +142,7 @@ CSSTypeIns = ['C.SWSP','C.SDSP','C.SQSP','C.FSWSP','C.FSDSP']
 CBTypeIns = ['C.ANDI','C.BEQZ', 'C.BNEZ','C.SRLI','C.SRAI']
 CJTypeIns = ['C.J']
 
+CustomTypeIns = ['CUSTOM0', 'CUSTOM1', 'CUSTOM2', 'CUSTOM3' ]
 
 def is_compact_ins(ins):
     opcode_c = ins & 0x03
@@ -270,12 +271,11 @@ def ins_to_str(ins, isa=32):
         if (func3 == 0x04): return 'LBU'
         if (func3 == 0x05): return 'LHU'
         if (func3 == 0x06): return 'LWU'
-        
     if (opcode == 0x07):
         if (func3 == 0x01): return 'FLH'
         if (func3 == 0x02): return 'FLW'
-        if (func3 == 0x03): return 'FLD'
-    
+        if (func3 == 0x03): return 'FLD'    
+    if (opcode == 0x0b): return 'CUSTOM0'
     if (opcode == 0x0F):
         if (func3 == 0x00): return 'FENCE'
         if (func3 == 0x01): return 'FENCE.I'
@@ -284,7 +284,6 @@ def ins_to_str(ins, isa=32):
             if (imm12 == 0x00): return 'CBO.CLEAN'
             if (imm12 == 0x02): return 'CBO.FLUSH'
             if (imm12 == 0x04): return 'CBO.ZERO'
-        
     if (opcode == 0x13):
         if (func3 == 0x00):
             return 'ADDI'
@@ -338,19 +337,17 @@ def ins_to_str(ins, isa=32):
             if (func7 == 0x00): return 'SRLIW'
             if (func7 == 0x20): return 'SRAIW'
             if (func7 == 0x30): return 'RORIW'
-
     if (opcode == 0x23):
         if (func3 == 0x00): return 'SB'
         if (func3 == 0x01): return 'SH'
         if (func3 == 0x02): return 'SW'
         if (func3 == 0x03): return 'SD'
-
     if (opcode == 0x27):
         if (func3 == 0x01): return 'FSH'
         if (func3 == 0x02): return 'FSW'
         if (func3 == 0x03): return 'FSD'
         if (func3 == 0x04): return 'FSQ'
-
+    if (opcode == 0x2B): return 'CUSTOM1'
     if (opcode == 0x2F):
         if (func3 == 0x02):
             if (func5 == 0x00): return 'AMOADD.W'
@@ -375,8 +372,7 @@ def ins_to_str(ins, isa=32):
             if (func5 == 0b10000): return 'AMOMIN.D'
             if (func5 == 0b10100): return 'AMOMAX.D'
             if (func5 == 0b11000): return 'AMOMINU.D'
-            if (func5 == 0b11100): return 'AMOMAXU.D'
-            
+            if (func5 == 0b11100): return 'AMOMAXU.D'            
     if (opcode == 0x33):
         if (func3 == 0x00):
             if (func7 == 0x00): return 'ADD'
@@ -430,11 +426,9 @@ def ins_to_str(ins, isa=32):
             if (func7 == 0x01): return 'REMU'
             if (func7 == 0x05): return 'MAXU'
             if (func7 == 0x20): return 'ANDN'
-            if (func7 == 0x24): return 'BFP'
-            
+            if (func7 == 0x24): return 'BFP'            
     if (opcode == 0x37):
         return 'LUI'
-    
     if (opcode == 0x3B):
         if (func3 == 0x00):
             if (func7 == 0x00): return 'ADDW'
@@ -461,31 +455,26 @@ def ins_to_str(ins, isa=32):
             if (func7 == 0x01): return 'REMW'
             if (func7 == 0x10): return 'SH3ADD.UW'
         if (func3 == 0x07):
-            if (func7 == 0x01): return 'REMUW'
-    
+            if (func7 == 0x01): return 'REMUW'    
     if (opcode == 0x43):
         if (func2 == 0x00): return 'FMADD.S'
         if (func2 == 0x01): return 'FMADD.D'
         if (func2 == 0x02): return 'FMADD.H'
-        
     if (opcode == 0x47):
         if (func2 == 0x00):
             return 'FMSUB.S'
         if (func2 == 0x01):
             return 'FMSUB.D'
-        
     if (opcode == 0x4b):
         if (func2 == 0x00):
             return 'FNMSUB.S'
         if (func2 == 0x01):
-            return 'FNMSUB.D'
-        
+            return 'FNMSUB.D'        
     if (opcode == 0x4f):
         if (func2 == 0x00):
             return 'FNMADD.S'
         if (func2 == 0x01):
             return 'FNMADD.D'
-        
     if (opcode == 0x53):
         if (func7 == 0x00): return 'FADD.S'
         if (func7 == 0x01): return 'FADD.D'
@@ -598,9 +587,10 @@ def ins_to_str(ins, isa=32):
         if (func7 == 0x7A):
             if (rs2 == 0x00):
                 if (func3 == 0x00): return 'FMV.H.X'
+    if (opcode == 0x5B): return 'CUSTOM2'
     if (opcode == 0x63):
-        if (func3 == 0b000): return 'BEQ'
-        if (func3 == 0b001): return 'BNE'
+        if (func3 == 0x00): return 'BEQ'
+        if (func3 == 0x01): return 'BNE'
         if (func3 == 0b100): return 'BLT'
         if (func3 == 0b101): return 'BGE'
         if (func3 == 0b110): return 'BLTU'
@@ -608,8 +598,7 @@ def ins_to_str(ins, isa=32):
     if (opcode == 0x67):
         if (func3 == 0b000): return 'JALR'
     if (opcode == 0x6F):
-        return 'JAL'
-    
+        return 'JAL'    
     if (opcode == 0x73):
         if (func3 == 0x00):
             if (ins == 0x00000073): return 'ECALL'
@@ -625,7 +614,7 @@ def ins_to_str(ins, isa=32):
         if (func3 == 0x05): return 'CSRRWI'
         if (func3 == 0x06): return 'CSRRSI'
         if (func3 == 0x07): return 'CSRRCI'
-        
+    if (opcode == 0x7b): return 'CUSTOM3' 
     #return 'Unknown opcode {:x} func3 {:x} func7 {:x} full {:08x}'.format(opcode, func3, func7, ins)
     if (is_compact_ins(ins)):
         raise Exception('Unknown opcode {:02b} func3 {:03b}  full {:08x}'.format(opcode_c, func3_c,  ins))
