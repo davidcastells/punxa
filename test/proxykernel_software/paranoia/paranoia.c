@@ -455,13 +455,14 @@ int main(int argc, char* args[])
                    && (One > Zero) && (One + One == Two),
                         "0+0 != 0, 1-1 != 0, 1 <= 0, or 1+1 != 2");
         Z = - Zero;
-        if (Z != 0.0) {
-                ErrCnt[Failure] = ErrCnt[Failure] + 1;
-                printf("Comparison alleges that -0.0 is Non-zero!\n");
-                U2 = 0.001;
-                Radix = 1;
-                TstPtUf();
-                }
+        if (Z != 0.0) 
+        {
+            ErrCnt[Failure] = ErrCnt[Failure] + 1;
+            printf("Comparison alleges that -0.0 is Non-zero!\n");
+            U2 = 0.001;
+            Radix = 1;
+            TstPtUf();
+        }
         TstCond (Failure, (Three == Two + One) && (Four == Three + One)
                    && (Four + Two * (- Two) == Zero)
                    && (Four - Three - One == Zero),
@@ -474,24 +475,6 @@ int main(int argc, char* args[])
         TstCond (Failure, Half + MinusOne + Half == Zero,
                   "1/2 + (-1) + 1/2 != 0");
         /*=============================================*/
-        /*SPLIT
-        {
-                extern void part2(VOID), part3(VOID), part4(VOID),
-                        part5(VOID), part6(VOID), part7(VOID);
-                int part8(VOID);
-
-                part2();
-                part3();
-                part4();
-                part5();
-                part6();
-                part7();
-                return part8();
-                }
-        }
-#include "paranoia.h"
-void part2(VOID){
-*/
         Milestone = 10;
         /*=============================================*/
         TstCond (Failure, (Nine == Three * Three)
@@ -505,38 +488,42 @@ void part2(VOID){
                    && ( TwoForty / Four - Five * Three * Four == Zero)
                    && ( TwoForty / Five - Four * Three * Four == Zero),
                   "5 != 4+1, 240/3 != 80, 240/4 != 60, or 240/5 != 48");
-        if (ErrCnt[Failure] == 0) {
-                printf("[CHECK   ] -1, 0, 1/2, 1, 2, 3, 4, 5, 9, 27, 32 & 240\t\t[OK]\n");
-                //printf("\n");
-                }
+        if (ErrCnt[Failure] == 0)
+        {
+            printf("[CHECK   ] -1, 0, 1/2, 1, 2, 3, 4, 5, 9, 27, 32 & 240\t\t[OK]\n");
+        }
         printf("[PROGRESS] Searching for Radix and Precision.\n");
         W = One;
-        do  {
-                W = W + W;
-                Y = W + One;
-                Z = Y - W;
-                Y = Z - One;
-                } while (MinusOne + FABS(Y) < Zero);
+        do  
+        {
+            W = W + W;
+            Y = W + One;
+            Z = Y - W;
+            Y = Z - One;
+        } while (MinusOne + FABS(Y) < Zero);
         /*.. now W is just big enough that |((W+1)-W)-1| >= 1 ...*/
         Precision = Zero;
         Y = One;
-        do  {
-                Radix = W + Y;
-                Y = Y + Y;
-                Radix = Radix - W;
-                } while ( Radix == Zero);
+        do  
+        {
+            Radix = W + Y;
+            Y = Y + Y;
+            Radix = Radix - W;
+        } while ( Radix == Zero);
         if (Radix < Two) Radix = One;
         printf("[INFO    ]\t\t\t\t\t\t\tRadix = %f \n", Radix);
-        if (Radix != 1) {
-                W = One;
-                do  {
-                        Precision = Precision + One;
-                        W = W * Radix;
-                        Y = W + One;
-                        } while ((Y - W) == One);
-                }
-        /*... now W == Radix^Precision is barely too big to satisfy (W+1)-W == 1
-                                                      ...*/
+        if (Radix != 1) 
+        {
+            W = One;
+            do  
+            {
+                Precision = Precision + One;
+                W = W * Radix;
+                Y = W + One;
+            } while ((Y - W) == One);
+        }
+        //... now W == Radix^Precision is barely too big to satisfy (W+1)-W == 1
+
         U1 = One / W;
         U2 = Radix * U1;
         printf("[INFO    ] Closest relative separation found \t\t\tU1 = %.7e \n", U1);
@@ -556,12 +543,13 @@ void part2(VOID){
         if (X < U2) X = U2;
 
         /*... now X = (unknown no.) ulps of 1+...*/
-        do  {
-                U2 = X;
-                Y = Half * U2 + ThirtyTwo * U2 * U2;
-                Y = One + Y;
-                X = Y - One;
-                } while ( ! ((U2 <= X) || (X <= Zero)));
+        do  
+        {
+            U2 = X;
+            Y = Half * U2 + ThirtyTwo * U2 * U2;
+            Y = One + Y;
+            X = Y - One;
+        } while ( ! ((U2 <= X) || (X <= Zero)));
 
         /*... now U2 == 1 ulp of 1 + ... */
         X = Two / Three;
@@ -572,17 +560,22 @@ void part2(VOID){
         if (X < U1) X = U1;
 
         /*... now  X == (unknown no.) ulps of 1 -... */
-        do  {
-                U1 = X;
-                Y = Half * U1 + ThirtyTwo * U1 * U1;
-                Y = Half - Y;
-                X = Half + Y;
-                Y = Half - X;
-                X = Half + Y;
-                } while ( ! ((U1 <= X) || (X <= Zero)));
+        do  
+        {
+            U1 = X;
+            Y = Half * U1 + ThirtyTwo * U1 * U1;
+            Y = Half - Y;
+            X = Half + Y;
+            Y = Half - X;
+            X = Half + Y;
+        } while ( ! ((U1 <= X) || (X <= Zero)));
+        
         /*... now U1 == 1 ulp of 1 - ... */
-        if (U1 == E1) printf("[CHECK   ] confirms closest relative separation U1 \t\t[OK]\n");
-        else printf("gets better closest relative separation U1 = %.7e .\n", U1);
+        if (U1 == E1) 
+            printf("[CHECK   ] confirms closest relative separation U1 \t\t[OK]\n");
+        else 
+            printf("gets better closest relative separation U1 = %.7e .\n", U1);
+
         W = One / U1;
         F9 = (Half - U1) + Half;
         Radix = FLOOR(0.01 + U2 / U1);
@@ -595,16 +588,15 @@ void part2(VOID){
         /*=============================================*/
         Milestone = 20;
         /*=============================================*/
-        TstCond (Failure, F9 - Half < Half,
-                   "(1-U1)-1/2 < 1/2 is FALSE, prog. fails?");
+        TstCond (Failure, F9 - Half < Half, "(1-U1)-1/2 < 1/2 is FALSE, prog. fails?");
         X = F9;
         I = 1;
         Y = X - Half;
         Z = Y - Half;
-        TstCond (Failure, (X != One)
-                   || (Z == Zero), "Comparison is fuzzy,X=1 but X-1/2-1/2 != 0");
+        TstCond (Failure, (X != One) || (Z == Zero), "Comparison is fuzzy,X=1 but X-1/2-1/2 != 0");
         X = One + U2;
         I = 0;
+        
         /*=============================================*/
         Milestone = 25;
         /*=============================================*/
@@ -612,68 +604,80 @@ void part2(VOID){
         BMinusU2 = Radix - One;
         BMinusU2 = (BMinusU2 - U2) + One;
         /* Purify Integers */
-        if (Radix != One)  {
-                X = - TwoForty * LOG(U1) / LOG(Radix);
-                Y = FLOOR(Half + X);
-                if (FABS(X - Y) * Four < One) X = Y;
-                Precision = X / TwoForty;
-                Y = FLOOR(Half + Precision);
-                if (FABS(Precision - Y) * TwoForty < Half) Precision = Y;
-                }
-        if ((Precision != FLOOR(Precision)) || (Radix == One)) {
-                printf("Precision cannot be characterized by an Integer number\n");
-                printf("of significant digits but, by itself, this is a minor flaw.\n");
-                }
+        if (Radix != One)  
+        {
+            X = - TwoForty * LOG(U1) / LOG(Radix);
+            Y = FLOOR(Half + X);
+            if (FABS(X - Y) * Four < One) X = Y;
+            Precision = X / TwoForty;
+            Y = FLOOR(Half + Precision);
+            if (FABS(Precision - Y) * TwoForty < Half) Precision = Y;
+        }
+        if ((Precision != FLOOR(Precision)) || (Radix == One)) 
+        {
+            printf("Precision cannot be characterized by an Integer number\n");
+            printf("of significant digits but, by itself, this is a minor flaw.\n");
+        }
         if (Radix == One)
-                printf("logarithmic encoding has precision characterized solely by U1.\n");
-        else printf("[INFO    ] Significant digits \t\t\t\t\tPrecision =  %f \n",
-                        Precision);
-        TstCond (Serious, U2 * Nine * Nine * TwoForty < One,
-                   "Precision worse than 5 decimal figures  ");
+            printf("[INFO    ] logarithmic encoding has precision characterized solely by U1.\n");
+        else printf("[INFO    ] Significant digits \t\t\t\t\tPrecision =  %f \n", Precision);
+        TstCond (Serious, U2 * Nine * Nine * TwoForty < One, "Precision worse than 5 decimal figures  ");
         /*=============================================*/
         Milestone = 30;
         /*=============================================*/
         /* Test for extra-precise subepressions */
         X = FABS(((Four / Three - One) - One / Four) * Three - One / Four);
-        do  {
-                Z2 = X;
-                X = (One + (Half * Z2 + ThirtyTwo * Z2 * Z2)) - One;
-                } while ( ! ((Z2 <= X) || (X <= Zero)));
+        do  
+        {
+            Z2 = X;
+            X = (One + (Half * Z2 + ThirtyTwo * Z2 * Z2)) - One;
+        } while ( ! ((Z2 <= X) || (X <= Zero)));
         X = Y = Z = FABS((Three / Four - Two / Three) * Three - One / Four);
-        do  {
-                Z1 = Z;
-                Z = (One / Two - ((One / Two - (Half * Z1 + ThirtyTwo * Z1 * Z1))
-                        + One / Two)) + One / Two;
-                } while ( ! ((Z1 <= Z) || (Z <= Zero)));
-        do  {
-                do  {
-                        Y1 = Y;
-                        Y = (Half - ((Half - (Half * Y1 + ThirtyTwo * Y1 * Y1)) + Half
-                                )) + Half;
-                        } while ( ! ((Y1 <= Y) || (Y <= Zero)));
-                X1 = X;
-                X = ((Half * X1 + ThirtyTwo * X1 * X1) - F9) + F9;
-                } while ( ! ((X1 <= X) || (X <= Zero)));
-        if ((X1 != Y1) || (X1 != Z1)) {
-                BadCond(Serious, "Disagreements among the values X1, Y1, Z1,\n");
-                printf("respectively  %.7e,  %.7e,  %.7e,\n", X1, Y1, Z1);
-                printf("are symptoms of inconsistencies introduced\n");
-                printf("by extra-precise evaluation of arithmetic subexpressions.\n");
-                notify("Possibly some part of this");
-                if ((X1 == U1) || (Y1 == U1) || (Z1 == U1))  printf(
-                        "That feature is not tested further by this program.\n") ;
+        do
+        {
+            Z1 = Z;
+            Z = (One / Two - ((One / Two - (Half * Z1 + ThirtyTwo * Z1 * Z1))
+                    + One / Two)) + One / Two;
+        } while ( ! ((Z1 <= Z) || (Z <= Zero)));
+
+        do 
+        {
+            do  
+            {
+                Y1 = Y;
+                Y = (Half - ((Half - (Half * Y1 + ThirtyTwo * Y1 * Y1)) + Half )) + Half;
+            } while ( ! ((Y1 <= Y) || (Y <= Zero)));
+
+            X1 = X;
+            X = ((Half * X1 + ThirtyTwo * X1 * X1) - F9) + F9;
+        } while ( ! ((X1 <= X) || (X <= Zero)));
+        
+        if ((X1 != Y1) || (X1 != Z1)) 
+        {
+            BadCond(Serious, "Disagreements among the values X1, Y1, Z1,\n");
+            printf("respectively  %.7e,  %.7e,  %.7e,\n", X1, Y1, Z1);
+            printf("are symptoms of inconsistencies introduced\n");
+            printf("by extra-precise evaluation of arithmetic subexpressions.\n");
+            notify("Possibly some part of this");
+            if ((X1 == U1) || (Y1 == U1) || (Z1 == U1))  
+                printf("That feature is not tested further by this program.\n") ;
+        }
+        else  
+        {
+            if ((Z1 != U1) || (Z2 != U2)) 
+            {
+                if ((Z1 >= U1) || (Z2 >= U2)) 
+                {
+                    BadCond(Failure, "");
+                    notify("Precision");
+                    printf("\tU1 = %.7e, Z1 - U1 = %.7e\n",U1,Z1-U1);
+                    printf("\tU2 = %.7e, Z2 - U2 = %.7e\n",U2,Z2-U2);
                 }
-        else  {
-                if ((Z1 != U1) || (Z2 != U2)) {
-                        if ((Z1 >= U1) || (Z2 >= U2)) {
-                                BadCond(Failure, "");
-                                notify("Precision");
-                                printf("\tU1 = %.7e, Z1 - U1 = %.7e\n",U1,Z1-U1);
-                                printf("\tU2 = %.7e, Z2 - U2 = %.7e\n",U2,Z2-U2);
-                                }
-                        else {
-                                if ((Z1 <= Zero) || (Z2 <= Zero)) {
-                                        printf("Because of unusual Radix = %f", Radix);
+                else 
+                {  
+                    if ((Z1 <= Zero) || (Z2 <= Zero)) 
+                    {
+                        printf("Because of unusual Radix = %f", Radix);
                                         printf(", or exact rational arithmetic a result\n");
                                         printf("Z1 = %.7e, or Z2 = %.7e ", Z1, Z2);
                                         notify("of an\nextra-precision");
@@ -693,26 +697,23 @@ void part2(VOID){
                                 }
                         }
                 }
-        //Pause();
+
+        
         /*=============================================*/
-        /*SPLIT
-        }
-#include "paranoia.h"
-void part3(VOID){
-*/
         Milestone = 35;
         /*=============================================*/
-        if (Radix >= Two) {
-                X = W / (Radix * Radix);
-                Y = X + One;
-                Z = Y - X;
-                T = Z + U2;
-                X = T - Z;
-                TstCond (Failure, X == U2,
-                        "[CHECK   ] Subtraction is not normalized X=Y,X+Z != Y+Z!");
-                if (X == U2) printf(
-                        "[CHECK   ] Subtraction appears to be normalized.\t\t[OK]\n");
-                }
+        if (Radix >= Two) 
+        {
+            X = W / (Radix * Radix);
+            Y = X + One;
+            Z = Y - X;
+            T = Z + U2;
+            X = T - Z;
+            TstCond (Failure, X == U2, "[CHECK   ] Subtraction is not normalized X=Y,X+Z != Y+Z!");
+
+            if (X == U2) 
+                printf("[CHECK   ] Subtraction appears to be normalized.\t\t[OK]\n");
+        }
         printf("[PROGRESS] Checking for guard digit in *, /, and -.\n");
         Y = F9 * One;
         Z = One * F9;
@@ -729,11 +730,11 @@ void part3(VOID){
         X = X * (Radix - One);
         T = T * (Radix - One);
         if ((X == Zero) && (Y == Zero) && (Z == Zero) && (T == Zero)) GMult = Yes;
-        else {
-                GMult = No;
-                TstCond (Serious, False,
-                        "* lacks a Guard Digit, so 1*X != X");
-                }
+        else 
+        {
+            GMult = No;
+            TstCond (Serious, False, "* lacks a Guard Digit, so 1*X != X");
+        }
         Z = Radix * U2;
         X = One + Z;
         Y = FABS((X + Z) - X * X) - U2;
@@ -791,12 +792,14 @@ or  1/3  and  3/9  and  9/27 may disagree");
                 TstCond (Serious, False,
                         "- lacks Guard Digit, so cancellation is obscured");
                 }
-        if (F9 != One && F9 - One >= Zero) {
-                BadCond(Serious, "comparison alleges  (1-U1) < 1  although\n");
-                printf("  subtraction yields  (1-U1) - 1 = 0 , thereby vitiating\n");
-                printf("  such precautions against division by zero as\n");
-                printf("  ...  if (X == 1.0) {.....} else {.../(X-1.0)...}\n");
-                }
+                
+        if (F9 != One && F9 - One >= Zero) 
+        {
+            BadCond(Serious, "comparison alleges  (1-U1) < 1  although\n");
+            printf("  subtraction yields  (1-U1) - 1 = 0 , thereby vitiating\n");
+            printf("  such precautions against division by zero as\n");
+            printf("  ...  if (X == 1.0) {.....} else {.../(X-1.0)...}\n");
+        }
         if (GMult == Yes && GDiv == Yes && GAddSub == Yes) 
             printf("[CHECK   ] *, /, and - appear to have guard digits.\t\t[OK]\n");
         /*=============================================*/
@@ -810,28 +813,31 @@ or  1/3  and  3/9  and  9/27 may disagree");
         RadixD2 = Radix / Two;
         A1 = Two;
         Done = False;
-        do  {
-                AInvrse = Radix;
-                do  {
-                        X = AInvrse;
-                        AInvrse = AInvrse / A1;
-                        } while ( ! (FLOOR(AInvrse) != AInvrse));
-                Done = (X == One) || (A1 > Three);
-                if (! Done) A1 = Nine + One;
-                } while ( ! (Done));
+        do  
+        {
+            AInvrse = Radix;
+            do  
+            {
+                X = AInvrse;
+                AInvrse = AInvrse / A1;
+            } while ( ! (FLOOR(AInvrse) != AInvrse));
+            Done = (X == One) || (A1 > Three);
+            if (! Done) A1 = Nine + One;
+        } while ( ! (Done));
+
         if (X == One) A1 = Radix;
         AInvrse = One / A1;
         X = A1;
         Y = AInvrse;
         Done = False;
-        do  {
-                Z = X * Y - Half;
-                TstCond (Failure, Z == Half,
-                        "X * (1/X) differs from 1");
-                Done = X == Radix;
-                X = Radix;
-                Y = One / X;
-                } while ( ! (Done));
+        do  
+        {
+            Z = X * Y - Half;
+            TstCond (Failure, Z == Half, "X * (1/X) differs from 1");
+            Done = X == Radix;
+            X = Radix;
+            Y = One / X;
+        } while ( ! (Done));
         Y2 = One + U2;
         Y1 = One - U2;
         X = OneAndHalf - U2;
@@ -844,26 +850,28 @@ or  1/3  and  3/9  and  9/27 may disagree");
         Y = (Y + U2) * Y1;
         X = X - OneAndHalf;
         Y = Y - OneAndHalf;
-        if ((X == Zero) && (Y == Zero) && (Z == Zero) && (T <= Zero)) {
-                X = (OneAndHalf + U2) * Y2;
-                Y = OneAndHalf - U2 - U2;
-                Z = OneAndHalf + U2 + U2;
-                T = (OneAndHalf - U2) * Y1;
-                X = X - (Z + U2);
-                StickyBit = Y * Y1;
-                S = Z * Y2;
-                T = T - Y;
-                Y = (U2 - Y) + StickyBit;
-                Z = S - (Z + U2 + U2);
-                StickyBit = (Y2 + U2) * Y1;
-                Y1 = Y2 * Y1;
-                StickyBit = StickyBit - Y2;
-                Y1 = Y1 - Half;
-                if ((X == Zero) && (Y == Zero) && (Z == Zero) && (T == Zero)
-                        && ( StickyBit == Zero) && (Y1 == Half)) {
-                        RMult = Rounded;
-                        printf("Multiplication appears to round correctly.\n");
-                        }
+        if ((X == Zero) && (Y == Zero) && (Z == Zero) && (T <= Zero)) 
+        {
+            X = (OneAndHalf + U2) * Y2;
+            Y = OneAndHalf - U2 - U2;
+            Z = OneAndHalf + U2 + U2;
+            T = (OneAndHalf - U2) * Y1;
+            X = X - (Z + U2);
+            StickyBit = Y * Y1;
+            S = Z * Y2;
+            T = T - Y;
+            Y = (U2 - Y) + StickyBit;
+            Z = S - (Z + U2 + U2);
+            StickyBit = (Y2 + U2) * Y1;
+            Y1 = Y2 * Y1;
+            StickyBit = StickyBit - Y2;
+            Y1 = Y1 - Half;
+            if ((X == Zero) && (Y == Zero) && (Z == Zero) && (T == Zero)
+                    && ( StickyBit == Zero) && (Y1 == Half)) 
+            {
+                RMult = Rounded;
+                printf("[CHECK   ] Multiplication appears to round correctly.\t\t[OK]\n");
+            }
                 else    if ((X + U2 == Zero) && (Y < Zero) && (Z + U2 == Zero)
                                 && (T < Zero) && (StickyBit + U2 == Zero)
                                 && (Y1 < Half)) {
@@ -959,7 +967,7 @@ void part4(VOID){
                                 printf("[CHECK   ] Addition/Subtraction appears to round correctly.\t[OK]\n");
                                 if (GAddSub == No) notify("Add/Subtract");
                                 }
-                        else printf("Addition/Subtraction neither rounds nor chops.\n");
+                        else printf("[CHECK   ] Addition/Subtraction neither rounds nor chops.\t[FLAW]\n");
                         }
                 else printf("Addition/Subtraction neither rounds nor chops.\n");
                 }
@@ -970,20 +978,24 @@ void part4(VOID){
         Z = X - Y;
         T = Y - X;
         StickyBit = Z + T;
-        if (StickyBit != Zero) {
-                S = Zero;
-                BadCond(Flaw, "(X - Y) + (Y - X) is non zero!\n");
-                }
+        if (StickyBit != Zero) 
+        {
+            S = Zero;
+            BadCond(Flaw, "(X - Y) + (Y - X) is non zero!\n");
+        }
         StickyBit = Zero;
+        
         if ((GMult == Yes) && (GDiv == Yes) && (GAddSub == Yes)
                 && (RMult == Rounded) && (RDiv == Rounded)
-                && (RAddSub == Rounded) && (FLOOR(RadixD2) == RadixD2)) {
-                printf("Checking for sticky bit.\n");
+                && (RAddSub == Rounded) && (FLOOR(RadixD2) == RadixD2)) 
+        {
+                printf("[PROGRESS] Checking for sticky bit.\n");
                 X = (Half + U1) * U2;
                 Y = Half * U2;
                 Z = One + Y;
                 T = One + X;
-                if ((Z - One <= Zero) && (T - One >= U2)) {
+                if ((Z - One <= Zero) && (T - One >= U2)) 
+                {
                         Z = T + Y;
                         Y = Z - X;
                         if ((Z - T >= U2) && (Y - T == Zero)) {
@@ -1018,14 +1030,22 @@ void part4(VOID){
             printf("Sticky bit apparently used correctly.\n");
         else 
             printf("[CHECK   ] Sticky bit used incorrectly or not at all.\t\t[FLAW]\n");
-        TstCond (Flaw, !(GMult == No || GDiv == No || GAddSub == No ||
+
+        TstCond(Flaw, GMult == Yes, "Guard digit for multiplication");
+        TstCond(Flaw, GDiv == Yes, "Guard digit for division");
+        TstCond(Flaw, GAddSub == Yes, "Guard digit for add/subtract");
+        TstCond(Flaw, RMult != Other, "Mult Rounding");
+        TstCond(Flaw, RDiv != Other, "Div Rounding");
+        TstCond(Flaw, RAddSub != Other, "Add/Sub Rounding");
+        
+        /*TstCond (Flaw, !(GMult == No || GDiv == No || GAddSub == No ||
                         RMult == Other || RDiv == Other || RAddSub == Other),
                 "lack(s) of guard digits or failure(s) to correctly round or chop\n\
-(noted above) count as one flaw in the final tally below");
+(noted above) count as one flaw in the final tally below");*/
         /*=============================================*/
         Milestone = 60;
         /*=============================================*/
-        printf("\n");
+
         printf("[PROGRESS] Does Multiplication commute?\n");
         printf("[PROGRESS] Testing on %d random pairs.\n", NoTrials);
         Random9 = SQRT(3.0);
@@ -1054,9 +1074,9 @@ void part4(VOID){
         Milestone = 70;
         /*=============================================*/
         printf("[PROGRESS] Running test of square root(x).\n");
-        TstCond (Failure, (Zero == SQRT(Zero))
-                   && (- Zero == SQRT(- Zero))
-                   && (One == SQRT(One)), "Square root of 0.0, -0.0 or 1.0 wrong");
+        TstCond (Failure, (Zero == SQRT(Zero)), "Square root of 0.0 == 0 ?");
+        TstCond (Failure, (- Zero == SQRT(- Zero)), "Square root of -0.0 == -0 ?");
+        TstCond (Failure, (One == SQRT(One)), "Square root 1.0 == 1 ?");
         MinSqEr = Zero;
         MaxSqEr = Zero;
         J = Zero;
@@ -1958,28 +1978,23 @@ Pause(VOID)
         ++PageNo;
         }
 
- void
-TstCond (INT K, INT Valid, CHARP T)
-#ifdef KR_headers
-int K, Valid;
-char *T;
-#endif
+// Valid condition
+void TstCond (INT K, INT Valid, CHARP T)
 {
-     if (! Valid) { BadCond(K,T); printf(".\n"); } 
+     if (! Valid)
+     {
+        BadCond(K,T); 
+        //printf(".\n"); 
+    } 
 }
 
- void
-BadCond(INT K, CHARP T)
-#ifdef KR_headers
-int K;
-char *T;
-#endif
+void BadCond(INT K, CHARP T)
 {
-        static const char *msg[] = { "FAILURE", "SERIOUS DEFECT", "DEFECT", "FLAW" };
+    static const char *msg[] = { "FAILURE", "SERIOUS DEFECT", "DEFECT", "FLAW" };
 
-        ErrCnt [K] = ErrCnt [K] + 1;
-        printf("%s:  %s", msg[K], T);
-        }
+    ErrCnt [K] = ErrCnt [K] + 1;
+    printf("[CHECK   ] %50s:\t[%s]\n", T, msg[K]);
+}
 
 
  FLOAT
