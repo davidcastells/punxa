@@ -33,6 +33,7 @@ void usage()
     printf("  -v\tVerbose output\n");
     printf("  -t\tMeasure time\n");
     printf("  -p\tMeasure power\n");
+    printf("  -ci\tUse custom instructions for YUV conversion\n");
     printf("\n");
 }
 
@@ -44,6 +45,7 @@ int staticInputImage = 0;
 int staticOutputStream = 0;
 int reportTime = 0;
 int testPower = 0;
+int useCustomInstructionsForYUV = 0;
 
 /**
  * Parse parameters
@@ -83,6 +85,10 @@ int parseArguments(int argc, char* args[])
         else if (strcmp(args[i], "-p") == 0)
         {
             testPower = 1;
+        }
+        else if (strcmp(args[i], "-ci") == 0)
+        {
+            useCustomInstructionsForYUV = 1;
         }
     }
     
