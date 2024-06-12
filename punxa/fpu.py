@@ -225,9 +225,6 @@ class FPU:
     def sign_n_inject_sp(self, xa, xb):
         return self.sign_inject_sp(xa, self.sp_box(xb ^ (1<<31)))
 
-    def fsub_dp(self, xa, xb):
-        fp = FloatingPointHelper()
-        return self.fma_dp(fp.dp_to_ieee754(1.0), xa , FloatingPointHelper.ieee754_dp_neg(xb))  
     
     def fms_hp(self, xa, xb, xc):
         self.cpu.writeCSR(CSR_FFLAGS, 0)
@@ -266,7 +263,22 @@ class FPU:
         return self.sp_box(r.convert('sp'))
 
     def fms_dp(self, xa, xb, xc):
-        return self.fma_dp(xa , xb, FloatingPointHelper.ieee754_dp_neg(xc))
+        self.cpu.writeCSR(CSR_FFLAGS, 0)
+        a = FPNum(xa, 'dp')
+        b = FPNum(xb, 'dp')
+        c = FPNum(xc, 'dp')
+    
+        a.reducePrecision(IEEE754_DP_PRECISION)
+        b.reducePrecision(IEEE754_DP_PRECISION)
+        c.reducePrecision(IEEE754_DP_PRECISION)
+        
+        r = a.mul(b).sub(c)
+    
+        r.reducePrecisionWithRounding(IEEE754_DP_PRECISION)
+        
+        if (r.inexact): self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
+                
+        return r.convert('dp')
  
     def fnms_hp(self, xa, xb, xc):
         self.cpu.writeCSR(CSR_FFLAGS, 0)
@@ -304,6 +316,24 @@ class FPU:
         if (r.inexact): self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
                 
         return self.sp_box(r.convert('sp'))
+    
+    def fnms_dp(self, xa, xb, xc):
+        self.cpu.writeCSR(CSR_FFLAGS, 0)
+        a = FPNum(xa, 'dp')
+        b = FPNum(xb, 'dp')
+        c = FPNum(xc, 'dp')
+    
+        a.reducePrecision(IEEE754_DP_PRECISION)
+        b.reducePrecision(IEEE754_DP_PRECISION)
+        c.reducePrecision(IEEE754_DP_PRECISION)
+        
+        r = a.mul(b).sub(c).neg()
+    
+        r.reducePrecisionWithRounding(IEEE754_DP_PRECISION)
+        
+        if (r.inexact): self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
+                
+        return r.convert('dp')
 
     def fma_hp(self, xa, xb, xc):
         self.cpu.writeCSR(CSR_FFLAGS, 0)
@@ -342,38 +372,22 @@ class FPU:
         return self.sp_box(r.convert('sp'))
 
     def fma_dp(self, xa, xb, xc):
-        # fused multiply-add r = a*b +c
-        # update floating point flags
-        from decimal import Decimal
+        self.cpu.writeCSR(CSR_FFLAGS, 0)
+        a = FPNum(xa, 'dp')
+        b = FPNum(xb, 'dp')
+        c = FPNum(xc, 'dp')
+    
+        a.reducePrecision(IEEE754_DP_PRECISION)
+        b.reducePrecision(IEEE754_DP_PRECISION)
+        c.reducePrecision(IEEE754_DP_PRECISION)
         
-        fp = FloatingPointHelper()
-        a = fp.ieee754_to_dp(xa)
-        b = fp.ieee754_to_dp(xb)
-        c = fp.ieee754_to_dp(xc)
+        r = a.mul(b).add(c)
+    
+        r.reducePrecisionWithRounding(IEEE754_DP_PRECISION)
         
-        self.cpu.csr[CSR_FFLAGS] = 0
-        r = a*b+c
-            
-        if (math.isnan(r)):
-            xr = 0x7FF8000000000000 # signaling Nan
-            self.cpu.csr[CSR_FFLAGS] |= CSR_FFLAGS_INVALID_OPERATION_MASK 
-        elif (math.isinf(a) and math.isinf(b)):
-            if (math.copysign(1, a) == math.copysign(1, b)):
-                r = a           
-                xr = fp.dp_to_ieee754(r)
-            else:
-                print('Invalid inf')
-                xr = 0x7FF8000000000000 # signaling Nan
-                self.cpu.csr[CSR_FFLAGS] |= CSR_FFLAGS_INVALID_OPERATION_MASK
-        else:
-            rd = Decimal(a)*Decimal(b)+Decimal(c)
-        
-            if (rd != r):
-                self.cpu.csr[CSR_FFLAGS] |= CSR_FFLAGS_INEXACT_MASK
-            
-            xr = fp.dp_to_ieee754(r)
-            
-        return xr
+        if (r.inexact): self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
+                
+        return r.convert('dp')
 
     def fnma_hp(self, xa, xb, xc):
         self.cpu.writeCSR(CSR_FFLAGS, 0)
@@ -533,10 +547,10 @@ class FPU:
         self.cpu.writeCSR(CSR_FFLAGS, 0)
         a = FPNum(self.hp_unbox(xa), 'hp')
         
-        if (a.s == -1): 
-            self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
-            r = FPNum(1, 0x1F, IEEE754_HP_NAN_MANTISA, 0) # nan
-            return self.hp_box(r.convert('hp'))
+        #if (a.s == -1): 
+        #    self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+        #    r = FPNum(1, 0x1F, IEEE754_HP_NAN_MANTISA, 0) # nan
+        #    return self.hp_box(r.convert('hp'))
         
         a.reducePrecision(IEEE754_HP_PRECISION)
         
@@ -546,9 +560,9 @@ class FPU:
         r3 = FPNum(r.convert('hp'), 'hp')
         
         # check result to fix inexact flag
-        r2 = r3.mul(r3)
+        r2 = r3.mul(r3).abs()
         
-        if (r2.compare(a) != 0):
+        if (r2.compare(a.abs()) != 0):
             self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
          
         return self.hp_box(r.convert('hp'))
@@ -557,10 +571,10 @@ class FPU:
         self.cpu.writeCSR(CSR_FFLAGS, 0)
         a = FPNum(self.sp_unbox(xa), 'sp')
         
-        if (a.s == -1): 
-            self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
-            r = FPNum(1, 0xFF, IEEE754_SP_NAN_MANTISA, 0) # nan
-            return self.sp_box(r.convert('sp'))
+        #if (a.s == -1): 
+        #    self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+        #    r = FPNum(1, 0xFF, IEEE754_SP_NAN_MANTISA, 0) # nan
+        #    return self.sp_box(r.convert('sp'))
             
         a.reducePrecision(IEEE754_SP_PRECISION)
         
@@ -570,9 +584,9 @@ class FPU:
         r3 = FPNum(r.convert('sp'), 'sp')
         
         # check result to fix inexact flag
-        r2 = r3.mul(r3)
+        r2 = r3.mul(r3).abs()
         
-        if (r2.compare(a) != 0):
+        if (r2.compare(a.abs()) != 0):
             self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
          
         return self.sp_box(r.convert('sp'))
@@ -581,10 +595,10 @@ class FPU:
         self.cpu.writeCSR(CSR_FFLAGS, 0)
         a = FPNum(xa, 'dp')
         
-        if (a.s == -1): 
-            self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
-            r = FPNum(1, 0x7FF, IEEE754_DP_NAN_MANTISA, 0) # nan
-            return r.convert('dp')
+        #if (a.s == -1): 
+        #    self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+        #    r = FPNum(1, 0x7FF, IEEE754_DP_NAN_MANTISA, 0) # nan
+        #    return r.convert('dp')
             
         a.reducePrecision(IEEE754_DP_PRECISION)
         
@@ -592,15 +606,16 @@ class FPU:
         r.reducePrecisionWithRounding(IEEE754_DP_PRECISION)
         
         r3 = FPNum(r.convert('dp'), 'dp')
-        r2 = r3.mul(r3)
+        r2 = r3.mul(r3).abs()
         
-        if (r2.compare(a) != 0):
+        if (r2.compare(a.abs()) != 0):
             self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
          
         return r.convert('dp')
      
         
     def fsub_hp(self, xa, xb):
+        self.cpu.writeCSR(CSR_FFLAGS, 0)
         a = FPNum(self.sp_unbox(xa), 'hp')
         b = FPNum(self.sp_unbox(xb), 'hp')
     
@@ -611,7 +626,8 @@ class FPU:
     
         r.reducePrecisionWithRounding(IEEE754_HP_PRECISION)
         
-        self.last_result = r
+        if (r.nan): self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+        elif (r.inexact): self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
         
         return self.sp_box(r.convert('hp'))
      
@@ -633,7 +649,25 @@ class FPU:
         
         return self.sp_box(r.convert('sp'))
     
+    def fsub_dp(self, xa, xb):
+        self.cpu.writeCSR(CSR_FFLAGS, 0)
+        a = FPNum(xa, 'dp')
+        b = FPNum(xb, 'dp')
+    
+        a.reducePrecision(IEEE754_DP_PRECISION)
+        b.reducePrecision(IEEE754_DP_PRECISION)
+        
+        r = a.sub(b)
+    
+        r.reducePrecisionWithRounding(IEEE754_DP_PRECISION)
+        
+        if (r.nan): self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+        elif (r.inexact): self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
+        
+        return r.convert('dp')
+
     def fadd_hp(self, xa, xb):
+        self.cpu.writeCSR(CSR_FFLAGS, 0)
         a = FPNum(self.hp_unbox(xa), 'hp')
         b = FPNum(self.hp_unbox(xb), 'hp')
 
@@ -644,11 +678,12 @@ class FPU:
 
         r.reducePrecisionWithRounding(IEEE754_HP_PRECISION)
         
-        self.last_result = r
+        if (r.inexact): self.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
         
         return self.hp_box(r.convert('hp'))
 
     def fadd_sp(self, xa, xb):
+        self.cpu.writeCSR(CSR_FFLAGS, 0)
         a = FPNum(self.sp_unbox(xa), 'sp')
         b = FPNum(self.sp_unbox(xb), 'sp')
 
@@ -659,11 +694,28 @@ class FPU:
 
         r.reducePrecisionWithRounding(IEEE754_SP_PRECISION)
         
-        self.last_result = r
+        if (r.inexact): self.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
         
         return self.sp_box(r.convert('sp'))
     
+    def fadd_dp(self, xa, xb):
+        self.cpu.writeCSR(CSR_FFLAGS, 0)
+        a = FPNum(xa, 'dp')
+        b = FPNum(xb, 'dp')
+
+        a.reducePrecision(IEEE754_DP_PRECISION)
+        b.reducePrecision(IEEE754_DP_PRECISION)
+        
+        r = a.add(b)
+
+        r.reducePrecisionWithRounding(IEEE754_DP_PRECISION)
+        
+        if (r.inexact): self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
+        
+        return r.convert('dp')
+    
     def fmul_hp(self, xa, xb):
+        self.cpu.writeCSR(CSR_FFLAGS, 0)
         a = FPNum(self.hp_unbox(xa), 'hp')
         b = FPNum(self.hp_unbox(xb), 'hp')
 
@@ -674,7 +726,8 @@ class FPU:
 
         r.reducePrecisionWithRounding(IEEE754_HP_PRECISION)
         
-        self.last_result = r
+        if (r.inexact): 
+            self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
         
         return self.hp_box(r.convert('hp'))
 
@@ -695,7 +748,7 @@ class FPU:
         
         return self.sp_box(r.convert('sp'))
 
-    def fadd_dp(self, xa, xb):
+    def fmul_dp(self, xa, xb):
         self.cpu.writeCSR(CSR_FFLAGS, 0)
         a = FPNum(xa, 'dp')
         b = FPNum(xb, 'dp')
@@ -703,26 +756,16 @@ class FPU:
         a.reducePrecision(IEEE754_DP_PRECISION)
         b.reducePrecision(IEEE754_DP_PRECISION)
         
-        r = a.add(b)
+        r = a.mul(b)
 
         r.reducePrecisionWithRounding(IEEE754_DP_PRECISION)
         
-        if (r.inexact): self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
+        if (r.inexact): 
+            self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
         
         return r.convert('dp')
 
-    def fma_sp(self, xa, xb, xc):
-        # fused multiply-add r = a*b +c
-        # update floating point flags
-        
-        fp = FloatingPointHelper()
-        a = fp.ieee754_to_sp(xa)
-        b = fp.ieee754_to_sp(xb)
-        c = fp.ieee754_to_sp(xc)
-        
-        r = a*b+c
-            
-        return self.set_sp_result(r)
+
         
         
     def min_hp(self, xa, xb):
