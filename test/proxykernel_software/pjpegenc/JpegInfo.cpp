@@ -99,7 +99,7 @@ JpegInfo::~JpegInfo()
 static inline void rgb2y_custom_instruction(int rs1, float *fs1) 
 {
 
-    asm volatile (".insn r 0x33, 0, 0, %0, %1, %2" 
+    asm volatile (".insn r 0x0b, 0, 0, %0, %1, %2" 
         : "=f" (*fs1) : "r" (rs1), "r" (rs1)); 
     
 
@@ -107,14 +107,14 @@ static inline void rgb2y_custom_instruction(int rs1, float *fs1)
 
 static inline void rgb2cb_custom_instruction(int rs1, float *fs1) 
 {
-    asm volatile (".insn r 0x33, 0, 1, %0, %1, %2" 
+    asm volatile (".insn r 0x0b, 0, 1, %0, %1, %2" 
         : "=f" (*fs1) : "r" (rs1), "r" (rs1)); 
 
 }
 
 static inline void rgb2cr_custom_instruction(int rs1, float *fs1) 
 {
-    asm volatile (".insn r 0x33, 0, 2, %0, %1, %2" 
+    asm volatile (".insn r 0x0b, 0, 2, %0, %1, %2" 
         : "=f" (*fs1) : "r" (rs1), "r" (rs1)); 
 
 }
