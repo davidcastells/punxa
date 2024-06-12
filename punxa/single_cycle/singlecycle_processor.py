@@ -902,30 +902,31 @@ class SingleCycleRISCV(py4hw.Logic):
             pr('r{} = r{} << 3 + r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'FADD.H'):
             self.freg[rd] = self.fpu.fadd_hp(self.freg[rs1] , self.freg[rs2])
-            if (self.fpu.last_result.inexact): self.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
             pr('fr{} = fr{} + fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FADD.S'):
             self.freg[rd] = self.fpu.fadd_sp(self.freg[rs1] , self.freg[rs2])      
-            if (self.fpu.last_result.inexact): self.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
             pr('fr{} = fr{} + fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FADD.D'):
             self.freg[rd] = self.fpu.fadd_dp(self.freg[rs1] , self.freg[rs2])
             pr('fr{} = fr{} + fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FSUB.H'):
             self.freg[rd] = self.fpu.fsub_hp(self.freg[rs1], self.freg[rs2])
-            if (self.fpu.last_result.nan): self.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
-            elif (self.fpu.last_result.inexact): self.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
             pr('fr{} = fr{} - fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FSUB.S'):
             self.freg[rd] = self.fpu.fsub_sp(self.freg[rs1], self.freg[rs2])
             pr('fr{} = fr{} - fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
+        elif (op == 'FSUB.D'):
+            self.freg[rd] = self.fpu.fsub_dp(self.freg[rs1], self.freg[rs2])
+            pr('fr{} = fr{} - fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))            
         elif (op == 'FMUL.H'):
             self.freg[rd] = self.fpu.fmul_hp(self.freg[rs1] , self.freg[rs2])      
-            if (self.fpu.last_result.inexact): self.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
             pr('fr{} = fr{} * fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FMUL.S'):
             self.freg[rd] = self.fpu.fmul_sp(self.freg[rs1], self.freg[rs2])
             pr('fr{} = fr{} * fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
+        elif (op == 'FMUL.D'):
+            self.freg[rd] = self.fpu.fmul_dp(self.freg[rs1] , self.freg[rs2])
+            pr('fr{} = fr{} * fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))            
         elif (op == 'FDIV.H'):
             self.freg[rd] = self.fpu.fdiv_hp(self.freg[rs1], self.freg[rs2])  
             pr('fr{} = fr{} / fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
@@ -959,12 +960,6 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'FSQRT.D'):
             self.freg[rd] = self.fpu.fsqrt_dp(self.freg[rs1])
             pr('fr{} = sqrt(fr{}) -> {:016X}'.format(rd, rs1, self.freg[rd]))
-        elif (op == 'FSUB.D'):
-            self.freg[rd] = self.fpu.fsub_dp(self.freg[rs1], self.freg[rs2])
-            pr('fr{} = fr{} - fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
-        elif (op == 'FMUL.D'):
-            self.freg[rd] = self.fpu.fma_dp(self.freg[rs1] , self.freg[rs2], fp.dp_to_ieee754(0.0))
-            pr('fr{} = fr{} * fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FMAX.D'):
             self.freg[rd] = self.fpu.max_dp(self.freg[rs1], self.freg[rs2])
             pr('fr{} = max(fr{}, fr{}) -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
@@ -1300,11 +1295,17 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'FMSUB.S'):
             self.freg[rd] = self.fpu.fms_sp(self.freg[rs1] , self.freg[rs2] , self.freg[rs3])
             pr('r{} = r{} * r{} - r{} -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
+        elif (op == 'FMSUB.D'):
+            self.freg[rd] = self.fpu.fms_dp(self.freg[rs1] , self.freg[rs2], self.freg[rs3])
+            pr('r{} = r{} * r{} - r{} -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
         elif (op == 'FNMSUB.H'):
             self.freg[rd] = self.fpu.fnms_hp(self.freg[rs1] , self.freg[rs2] , self.freg[rs3])
             pr('fr{} = fr{} * fr{} + fr{} -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
         elif (op == 'FNMSUB.S'):
             self.freg[rd] = self.fpu.fnms_sp(self.freg[rs1] , self.freg[rs2] , self.freg[rs3])
+            pr('r{} = -(r{} * r{} - r{}) -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
+        elif (op == 'FNMSUB.D'):
+            self.freg[rd] = self.fpu.fnms_dp(self.freg[rs1] , self.freg[rs2] , self.freg[rs3])
             pr('r{} = -(r{} * r{} - r{}) -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
         elif (op == 'FNMADD.H'):
             self.freg[rd] = self.fpu.fnma_hp(self.freg[rs1] , self.freg[rs2] , self.freg[rs3])      
@@ -1312,12 +1313,6 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'FNMADD.S'):
             self.freg[rd] = self.fpu.fnma_sp(self.freg[rs1] , self.freg[rs2] , self.freg[rs3])      
             pr('r{} = -(r{} * r{} + r{}) -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
-        elif (op == 'FMSUB.D'):
-            self.freg[rd] = self.fpu.fms_dp(self.freg[rs1] , self.freg[rs2], self.freg[rs3])
-            pr('r{} = r{} * r{} - r{} -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
-        elif (op == 'FNMSUB.D'):
-            self.freg[rd] = self.fpu.fma_dp(FloatingPointHelper.ieee754_dp_neg(self.freg[rs1]) , self.freg[rs2] , self.freg[rs3])
-            pr('r{} = -(r{} * r{} - r{}) -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
         elif (op == 'FNMADD.D'):
             self.freg[rd] = self.fpu.fma_dp(FloatingPointHelper.ieee754_dp_neg(self.freg[rs1]) , self.freg[rs2] , FloatingPointHelper.ieee754_dp_neg(self.freg[rs3]))
             pr('fr{} = -(fr{} * fr{} + fr{}) -> {:016X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
