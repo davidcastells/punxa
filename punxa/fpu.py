@@ -557,6 +557,10 @@ class FPU:
         r = a.sqrt()
         r.reducePrecisionWithRounding(IEEE754_HP_PRECISION)
         
+        if (r.nan):
+            self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+            return self.hp_box(r.convert('hp'))
+            
         r3 = FPNum(r.convert('hp'), 'hp')
         
         # check result to fix inexact flag
@@ -581,6 +585,10 @@ class FPU:
         r = a.sqrt()
         r.reducePrecisionWithRounding(IEEE754_SP_PRECISION)
         
+        if (r.nan):
+            self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+            return self.sp_box(r.convert('sp'))
+
         r3 = FPNum(r.convert('sp'), 'sp')
         
         # check result to fix inexact flag
@@ -605,6 +613,10 @@ class FPU:
         r = a.sqrt()
         r.reducePrecisionWithRounding(IEEE754_DP_PRECISION)
         
+        if (r.nan):
+            self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
+            return r.convert('dp')
+            
         r3 = FPNum(r.convert('dp'), 'dp')
         r2 = r3.mul(r3).abs()
         
@@ -678,7 +690,7 @@ class FPU:
 
         r.reducePrecisionWithRounding(IEEE754_HP_PRECISION)
         
-        if (r.inexact): self.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
+        if (r.inexact): self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
         
         return self.hp_box(r.convert('hp'))
 
@@ -694,7 +706,7 @@ class FPU:
 
         r.reducePrecisionWithRounding(IEEE754_SP_PRECISION)
         
-        if (r.inexact): self.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
+        if (r.inexact): self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INEXACT_MASK)
         
         return self.sp_box(r.convert('sp'))
     
