@@ -4866,9 +4866,9 @@ Disassembly of section .text:
    1385e:	611c                	ld	a5,0(a0)
    13860:	6b9c                	ld	a5,16(a5)
    13862:	9782                	jalr	a5
-   13864:	00a507b3          	add	a5,a0,a0
-   13868:	02a506b3          	mul	a3,a0,a0
-   1386c:	04a50733          	.insn	4, 0x04a50733
+   13864:	00a5078b          	.insn	4, 0x00a5078b
+   13868:	02a5068b          	.insn	4, 0x02a5068b
+   1386c:	04a5070b          	.insn	4, 0x04a5070b
    13870:	0109a683          	lw	a3,16(s3)
    13874:	c0079653          	fcvt.w.s	a2,fa5,rtz
    13878:	4898                	lw	a4,16(s1)
