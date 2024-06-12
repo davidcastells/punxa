@@ -41,6 +41,7 @@ public:
     
     virtual int getRGB(int x, int y);
     virtual void getRGB(int x, int y, int* r, int* g, int* b);
+
 };
 
 #endif
