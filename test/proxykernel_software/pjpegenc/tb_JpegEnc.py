@@ -639,7 +639,7 @@ def runTest(test_file):
     #    print('Test return value = {}'.format(value))
 
 def prepare():
-    prepareTest('pjpegenc_baseline.elf', ['-m', '-o', 'eclair.jpg'])
+    prepareTest('pjpegenc_baseline.elf', ['-m', '-o', 'eclair.jpg', '-ci'])
 
 def runJpegEnc():
     prepareTest('pjpegenc_baseline.elf', ['-m', '-o', 'eclair.jpg'])
