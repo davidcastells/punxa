@@ -37,3 +37,4 @@ void EmbeddedImage::getRGB(int x, int y, int* r, int* g, int* b)
         *b = B;
      }
 
+    
