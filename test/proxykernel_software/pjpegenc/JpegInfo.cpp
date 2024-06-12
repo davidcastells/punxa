@@ -18,14 +18,14 @@
  * it into its constituant components, downsizing those that need to be.
  */
 
+extern int useCustomInstructionsForYUV;
 
-	JpegInfo::~JpegInfo()
-	{
-            
-            delete  Components[0];
-            delete  Components[1];
-            delete  Components[2];
-	}
+JpegInfo::~JpegInfo()
+{
+    delete  Components[0];
+    delete  Components[1];
+    delete  Components[2];
+}
 	
     JpegInfo::JpegInfo(Image* image)
     {
@@ -93,6 +93,19 @@
         return Comment;
     }
 
+
+
+
+static inline void rgb2yuv_custom_instruction(int rs1, float *fs1, float *fs2, float *fs3) {
+    asm volatile (
+        ".insn r 0x7B, 0, 0, %0, %1, %2, %3"
+        : "=f" (*fs1), "=f" (*fs2), "=f" (*fs3)  // Output operands
+        : "r" (rs1)                             // Input operand
+        : /* No clobbered registers */
+    );
+}
+
+
     /**
      * This method creates and fills three arrays, Y, Cb, Cr using the
      * input image.
@@ -150,23 +163,48 @@
         Components[2] = Cr1;
 
         int index = 0;
-        for (y = 0; y < imageHeight; ++y)
-    	{
-            for (x = 0; x < imageWidth; ++x)
-    	    {
-                imageobj->getRGB(x, y, &r, &g, &b);
 
-// The following three lines are a more correct color conversion but
-// the current conversion technique is sufficient anｄ results in a higher
-// compression rate.
-//                Y[y][x] = 16 + (float)(0.8588*(0.299 * (float)r + 0.587 * (float)g + 0.114 * (float)b ));
-//                Cb1[y][x] = 128 + (float)(0.8784*(-0.16874 * (float)r - 0.33126 * (float)g + 0.5 * (float)b));
-//                Cr1[y][x] = 128 + (float)(0.8784*(0.5 * (float)r - 0.41869 * (float)g - 0.08131 * (float)b));
-                Y->put(y, x, (float)((0.299 * (float)r + 0.587 * (float)g + 0.114 * (float)b)));
-                Cb1->put(y, x,  128 + (float)((-0.16874 * (float)r - 0.33126 * (float)g + 0.5 * (float)b)));
-                Cr1->put(y, x,  128 + (float)((0.5 * (float)r - 0.41869 * (float)g - 0.08131 * (float)b)));
+        
+        if (useCustomInstructionsForYUV)
+        {
+            int rgb;
+            float y, u, v; 
                 
-    	    }
+            for (y = 0; y < imageHeight; ++y)
+        	{
+                for (x = 0; x < imageWidth; ++x)
+        	    {
+                    rgb = imageobj->getRGB(x, y);
+
+                    rgb2yuv_custom_instruction(rgb, &y, &u, &v);
+                    
+                    Y->put(y, x, y);
+                    Cb1->put(y, x, u);
+                    Cr1->put(y, x, v);
+        	    }
+        	}
+        }
+        else
+        {
+            for (y = 0; y < imageHeight; ++y)
+        	{
+                for (x = 0; x < imageWidth; ++x)
+        	    {
+                    imageobj->getRGB(x, y, &r, &g, &b);
+
+                    // The following three lines are a more correct color conversion but
+                    // the current conversion technique is sufficient anｄ results in a higher
+                    // compression rate.
+                    //                Y[y][x] = 16 + (float)(0.8588*(0.299 * (float)r + 0.587 * (float)g + 0.114 * (float)b ));
+                    //                Cb1[y][x] = 128 + (float)(0.8784*(-0.16874 * (float)r - 0.33126 * (float)g + 0.5 * (float)b));
+                    //                Cr1[y][x] = 128 + (float)(0.8784*(0.5 * (float)r - 0.41869 * (float)g - 0.08131 * (float)b));
+                    
+                    Y->put(y, x, (float)((0.299 * (float)r + 0.587 * (float)g + 0.114 * (float)b)));
+                    Cb1->put(y, x,  128 + (float)((-0.16874 * (float)r - 0.33126 * (float)g + 0.5 * (float)b)));
+                    Cr1->put(y, x,  128 + (float)((0.5 * (float)r - 0.41869 * (float)g - 0.08131 * (float)b)));
+                    
+        	    }
+        	}
     	}
 
 // Need a way to set the H and V sample factors before allowing downsampling.
