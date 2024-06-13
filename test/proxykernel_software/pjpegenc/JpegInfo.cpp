@@ -94,6 +94,18 @@ JpegInfo::~JpegInfo()
     }
 
 
+static inline void rgb2ycbcr_custom_instruction(int rs1, float *fs1,float *fs2,float *fs3) 
+{
+
+    asm volatile (".insn r 0x0b, 0, 0, %0, %1, %2" 
+        : "=f" (*fs1) : "r" (rs1), "r" (rs1)); 
+    asm volatile (".insn r 0x0b, 0, 0, %0, %1, %2" 
+        : "=f" (*fs2) : "r" (rs1), "r" (rs1)); 
+    asm volatile (".insn r 0x0b, 0, 0, %0, %1, %2" 
+        : "=f" (*fs3) : "r" (rs1), "r" (rs1)); 
+    
+
+}
 
 
 static inline void rgb2y_custom_instruction(int rs1, float *fs1) 
@@ -182,7 +194,7 @@ static inline void rgb2cr_custom_instruction(int rs1, float *fs1)
         if (useCustomInstructionsForYUV)
         {
             int rgb;
-            float y, cb, cr; 
+            float yy, cb, cr; 
                 
             for (y = 0; y < imageHeight; ++y)
         	{
@@ -190,9 +202,10 @@ static inline void rgb2cr_custom_instruction(int rs1, float *fs1)
         	    {
                     rgb = imageobj->getRGB(x, y);
 
-                    rgb2y_custom_instruction(rgb, &y);
-                    rgb2cb_custom_instruction(rgb, &cb);
-                    rgb2cr_custom_instruction(rgb, &cr);
+                    rgb2ycbcr_custom_instruction(rgb, &yy, &cb, &cr);
+                    //rgb2y_custom_instruction(rgb, &y);
+                    //rgb2cb_custom_instruction(rgb, &cb);
+                    //rgb2cr_custom_instruction(rgb, &cr);
                     
                     Y->put(y, x, y);
                     Cb1->put(y, x, cb);
