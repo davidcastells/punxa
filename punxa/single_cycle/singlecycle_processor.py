@@ -596,6 +596,14 @@ class SingleCycleRISCV(py4hw.Logic):
             pr('ignored')
         elif (op == 'FENCE.I'):
             pr('ignored')
+        elif (op == 'CUSTOM0'):
+            yield from self.executeCustom(0)
+        elif (op == 'CUSTOM1'):
+            yield from self.executeCustom(1)
+        elif (op == 'CUSTOM2'):
+            yield from self.executeCustom(2)
+        elif (op == 'CUSTOM3'):
+            yield from self.executeCustom(3)
         else:
             raise Exception('{} - Not supported!'.format(op))
             #self.parent.getSimulator().stop()
