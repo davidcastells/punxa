@@ -88,7 +88,7 @@ class SingleCycleRISCVProxyKernel(SingleCycleRISCV):
                 self.reg[10] = 0
             elif (syscall == SYSCALL_EXIT):
                 print('EXIT')
-                self.parent.getSimulator().stop()
+                self.syscall_exit()
             elif (syscall == SYSCALL_OPEN):
                 filename = self.readMemoryStringz(self.reg[10])
                 flags = self.reg[11]
@@ -171,6 +171,9 @@ class SingleCycleRISCVProxyKernel(SingleCycleRISCV):
         #self.behavioural_memory.writei64( file_stat.st_size
     
         return 0        
+
+    def syscall_exit(self):
+        self.parent.getSimulator().stop()
 
     def addConsoleChar(self, c):
         if (c == '\n'):
