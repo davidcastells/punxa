@@ -40,6 +40,8 @@ mem_base =  0x00000000
 #test_base = 0x80001000
 
     
+cpu = None
+
 def is_hex(s):
     try:
         int(s, 16)
@@ -53,141 +55,9 @@ def is_hex(s):
 def write_trace(filename=ex_dir + 'newtrace.json'):
     cpu.tracer.write_json(filename)
 
-def checkpoint(filename=ex_dir + 'checkpoint.dat'):
-    import shutil
-    from serialize import Serializer 
-    
-    if (os.path.exists(filename)):
-        shutil.copyfile(filename, filename+'.bak')
-        
-    ser = Serializer(filename)
-
-    # Serialize CPU info
-    ser.write_i64(cpu.pc)    
-    
-    for i in range(32):
-        ser.write_i64(cpu.reg[i])
-    for i in range(32):
-        ser.write_i64(cpu.freg[i])
-    for i in range(4096):
-        ser.write_i64(cpu.csr[i])
-
-    ser.write_int_pair_list(cpu.stack)
-    
-    # Serialize Memory Info
-    ser.write_i64(len(memory.area))
-    for mem in memory.area:        
-        offset = mem[0]
-        size = mem[1]
-        data = mem[2]
-        zmem = zlib.compress(data)
-        ser.write_i64(offset)
-        ser.write_i64(size)
-        ser.write_i64(len(zmem))
-        ser.write_bytearray(zmem)
-        
-    # Serialize UART Info
-    ser.write_string_list(uart.console)
-    
-    
-    # Serialize pending tracing (comple tracing is discarded)
-    ser.write_dictionary(cpu.tracer.pending)
-    
-    ser.close()
-
-def restore(filename=ex_dir + 'checkpoint.dat'):
-    from serialize import Deserializer 
-    
-    ser = Deserializer(filename)
-    
-    # Deserialize CPU info
-    cpu.pc = ser.read_i64()
-    
-    for i in range(32):
-        cpu.reg[i] = ser.read_i64()
-    for i in range(32):
-        cpu.freg[i] = ser.read_i64()
-    for i in range(4096):
-        cpu.csr[i] = ser.read_i64()
-
-    cpu.stack = ser.read_int_pair_list()
-
-    # Deserialize Memory Info
-    memory.area = []
-    num_area = ser.read_i64()
-    for i in range(num_area):        
-        offset = ser.read_i64()
-        size = ser.read_i64()
-        csize = ser.read_i64()
-        zmem = ser.read_bytearray(csize)
-        
-        mem = zlib.decompress(zmem)
-        
-        memory.area.append((offset, size, bytearray(mem)))
-
-    # Deserialize UART info
-    uart.console = ser.read_string_list()
-    
-    # Deerialize pending tracing (comple tracing is discarded)
-    cpu.tracer.pending = ser.read_dictionary()
-            
-    ser.close()
 
 
-def run(upto, maxclks=100000, verbose=True, autoCheckpoint=False):
-    import time
-    global print
-    global dummy_print
 
-    
-    if not(verbose):
-        cpu.setVerbose(False)
-                        
-    sim = hw.getSimulator()
-
-    t0 = time.time()
-    clk0 = sim.total_clks
-
-    t0 = time.time()
-    clk0 = sim.total_clks
-    
-    count = 0
-    istart = cpu.csr[0xC02]
-    ilast = istart
-    
-    while (cpu.pc != upto):
-        sim.clk(1)
-        count += 1
-        icur = cpu.csr[0xC02]
-        
-        if not(sim.do_run):
-            break;
-        if (count > maxclks):
-            break;
-        if ((icur % 10000 == 0) and (icur != ilast)):
-            print('ins: {:n}'.format(icur))
-            ilast = icur
-            
-    if (cpu.pc != upto):
-        print('did not reach address')
-
-        if (sim.do_run and autoCheckpoint):
-            print('auto checkpointing')
-            checkpoint()
-
-    if not(verbose):
-        cpu.setVerbose(True)
-
-    tf = time.time()
-    clkf = sim.total_clks
-
-    if (tf != t0):    
-        freq = (clkf-clk0)/(tf-t0)
-    else:
-        freq = '?'
-
-    print('clks: {} time: {} simulation freq: {}'.format(clkf-clk0, tf-t0, freq))
-        
         
 def step(steps = 1):
     sim = hw.getSimulator()
@@ -201,273 +71,51 @@ def step(steps = 1):
             
         count += 1
         
-def finish():
-    tbreak(cpu.reg[1])
-    go()
+        
+        
 
-def regs():
-    print('pc: {:016X}'.format(cpu.pc))
-    for i in range(8):
-        print('r{:2}={:016X}  |  r{:2}={:016X}  |  r{:2}={:016X}  |  r{:2}={:016X} '.format(
-            i, cpu.reg[i], i+8, cpu.reg[i+8], i+16, cpu.reg[i+16], i+24, cpu.reg[i+24]))
-            
-    for i in range(8):
-        print('fr{:2}={:016X}  |  fr{:2}={:016X}  |  fr{:2}={:016X}  |  fr{:2}={:016X} '.format(
-            i, cpu.freg[i], i+8, cpu.freg[i+8], i+16, cpu.freg[i+16], i+24, cpu.freg[i+24]))
-        
-## used when upgrading stack from address to address+time
-# def fix_stack():
-#     newstack = []
-#     for i in cpu.stack:
-#         newstack.append((i,0))
-        
-#     cpu.stack = newstack
+def executeCustom(self, n):
+    #raise Exception(f'Custom {n} not implemented')
     
-                  
-def console():
-    for line in cpu.console:
-        print(line)
-        
-def dump(address, size=0x100):
-    pos = address 
-    for i in range((size+15)//16):
-        sline = ''
-        print('{:016X}:|'.format(pos), end='')
-        for j in range(16):
-            value = memory.readByte(pos-mem_base)
-            print('{:02X}'.format(value), end='')
-            if (value >= 32 and value < 127):
-                sline += chr(value)
-            else:
-                sline += '·'
-            pos += 1
-            
-        print('| "{}"'.format(sline))
-#    memory.write(32*4+0x00, 0xfe010113) # addi    sp,sp,-32
-#    memory.write(32*4+0x04, 0x00112e23) # sw      ra,28(sp)
-
-def reportCSR(csr):
-    if (not(isinstance(csr, str))):
-        ncsr = csr
-        csr = cpu.implemented_csrs[ncsr]
-        
-    if (isinstance(csr, str)):
-         rlist = [k for k, v in cpu.implemented_csrs.items() if v == csr]
-         if (len(rlist) == 0):
-             return
-         ncsr = rlist[0]
-
-    v = cpu.csr[ncsr]
+    ins = self.ins
     
-    if (csr == 'mstatus'):
-        print('mstatus: {:016X}'.format(v))
-        part = [[63,1],[34,2],[32,2],[22,1],[21,1],[20,1],[19,1],[18,1],[17,1],[15,2],[13,2],
-                [11,2],[8,1],[7,1],[5,1],[4,1],[3,1],[1,1],[0,1]]
-        pname = ['SD - Dirty summary', 'SXL - XLEN in S-Mode', 'UXL - XLEN in U-Mode',
-                 'TSR - Trap SRET', 'TW - Timeout Wait', 'TVM - Trap Virtual Memory',
-                 'MXR - Make Executable Readable', 'SUM - Permit Supervisor User Memory Access',
-                 'MPRV - Modify Privilege', 'XS - Extensions status', 'FS - Floating point status',
-                 'MPP - M-Mode Previous Privilege','SPP - S-Mode Previous Privilege',
-                 'MPIE', 'SPIE','UPIE','MIE','SIE','UIE']
-        
-        for i in range(len(pname)):
-            x = (v >> part[i][0]) & ((1<<part[i][1])-1)
-            print('  * {}: {}'.format(pname[i], x))    
-        
-    elif (csr == 'mepc'):
-        print('mepc: {}'.format(cpu.addressFmt(v)))
-    elif (csr == 'satp'):
-        print('satp: {:016X}'.format(v))
-        n = (v >> 60) & ((1<<4)-1)
-        sn = ['Base', '','','','','','','','Sv39','Sv48','Sv57','Sv64'][n]
-        print('  * Mode: {} {}'.format(n, sn))
-        n = (v >> 44) & ((1<<16)-1)
-        print('  * ASID: {:04X}'.format(n))
-        n = v & ((1<<44)-1)
-        n2 = n << 12
-        print('  * PPN: {:016X} -> {:016X}'.format(n, n2))
-            
-    elif (csr == 'privlevel'):
-        print('privlevel: {}'.format(v), end=' ')
-        if (v == 0): print('USER')
-        if (v == 1): print('SUPERVISOR')
-        if (v == 3): print('MACHINE')
-    elif (csr == 'mip'):
-        print('mip: {:016X}'.format(v))
-        print('   MEIP: machine-mode external interrup pending', get_bit(v, 11))
-        print('   SEIP: supervisor-mode external interrup pending', get_bit(v, 9))
-        print('   UEIP: user-mode external interrup pending', get_bit(v, 8))
-        print('   MTIP: machine-mode timer interrup pending', get_bit(v, 7))
-        print('   STIP: supervisor-mode timer interrup pending', get_bit(v, 5))
-        print('   UTIP: user-mode timer interrup pending', get_bit(v, 4))
-        print('   MSIP: machine-mode software interrup pending', get_bit(v, 3))
-        print('   SSIP: supervisor-mode software interrup pending', get_bit(v, 1))
-        print('   USIP: user-mode software interrup pending', get_bit(v, 0))
-    elif (csr == 'mie'):
-        print('mie: {:016X}'.format(v))
-        print('   MEIE: machine-mode external interrup enable', get_bit(v, 11))
-        print('   SEIE: supervisor-mode external interrup enable', get_bit(v, 9))
-        print('   UEIE: user-mode external interrup enable', get_bit(v, 8))
-        print('   MTIE: machine-mode timer interrup enable', get_bit(v, 7))
-        print('   STIE: supervisor-mode timer interrup enable', get_bit(v, 5))
-        print('   UTIE: user-mode timer interrup enable', get_bit(v, 4))
-        print('   MSIE: machine-mode software interrup enable', get_bit(v, 3))
-        print('   SSIE: supervisor-mode software interrup enable', get_bit(v, 1))
-        print('   USIE: user-mode software interrup enable', get_bit(v, 0))
-        
-    elif (csr == 'medeleg'): 
-        print('medeleg:')
-        print(' delegate exceptions to lower privilege modes.')
-        msg = ['Instruction address misaligned',
-               'Instruction access fault',
-               'Illegal instruction',
-               'Breakpoint',
-                'Load address misaligned',
-                'Load access fault',
-                'Store/AMO address misaligned',
-                'Store/AMO access fault',
-                'Environment call from U-mode',
-                'Environment call from S-mode',
-                'Reserved',
-                'Environment call from M-mode',
-                'Instruction page fault',
-                'Load page fault',
-                'Reserved',
-                'Store/AMO page fault' ]
-        
-        for i in range(16):
-            if (get_bit(v, i)): print('  * {}'.format(msg[i]))
-            
-    else:
-        print('{}: {}'.format(csr, v))
-
-def get_va_parts(v):
-    ret = {}
-    ret['vpn2'] = (v >> 30) & ((1<<9)-1)
-    ret['vpn1'] = (v >> 21) & ((1<<9)-1)
-    ret['vpn0'] = (v >> 12) & ((1<<9)-1)
-    ret['offset'] = v & ((1<<12)-1)
-    return ret
-            
-def pageTables(root=None, vbase = 0, level=2, printPTE=True):
-    """
-    Traverses the page tables from the provided root page table.
-    The R flag indicates that the PTE is a leaf.
+    func3 = (ins >> 12) & 0x7
+    func7 = (ins >> 25) & 0x7F
     
-    Parameters
-    ----------
-    root : TYPE, optional
-        DESCRIPTION. The default is None.
-    vbase : TYPE, optional
-        DESCRIPTION. The default is 0.
-    level : TYPE, optional
-        DESCRIPTION. The default is 2.
-    printPTE : TYPE, optional
-        DESCRIPTION. The default is True.
-
-    Returns
-    -------
-    The number of valid page tables .
-
-    """
-    if (root is None):
-        v = cpu.csr[0x180] # satp
-        mode = (v >> 60) & ((1<<4)-1)
-        smode = ['Base', '','','','','','','','Sv39','Sv48','Sv57','Sv64'][mode]
-        asid = (v >> 44) & ((1<<16)-1)
-        print('Virtual Memory Mode: {} {} ASID: {:04X}'.format(mode, smode, asid))
-        root = (v & ((1<<44)-1)) << 12
-        
-        if (root == 0):
-            return 0
+    rd = get_bits(ins, 7, 5)   # Y
+    rs1 = get_bits(ins, 15, 5) # Cb
+    rs2 = get_bits(ins, 20, 5) # Cr
+    rs3 = get_bits(ins, 27, 5) # input RGB
     
-    indent = ''
-    for i in range(2-level): indent += ' '
+    print('ins:', hex(ins))
+    print('n=', n, 'f3', func3, 'f7', func7)
     
-    if (level == 2):
-        tableName = 'Root'
-    else:
-        tableName = 'Table'
-    print('{}{}: {:08X}'.format(indent, tableName, root))
+    print('frd = ', rd)
+    print('rs1 = ', rs1)
+    print('rs2 = ', rs2)
+    print('rs3 = ', rs3, '=', hex(self.reg[rs3]))
     
-    totalTables = 1
+    rgb = self.reg[rs1]
+    r = (rgb >> 16) & 0xFF
+    g = (rgb >> 8) & 0xFF
+    b = (rgb) & 0xFF
     
-    for i in range(0, 512, 1):
-        add = root+i*8
-        v = memory.read_i64(add-mem_base)
-        ppn2 = (v >> 28) & ((1<<26)-1)
-        ppn1 = (v >> 19) & ((1<<9)-1)
-        ppn0 = (v >> 10) & ((1<<9)-1)
-        rsw = (v >> 8) & ((1<<2)-1)
-        D = [' ','D'][(v >> 7) & 1]
-        A = [' ','A'][(v >> 6) & 1]
-        G = [' ','G'][(v >> 5) & 1]
-        U = [' ','U'][(v >> 7) & 1]
-        X = [' ','X'][(v >> 3) & 1]
-        W = [' ','W'][(v >> 2) & 1]
-        R = [' ','R'][(v >> 1) & 1]
-        valid = v & 1
-        
-        va = vbase + (1 << [12,21,30][level]) * i
-                
-        phy = ppn2 << 30 | ppn1 << 21 | ppn0 << 12
-        
-        if (valid):
-            if (printPTE):
-                print('{} {:3d} ppn2:{:08X} ppn1:{:03X} ppn0:{:03X} rsw:{:0} '
-                      '{}{}{}{}{}{}{} va: {:016X} pa: {:016X}'.format(
-                          indent,  i, ppn2, ppn2, ppn0, rsw, 
-                          D,A,G,U,X,W,R,
-                          va, phy))
-            
-            if (X == ' ' and W == ' ' and R == ' '):
-                totalTables += pageTables(phy, va, level-1, printPTE)
+    y = 0.299 * r + 0.587 * g + 0.114 * b;
+    cb = 128 + ((-0.16874 * r - 0.33126 * g + 0.5 * b))
+    cr = 128 + ((0.5 * r - 0.41869 * g - 0.08131 * b))
+                   
+    from py4hw.helper import FPNum
+    if (func7 == 0):
+        self.freg[rd] = self.fpu.sp_box(FPNum(y).convert('sp'))
+    elif (func7 == 1):
+        self.freg[rd] = self.fpu.sp_box(FPNum(cb).convert('sp'))
+    elif (func7 == 2):
+        self.freg[rd] = self.fpu.sp_box(FPNum(cr).convert('sp'))
     
-    return totalTables
-
-def memoryMap():
-    for i in range(len(bus.start)):
-        size = bus.stop[i] - bus.start[i]
-        units = 'B'
-        if (size > 1024):
-            size = size/1024
-            units = 'KiB'
-        if (size > 1024):
-            size = size/1024
-            units = 'MiB'
-        if (size > 1024):
-            size = size/1024
-            units = 'GiB'
-        
-        print('* {:016X} - {:016X} {:.0f} {}'.format(bus.start[i], bus.stop[i], size, units))
-        
-        if (bus.start[i] == mem_base):
-            # we assume thereis a sparse-memory starting at memory area
-            # details on memory
-            for block in memory.area:
-                size = block[1]
-                units = 'B'
-                if (size > 1024):
-                    size = size/1024
-                    units = 'KiB'
-                if (size > 1024):
-                    size = size/1024
-                    units = 'MiB'
-                if (size > 1024):
-                    size = size/1024
-                    units = 'GiB'
-                print('  {:016X} - {:016X} {:.0f} {}'.format(mem_base + block[0], mem_base + block[0] + block[1] - 1, size, units))
-                #print('??', hex(block[0]), hex(block[1]))
-                
-def reallocMem(add, size):
-    memory.reallocArea(add - mem_base, size)
+    # hw.getSimulator().stop()
     
-def findFunction(name):
-    for a in cpu.funcs.keys():
-        if (cpu.funcs[a] == name):
-            return a
-    return None
-
+    yield
+    
 #  +-----+    +-----+     +-----+
 #  | CPU |--C-| bus |--M--| mem |
 #  +-----+    |     |     +-----+
@@ -541,6 +189,9 @@ def buildHw():
                                           (port_l, 0xFFF1020000)])
 
     cpu = SingleCycleRISCVProxyKernel(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
+    
+    import types
+    cpu.executeCustom = types.MethodType(executeCustom, cpu)
 
     cpu.min_clks_for_trace_event = 1000
     cpu.behavioural_memory = memory
@@ -640,6 +291,75 @@ def runTest(test_file):
 
 def prepare():
     prepareTest('pjpegenc_baseline.elf', ['-m', '-o', 'eclair.jpg', '-ci'])
+    cpu.min_clks_for_trace_event=100
+
+    def dummy_cycle(self, n):
+        for i in range(n):
+            yield
+            
+    def new_execute(self):
+        ins = self.decoded_ins
+        if (ins in ['MUL','MULHU','MULW']):
+            # 
+            yield from self.dummy_cycle(3)
+        elif (ins in ['FADD.S','FADD.D','FSUB.S','FSUB.D', 'FMADD.D', 'FMSUB.D', 'FMUL.S','FMUL.D', 'FNMSUB.D']):
+            yield from self.dummy_cycle(5)
+        elif (ins in ['DIV', 'DIVU', 'DIVUW', 'DIVW', 'FDIV.S','FDIV.D','FSQRT.D','REM', 'REMU', 'REMW']):
+            yield from self.dummy_cycle(20)
+        elif (ins in ['ECALL']):
+            yield from self.dummy_cycle(100)
+            
+        yield from self.old_execute()
+        
+    import types
+    cpu.old_execute = cpu.execute
+    cpu.execute = types.MethodType(new_execute, cpu)
+    cpu.dummy_cycle = types.MethodType(dummy_cycle, cpu)
+
+def run_collect(max_n = math.inf):
+    global ins_freq
+    global ins_cycles
+    global ins_latency
+    
+    from punxa.csr import CSR_CYCLE
+    def new_syscall_exit(self):
+        self.stop_collecting = True
+
+    import types
+    cpu.syscall_exit = types.MethodType(new_syscall_exit, cpu)
+
+    cpu.stop_collecting = False
+    
+    ins_freq = {}
+    ins_cycles = {}
+    
+    last_cycle = 0
+    n = 0
+    while not(cpu.stop_collecting) and (n < max_n):
+        step()
+        n += 1
+        ins = cpu.decoded_ins
+        clk = cpu.csr[CSR_CYCLE]
+        
+        latency = clk - last_cycle
+        
+        if (ins in ins_freq.keys()):
+            ins_freq[ins] += 1
+        else:
+            ins_freq[ins] = 1
+            
+        if (ins in ins_cycles.keys()):
+            ins_cycles[ins] += latency
+        else:
+            ins_cycles[ins] = latency
+            
+        last_cycle = clk
+        
+    ins_latency = {}
+    
+    for ins in ins_cycles.keys():
+        ins_latency[ins] = ins_cycles[ins] / ins_freq[ins]    
+
 
 def runJpegEnc():
     prepareTest('pjpegenc_baseline.elf', ['-m', '-o', 'eclair.jpg'])
