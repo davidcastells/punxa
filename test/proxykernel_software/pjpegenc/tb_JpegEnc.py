@@ -25,6 +25,7 @@ from punxa.bus import *
 from punxa.uart import *
 from punxa.clint import *
 from punxa.plic import *
+from punxa.custom_instruction import *
 from punxa.single_cycle.singlecycle_processor_proxy_kernel import *
 from punxa.instruction_decode import *
 from punxa.interactive_commands import *
@@ -49,9 +50,7 @@ def is_hex(s):
     except ValueError:
         return False
 
-
     
-
 def write_trace(filename=ex_dir + 'newtrace.json'):
     cpu.tracer.write_json(filename)
 
@@ -190,8 +189,14 @@ def buildHw():
 
     cpu = SingleCycleRISCVProxyKernel(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
     
-    import types
-    cpu.executeCustom = types.MethodType(executeCustom, cpu)
+    
+    useHWCI = True
+    
+    if (useHWCI):
+        port_ci = CustomInstructionInterface(hw, 'ci', 32)
+    else:
+        import types
+        cpu.executeCustom = types.MethodType(executeCustom, cpu)
 
     cpu.min_clks_for_trace_event = 1000
     cpu.behavioural_memory = memory
@@ -360,6 +365,13 @@ def run_collect(max_n = math.inf):
     for ins in ins_cycles.keys():
         ins_latency[ins] = ins_cycles[ins] / ins_freq[ins]    
 
+def getHw():
+    global hw
+    return hw
+
+def getCpu():
+    global cpu
+    return cpu
 
 def runJpegEnc():
     prepareTest('pjpegenc_baseline.elf', ['-m', '-o', 'eclair.jpg'])
