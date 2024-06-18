@@ -502,7 +502,8 @@ def run(upto, maxclks=100000, verbose=True, autoCheckpoint=False):
     print('clks: {} time: {} simulation freq: {}'.format(clkf-clk0, tf-t0, freq))
 
 
-def dump(address, size=0x100):
+def dump(address, size=0x100, mem_base=0):
+    memory = _ci_cpu.behavioural_memory
     pos = address 
     for i in range((size+15)//16):
         sline = ''
