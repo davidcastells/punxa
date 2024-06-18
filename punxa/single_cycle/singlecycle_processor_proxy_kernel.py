@@ -100,10 +100,14 @@ class SingleCycleRISCVProxyKernel(SingleCycleRISCV):
                 print(f'CLOSE fd:0x{fd:X}')
                 self.reg[10] = self.syscall_close(fd)
             else:
-                print('my syscall', syscall)
+                self.syscall_unknown()
+                
         else:
             yield from super().executeIIns()
             
+    def syscall_unknown(self):
+        print('Unnkown syscall', self.reg[17])
+        
     def syscall_write(self, fd, buf, count):
         if (fd == 1): f = None
         else: f = self.open_files[fd]
