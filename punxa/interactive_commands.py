@@ -187,16 +187,36 @@ def loadSymbols(cpu, filename, address_fix=0):
 
 
 def step(steps = 1):
+    import time
     sim = _ci_hw.getSimulator()
     sim.do_run = True
     count = 0
     
+    if (steps >= 100):
+        sim = _ci_hw.getSimulator()
+
+        t0 = time.time()
+        clk0 = sim.total_clks
+        
+        
+        
     while (count < steps and sim.do_run == True ):
         inipc = _ci_cpu.pc
         while (_ci_cpu.pc == inipc and sim.do_run == True ):
             sim.clk(1)
             
         count += 1
+        
+    if (steps >= 100):
+        tf = time.time()
+        clkf = sim.total_clks
+        
+        if (tf != t0):    
+            freq = (clkf-clk0)/(tf-t0)
+        else:
+            freq = '?'
+            
+        print('clks: {} time: {} simulation freq: {}'.format(clkf-clk0, tf-t0, freq))
         
 def findFunction(name):
     for a in _ci_cpu.funcs.keys():
