@@ -13,12 +13,13 @@ class MemoryInterface(Interface):
         super().__init__(parent, name);
         self.read = self.addSourceToSink("read", 1)
         self.read_data = self.addSinkToSource("readdata", data_width)
-        self.address = self.addSourceToSink("address", address_width) # int(math.log2(numRegs))
+        self.address = self.addSourceToSink("address", address_width) 
         self.write = self.addSourceToSink("write", 1)
         self.write_data = self.addSourceToSink("writedata", data_width)
         if ((data_width % 8) != 0):
             raise Exception('data_width must be multiple of byte, {} not supported'.format(data_width))
         self.be = self.addSourceToSink('be', data_width // 8)
+        self.resp = self.addSinkToSource('resp', 1) # by now response is just 0 = OK 1 = ERROR
 
 class Memory(Logic):
     def __init__(self, parent:Logic, name:str, data_width:int, address_width:int, port:MemoryInterface, endianness='little'):
@@ -47,7 +48,7 @@ class Memory(Logic):
         
         address = self.port.address.get()
         be = self.port.be.get()
-
+        self.port.resp.prepare(0)
         
         if (self.port.read.get()):
 
