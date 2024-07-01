@@ -38,7 +38,7 @@ class InstructionAddressMisaligned(ProcessorException):
 class InstructionAccessFault(ProcessorException):
     code = 1
     
-    def __init__(self, msg):
+    def __init__(self, msg=''):
         self.msg = msg
 
 class IllegalInstruction(ProcessorException):
