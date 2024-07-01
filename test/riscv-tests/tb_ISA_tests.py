@@ -126,7 +126,7 @@ def buildHw():
 
     hw = HWSystem()
 
-    port_c = MemoryInterface(hw, 'port_c', mem_width, 40)
+    port_c = MemoryInterface(hw, 'port_c', mem_width, 64)     # The whole address space
     port_m = MemoryInterface(hw, 'port_m', mem_width, 14)     # 14	bits = 
     port_u = MemoryInterface(hw, 'port_u', mem_width, 8)      # 8 bits = 256
     port_l = MemoryInterface(hw, 'port_l', mem_width, 16)      # 8 bits = 256
