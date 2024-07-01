@@ -12,7 +12,7 @@ When completed, next goal is Linux boot.
 
 RV64 (excluding vector and cache management instructions) progress: 
 
-96.2 %   |████████████████████████████████████████████░|
+96.8 %   |████████████████████████████████████████████░|
 
 check [riscv-tests](https://github.com/davidcastells/punxa/blob/main/test/riscv-tests/README.md) for a complete list
 
