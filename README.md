@@ -12,7 +12,7 @@ When completed, next goal is Linux boot.
 
 RV64 (excluding vector and cache management instructions) progress: 
 
-94.1 %   |███████████████████████████████████████████░░|
+96.2 %   |████████████████████████████████████████████░|
 
 check [riscv-tests](https://github.com/davidcastells/punxa/blob/main/test/riscv-tests/README.md) for a complete list
 
@@ -21,3 +21,4 @@ check [riscv-tests](https://github.com/davidcastells/punxa/blob/main/test/riscv-
 - Hello World
 - [Mandelbrot](https://github.com/davidcastells/punxa/blob/main/test/proxykernel_software/mandelbrot/README.md)
 - [File sort](https://github.com/davidcastells/punxa/tree/main/test/proxykernel_software/sort/README.md)
+- [Paranoia](https://github.com/davidcastells/punxa/tree/main/test/proxykernel_software/paranoia/README.md)
