@@ -441,9 +441,9 @@ class SingleCycleRISCV(py4hw.Logic):
         
         address = yield from self.getPhysicalAddress(address, memory_op)    
         if (self.mem_width == 32):
-            value = yield from self.memoryLoad32(address, b)
+            value = yield from self.memoryLoad32(address, b, memory_op)
         elif (self.mem_width == 64):
-            value = yield from self.memoryLoad64(address, b)
+            value = yield from self.memoryLoad64(address, b, memory_op)
         else:
             raise Exception()
         return value
@@ -461,7 +461,7 @@ class SingleCycleRISCV(py4hw.Logic):
             raise Exception()
             
         
-    def memoryLoad32(self, address, b):
+    def memoryLoad32(self, address, b, memory_op=MEMORY_OP_LOAD):
         #if (address < 0x80000000 or address >= 0x80400000 ):
         #    print('Invalid read access to : {:016X}'.format(address))
         #    self.parent.getSimulator().stop()
@@ -499,7 +499,10 @@ class SingleCycleRISCV(py4hw.Logic):
             raise Exception('unsupported memory load size {}'.format(b))
  
         if (self.v_mem_resp == 1):
-            raise StoreAMOPageFault()            
+            if (memory_op == MEMORY_OP_EXECUTE):
+                raise InstructionAccessFault()
+            else:
+                raise LoadAccessFault() # StoreAMOPageFault()            
             
         return value
     
@@ -551,7 +554,7 @@ class SingleCycleRISCV(py4hw.Logic):
         if (self.v_mem_resp == 1):
             raise StoreAMOPageFault()
             
-    def memoryLoad64(self, address, b):
+    def memoryLoad64(self, address, b,  memory_op=MEMORY_OP_LOAD):
         #if (address < 0x80000000 or address >= 0x80400000 ):
         #    print('Invalid read access to : {:016X}'.format(address))
         #    self.parent.getSimulator().stop()
@@ -571,7 +574,10 @@ class SingleCycleRISCV(py4hw.Logic):
         value = self.v_mem_read_data & ((1 << (8*b))-1)
 
         if (self.v_mem_resp == 1):
-            raise StoreAMOPageFault()
+            if (memory_op == MEMORY_OP_EXECUTE):
+                raise InstructionAccessFault()
+            else:
+                raise LoadAccessFault() # StoreAMOPageFault()
             
         return value
     
