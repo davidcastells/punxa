@@ -36,6 +36,7 @@ import py4hw.debug
 import py4hw.gui as gui
 import zlib
 
+import RGB2YCbCr
 
 mem_base =  0x00000000
 #test_base = 0x80001000
@@ -55,23 +56,6 @@ def write_trace(filename=ex_dir + 'newtrace.json'):
     cpu.tracer.write_json(filename)
 
 
-
-
-        
-def step(steps = 1):
-    sim = hw.getSimulator()
-    sim.do_run = True
-    count = 0
-    
-    while (count < steps and sim.do_run == True ):
-        inipc = cpu.pc
-        while (cpu.pc == inipc and sim.do_run == True ):
-            sim.clk(1)
-            
-        count += 1
-        
-        
-        
 
 def executeCustom(self, n):
     #raise Exception(f'Custom {n} not implemented')
@@ -115,6 +99,47 @@ def executeCustom(self, n):
     
     yield
     
+def executeCustomHW(self, n):
+    #raise Exception(f'Custom {n} not implemented')
+    
+    ins = self.ins
+    
+    opcode = ins & 0x7F
+    func3 = (ins >> 12) & 0x7
+    func7 = (ins >> 25) & 0x7F
+    
+    rd = get_bits(ins, 7, 5)   # Y
+    rs1 = get_bits(ins, 15, 5) # Cb
+    rs2 = get_bits(ins, 20, 5) # Cr
+    rs3 = get_bits(ins, 27, 5) # input RGB
+    
+    #print('ins:', hex(ins))
+    #print('n=', n, 'f3', func3, 'f7', func7)
+    
+    #print('frd = ', rd)
+    #print('rs1 = ', rs1)
+    #print('rs2 = ', rs2)
+    #print('rs3 = ', rs3, '=', hex(self.reg[rs3]))
+    
+    #from punxa.single_cycle.singlecycle_processor_proxy_kernel import pr
+    self.pr(f'frd{rd} = custom{n}[{func7}](r{rs1})')
+    
+    self.ci.opcode.prepare(opcode)
+    self.ci.func3.prepare(func3)
+    self.ci.func7.prepare(func7)
+    self.ci.start.prepare(1)
+    self.ci.rs1.prepare(self.reg[rs1])
+        
+    yield
+    self.ci.start.prepare(0)
+    yield
+    self.freg[rd] = self.ci.rd.get()    
+        
+    #print('done:', self.ci.done.get())
+    #print('rd:', hex(self.ci.rd.get())   )
+    yield
+    
+    
 #  +-----+    +-----+     +-----+
 #  | CPU |--C-| bus |--M--| mem |
 #  +-----+    |     |     +-----+
@@ -135,7 +160,7 @@ def executeCustom(self, n):
 #  | 00FF F102 0000 | 00FF F102 FFFF | CLINT         |
 #  | 00FF F110 0000 | 00FF F11F FFFF | PLIC          |
 
-def buildHw():
+def buildHw(useHWCI):
     global memory
     global cpu
     global bus
@@ -190,10 +215,18 @@ def buildHw():
     cpu = SingleCycleRISCVProxyKernel(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
     
     
-    useHWCI = True
     
     if (useHWCI):
-        port_ci = CustomInstructionInterface(hw, 'ci', 32)
+        # Modify the processor to add the custom instruction Hardware
+        port_ci = CustomInstructionInterface(hw, 'ci', 64)
+        cpu.ci = cpu.addInterfaceSource('ci', port_ci)
+        
+        RGB2YCbCr.RGB2YCrCr_CustomInstruction(hw, 'rgb2yuv', port_ci)
+        
+        # Motify the behavioural model to invoke the hardware
+        import types
+        cpu.executeCustom = types.MethodType(executeCustomHW, cpu)
+        
     else:
         import types
         cpu.executeCustom = types.MethodType(executeCustom, cpu)
@@ -227,9 +260,9 @@ def pushInt32(v):
         cpu.reg[2] -= 1
         v = v << 8
 
-def prepareTest(test_file, args):
+def prepareTest(test_file, args, useHWCI):
     global hw
-    hw = buildHw()
+    hw = buildHw(useHWCI)
     programFile = ex_dir + test_file
     
     loadElf(memory, programFile, 0 )     
@@ -294,8 +327,11 @@ def runTest(test_file):
     #else:
     #    print('Test return value = {}'.format(value))
 
-def prepare():
-    prepareTest('pjpegenc_baseline.elf', ['-m', '-o', 'eclair.jpg', '-ci'])
+def prepare(useHWCI):
+    args = ['-m', '-o', 'eclair.jpg']
+    if (useHWCI):
+        args.append('-ci')
+    prepareTest('pjpegenc_baseline.elf', args, useHWCI)
     cpu.min_clks_for_trace_event=100
 
     def dummy_cycle(self, n):
@@ -385,17 +421,37 @@ if __name__ == "__main__":
     print(sys.argv)
 
     if (len(sys.argv) > 1):
-         if (sys.argv[1] == '-c'):
-             eval(sys.argv[2])
-             os._exit(0)
-         elif (sys.argv[1] == '-trace'):
-             prepare()
-             exit_adr = findFunction('exit')
+        if (sys.argv[1] == '-c'):
+            eval(sys.argv[2])
+            os._exit(0)
+        elif (sys.argv[1] == '-trace'):
+            prepare()
+            exit_adr = findFunction('exit')
 
-             cpu.min_clks_for_trace_event=100
-             
-             run(exit_adr, maxclks=10000000, verbose=False)
-             run(0, maxclks=100, verbose=True)
-             console()
-             write_trace()
-
+            cpu.min_clks_for_trace_event=100
+            
+            run(exit_adr, maxclks=10000000, verbose=False)
+            run(0, maxclks=100, verbose=True)
+            console()
+            write_trace()
+        elif (sys.argv[1] == '-combined-trace'):
+            min_clks = 0
+            #prepare(False)
+            #exit_adr = findFunction('exit')
+            #
+            #cpu.min_clks_for_trace_event=min_clks 
+            #
+            #run(exit_adr, maxclks=10000000, verbose=False)
+            #run(0, maxclks=100, verbose=True)
+            #console()
+            #write_trace('trace_normal.json')
+            
+            prepare(True)
+            exit_adr = findFunction('exit')
+            
+            cpu.min_clks_for_trace_event=min_clks 
+            
+            run(exit_adr, maxclks=10000000, verbose=False)
+            run(0, maxclks=100, verbose=True)
+            console()
+            write_trace('trace_custom_instruction.json')
