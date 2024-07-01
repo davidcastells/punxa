@@ -70,6 +70,7 @@ class MultiplexedBus(Logic):
                 slave.be.put(be)
                 
                 self.master.read_data.put(slave.read_data.get())
+                self.master.resp.put(slave.resp.get())
                 handled = True
             else:
                 slave.address.put(0)
@@ -83,7 +84,9 @@ class MultiplexedBus(Logic):
         if (not(handled)):
             if (read):
                 print('Invalid read access to : {:016X}'.format(addr))
-                self.parent.getSimulator().stop()
+                self.master.resp.put(1) # 1 means ERROR
+                #self.parent.getSimulator().stop()
             if (write):
                 print('Invalid write access to : {:016X}'.format(addr))
-                self.parent.getSimulator().stop()
+                self.master.resp.put(1) # 1 means ERROR
+                #self.parent.getSimulator().stop()
