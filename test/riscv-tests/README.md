@@ -15,8 +15,8 @@ Moreover, not all tests pass.
 ***Summary***
 
 <pre>
-rv64mi-p        75.0 %   |██████████████████████████████████░░░░░░░░░░░|
-rv64si-p        57.1 %   |██████████████████████████░░░░░░░░░░░░░░░░░░░|
+rv64mi-p        87.5 %   |████████████████████████████████████████░░░░░|
+rv64si-p        85.7 %   |███████████████████████████████████████░░░░░░|
 rv64ssvnapot-p  0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64ua-p        100.0 %  |█████████████████████████████████████████████|
 rv64uc-p        100.0 %  |█████████████████████████████████████████████|
@@ -37,24 +37,24 @@ The detailed current output is:
 Test rv64mi-p-access                = FAILED - Test return value = 5
 Test rv64mi-p-breakpoint            = FAILED - Test return value = 5
 Test rv64mi-p-csr                   = OK
-Test rv64mi-p-illegal               = FAILED - Test return value = 0
+Test rv64mi-p-illegal               = OK
 Test rv64mi-p-ld-misaligned         = OK
 Test rv64mi-p-lh-misaligned         = OK
 Test rv64mi-p-lw-misaligned         = OK
 Test rv64mi-p-ma_addr               = OK
 Test rv64mi-p-ma_fetch              = OK
 Test rv64mi-p-mcsr                  = OK
-Test rv64mi-p-sbreak                = FAILED - Test return value = 5
+Test rv64mi-p-sbreak                = OK
 Test rv64mi-p-scall                 = OK
 Test rv64mi-p-sd-misaligned         = OK
 Test rv64mi-p-sh-misaligned         = OK
 Test rv64mi-p-sw-misaligned         = OK
 Test rv64mi-p-zicntr                = OK
 Test rv64si-p-csr                   = OK
-Test rv64si-p-dirty                 = FAILED - Test return value = 0
+Test rv64si-p-dirty                 = OK
 Test rv64si-p-icache-alias          = FAILED - Test return value = 0
 Test rv64si-p-ma_fetch              = OK
-Test rv64si-p-sbreak                = FAILED - Test return value = 5
+Test rv64si-p-sbreak                = OK
 Test rv64si-p-scall                 = OK
 Test rv64si-p-wfi                   = OK
 Test rv64ssvnapot-p-napot           = FAILED - Test return value = 0
@@ -220,6 +220,6 @@ Test rv64uzfh-p-fmin                = OK
 Test rv64uzfh-p-ldst                = OK
 Test rv64uzfh-p-move                = OK
 Test rv64uzfh-p-recoding            = OK
-Total: 186 Correct: 175 (94.1 %)
+Total: 186 Correct: 179 (96.2 %)
 ```
 
