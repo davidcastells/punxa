@@ -171,7 +171,7 @@ def ins_to_str(ins, isa=32):
     imm12 = (ins >> 20) & 0xFFF
     
     if (ins16 == 0x00):
-        raise IllegalInstruction()
+        raise IllegalInstruction('Illegal Instruction', ins)
         
     if (opcode_c == 0x00):
         if (func3_c == 0x00): return 'C.ADDI4SPN'
