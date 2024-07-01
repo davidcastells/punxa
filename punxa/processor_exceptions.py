@@ -1,5 +1,8 @@
+
+
 class ProcessorException(Exception):
     msg = ''
+    tval = 0
 
 class UserSoftwareInterrupt(ProcessorException):
     code = 0
@@ -28,6 +31,7 @@ class SupervisorExternalInterrupt(ProcessorException):
 class MachineExternalInterrupt(ProcessorException):
     code = 11
 
+
 class InstructionAddressMisaligned(ProcessorException):
     code = 0
 
@@ -39,6 +43,10 @@ class InstructionAccessFault(ProcessorException):
 
 class IllegalInstruction(ProcessorException):
     code = 2
+    
+    def __init__(self, msg, tval):
+        self.msg = msg
+        self.tval = tval
 
 class Breakpoint(ProcessorException):
     code = 3
@@ -70,12 +78,11 @@ class InstructionPageFault(ProcessorException):
 class LoadPageFault(ProcessorException):
     code = 13
     
-    def __init__(self, msg):
+    def __init__(self, msg=''):
         self.msg = msg
 
 class StoreAMOPageFault(ProcessorException):
     code = 15
-    
     
 # Internal exceptions
     
