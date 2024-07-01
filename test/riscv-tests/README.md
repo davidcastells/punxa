@@ -15,7 +15,7 @@ Moreover, not all tests pass.
 ***Summary***
 
 <pre>
-rv64mi-p        87.5 %   |████████████████████████████████████████░░░░░|
+rv64mi-p        93.8 %   |███████████████████████████████████████████░░|
 rv64si-p        85.7 %   |███████████████████████████████████████░░░░░░|
 rv64ssvnapot-p  0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64ua-p        100.0 %  |█████████████████████████████████████████████|
@@ -34,7 +34,7 @@ rv64uzfh-p      100.0 %  |██████████████████
 The detailed current output is:
 
 ```
-Test rv64mi-p-access                = FAILED - Test return value = 5
+Test rv64mi-p-access                = OK
 Test rv64mi-p-breakpoint            = FAILED - Test return value = 5
 Test rv64mi-p-csr                   = OK
 Test rv64mi-p-illegal               = OK
@@ -220,6 +220,6 @@ Test rv64uzfh-p-fmin                = OK
 Test rv64uzfh-p-ldst                = OK
 Test rv64uzfh-p-move                = OK
 Test rv64uzfh-p-recoding            = OK
-Total: 186 Correct: 179 (96.2 %)
+Total: 186 Correct: 180 (96.8 %)
 ```
 
