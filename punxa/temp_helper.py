@@ -1,4 +1,5 @@
 import math
+from py4hw.helper import *
 
 IEEE754_HP_CANONICAL_NAN=0x7E00
 IEEE754_SP_CANONICAL_NAN=0x7FC00000
@@ -24,7 +25,7 @@ def sign(v):
         return -1
 
 # @todo should be part of py4hw
-def signExtend(v, w):
+def signExtend_toremove(v, w):
     v = v & ((1<<w)-1)
     sign_bit = w - 1
 
@@ -68,8 +69,10 @@ def compose_sign(v, parts):
         ret |= (v >> start) & ((1 << bits)-1)
         
         total_bits += bits
-    
-    return signExtend(ret, total_bits)
+
+    # @todo remove the assert
+    assert(IntegerHelper.c2_to_signed(ret, total_bits) == signExtend_toremove(ret, total_bits))
+    return IntegerHelper.c2_to_signed(ret, total_bits)
     
 # We will remove this class with the next release of py4hw
 class FloatingPointHelper:
