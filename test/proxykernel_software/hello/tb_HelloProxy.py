@@ -560,6 +560,12 @@ def buildHw():
     return hw
 
 
+def getHw():
+    return hw
+
+def getCpu():
+    return cpu
+
 def prepareTest(test_file):
     global hw
     hw = buildHw()
