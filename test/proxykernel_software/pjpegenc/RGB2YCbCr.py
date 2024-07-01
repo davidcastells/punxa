@@ -8,6 +8,31 @@ import py4hw
 from py4hw.helper import FixedPoint
 from py4hw.helper import FPNum
 
+class RGB2YCrCr_CustomInstruction(py4hw.Logic):
+    def __init__(self, parent, name, port):
+        super().__init__(parent, name)
+        
+        self.addInterfaceSink('', port)
+        
+        hlp = py4hw.LogicHelper(self)
+        
+        py4hw.Reg(self, 'done', port.start, port.done)
+        
+        y = self.wire('y', 32)
+        cb = self.wire('cb', 32)
+        cr = self.wire('cr', 32)
+        
+        rgb = hlp.hw_range(port.rs1, 31, 0)
+        
+        # RGB2YCbCr(self, 'rgb2yuv', rgb, y, cb, cr)
+        RGB2YCbCrFunctional(self, 'rgb2yuv', rgb, y, cb, cr)
+        
+        rd_low = self.wire('rd_low', 32)
+        py4hw.Mux(self, 'mux', hlp.hw_range(port.func7, 1, 0), [y,cb,cr, cr], rd_low)
+
+        ones = hlp.hw_constant(32, -1)    
+        py4hw.ConcatenateMSBF(self, 'rd', [ones, rd_low], port.rd)
+        
 class RGB2YCbCr(py4hw.Logic):
     
     def __init__(self, parent, name, rgb, y, cb, cr):
