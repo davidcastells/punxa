@@ -1112,7 +1112,7 @@ class FPU:
     
     def convert_i64_to_dp(self, v):
         fp = FloatingPointHelper()
-        return fp.dp_to_ieee754(signExtend(v, 64))
+        return fp.dp_to_ieee754(IntegerHelper.c2_to_signed(v, 64))
 
 
     def convert_dp_to_i64(self, v):
@@ -1273,7 +1273,7 @@ class FPU:
             if (a.compare(b) != 0):
                 self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INEXACT_MASK
                 
-        return signExtend(r, 32) & ((1<<64)-1)
+        return signExtend(r, 32, 64) 
 
     def convert_hp_to_u32(self, v):
         self.cpu.writeCSR(CSR_FFLAGS, 0)
@@ -1304,7 +1304,7 @@ class FPU:
             if (a.compare(b) != 0):
                 self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INEXACT_MASK
                 
-        return signExtend(r, 32) & ((1<<64)-1)
+        return signExtend(r, 32,64) 
     
     def convert_hp_to_i64(self, v):
         self.cpu.writeCSR(CSR_FFLAGS, 0)
@@ -1425,7 +1425,7 @@ class FPU:
         else:
             ret = iv & ((1<<64) -1) 
             
-            ret = signExtend(ret, 32) & ((1<<64)-1)
+            ret = signExtend(ret, 32,64) 
             
             if (iv != dp):
                 self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INEXACT_MASK
@@ -1488,7 +1488,7 @@ class FPU:
         else:
             ret = iv & ((1<<64) -1) 
             
-            ret = signExtend(ret, 32) & ((1<<64)-1)
+            ret = signExtend(ret, 32,64) 
             
             if (iv != sp):
                 self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INEXACT_MASK
