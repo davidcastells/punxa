@@ -5,8 +5,15 @@ Created on Thu Feb  2 09:54:32 2023
 @author: dcr
 
 
-Latest info obtained from
+Info obtained from
 https://uim.fei.stuba.sk/wp-content/uploads/2018/02/riscv-privileged-2022.pdf
+should check latest in
+https://drive.google.com/file/d/17GeetSnT5wW3xNuAHI95-SI1gPGd5sJ_/view?usp=drive_link
+
+
+and
+https://riscv.org/wp-content/uploads/2019/03/riscv-debug-release.pdf
+
 
 """
 
@@ -64,6 +71,14 @@ CSR_MNEPC =     0x741
 CSR_MNCAUSE =   0x742
 CSR_MNSTATUS =  0x744
 
+# Debug/Trace registers
+CSR_TSELECT =   0x7A0
+CSR_TDATA1 =   0x7A1
+CSR_TDATA2 =   0x7A2
+CSR_TDATA3 =   0x7A2
+CSR_TCONTROL = 0x7A5
+CSR_MCONTEXT =  0x7A8
+
 CSR_MCYCLE =    0xB00
 CSR_MINSTRET =  0xB02
 
@@ -97,7 +112,9 @@ csr_var_rw = [CSR_FFLAGS]
 csr_unf_rw = []
 
 # Mirrors of other CSRs depending on the privilege level
-csr_priv_mirror = [CSR_SSTATUS]
+csr_mirrored = {}
+
+
 
 csr_partial_wr_mask = {}
 csr_mirror_mask = {}
@@ -130,11 +147,24 @@ CSR_FCSR_INEXACT_MASK = 1
 csr_partial_wr_mask[CSR_FCSR]= (1<<8)-1
 
 # 0x100 - SSTATUS
+CSR_SSTATUS_SD_MASK = (1 << 63)
 CSR_SSTATUS_UXL_32_BITS_MASK = (1<<32)
 CSR_SSTATUS_UXL_64_BITS_MASK = (2<<32)
 CSR_SSTATUS_UXL_128_BITS_MASK = (3<<32)
+CSR_SSTATUS_UXL_MASK = (3 << 32)
+CSR_SSTATUS_MXR_MASK = (1 << 19)
+CSR_SSTATUS_SUM_MASK = (1 << 18)
+CSR_SSTATUS_XS_MASK = (3 << 15)
+CSR_SSTATUS_FS_MASK = (3 << 13)
+CSR_SSTATUS_SPP_MASK = (1 << 8)
+CSR_SSTATUS_SPIE_MASK = (1 << 5)
+CSR_SSTATUS_UPIE_MASK = (1 << 4)
+CSR_SSTATUS_SIE_MASK = (1 << 1)
+CSR_SSTATUS_UIE_MASK = (1 )
 
-csr_mirror_mask[CSR_SSTATUS] = CSR_SSTATUS_UXL_128_BITS_MASK 
+# This is the Read Subset from MSTATUS that SSTATUS see
+csr_mirrored[CSR_SSTATUS] = CSR_MSTATUS
+csr_mirror_mask[CSR_SSTATUS] =  CSR_SSTATUS_SD_MASK | CSR_SSTATUS_UXL_MASK |  CSR_SSTATUS_MXR_MASK | CSR_SSTATUS_SUM_MASK | CSR_SSTATUS_XS_MASK | CSR_SSTATUS_FS_MASK | CSR_SSTATUS_SPP_MASK | CSR_SSTATUS_SPIE_MASK | CSR_SSTATUS_UPIE_MASK | CSR_SSTATUS_SIE_MASK | CSR_SSTATUS_UIE_MASK
 
 # 0x300 - MSTATUS
 CSR_MSTATUS_FS_POS = 13 
@@ -148,15 +178,45 @@ CSR_MSTATUS_UXL_32_BITS_MASK = (1<<32)
 CSR_MSTATUS_UXL_64_BITS_MASK = (2<<32)
 CSR_MSTATUS_UXL_128_BITS_MASK = (3<<32)
 
+CSR_MSTATUS_TSR_MASK = (1<<22)
+CSR_MSTATUS_TVM_MASK = (1<<20)
+
+CSR_MSTATUS_MPRV_MASK = (1<<17) 
+CSR_MSTATUS_MPP_POS = 11
+
+CSR_MSTATUS_MPIE_POS = 7
 CSR_MSTATUS_MPIE = (1<<7)
+
+CSR_MSTATUS_MIE_POS = 3
+CSR_MSTATUS_MIE_MASK = (1 << 3)
 
 csr_partial_wr_mask[CSR_MSTATUS]= (1<<23)-1
 
+# 0x304 - MIE  
+CSR_MIE_MEIE_MASK = (1<<11)
+CSR_MIE_SEIE_MASK = (1<<9)
+CSR_MIE_UEIE_MASK = (1<<8)
+CSR_MIE_MTIE_MASK = (1<<7)
+CSR_MIE_STIE_MASK = (1<<5)
+CSR_MIE_UTIE_MASK = (1<<4)
+CSR_MIE_MSIE_MASK = (1<<3)
+CSR_MIE_SSIE_MASK = (1<<1)
+CSR_MIE_USIE_MASK = 1
+
 # 0x344 - MIP
 CSR_MIP_MEIP_MASK = (1<<11)
+CSR_MIP_SEIP_MASK = (1<<9)
+CSR_MIP_UEIP_MASK = (1<<8)
 CSR_MIP_MTIP_MASK = (1<<7)
+CSR_MIP_STIP_MASK = (1<<5)
+CSR_MIP_UTIP_MASK = (1<<4)
 CSR_MIP_MSIP_MASK = (1<<3)
+CSR_MIP_SSIP_MASK = (1<<1)
+CSR_MIP_USIP_MASK = 1
 
+# 0x7A5 - TCONTROL
+CSR_TCONTROL_MTE_MASK = (1 << 3)
+CSR_TCONTROL_MPTE_MASK = (1 << 7)
 
 # 0xFFF - PRIVLEVEL
 CSR_PRIVLEVEL_MACHINE = 3
@@ -167,3 +227,14 @@ CSR_PRIVLEVEL_USER = 0
 def getCSRPrivilege(csr):
     return (csr >> 8) & 0x3
 
+def clearCSRBits(cpu, csr, start, bits):
+    v = cpu.csr[csr] & (((1<<bits)-1) << start)
+    cpu.csr[csr] = cpu.csr[csr] ^ v 
+
+def getCSRField(cpu, csr, start, bits):
+    return (cpu.csr[csr] >> start) & ((1<<bits)-1) 
+    
+def setCSRField(cpu, csr, start, bits, value):
+    clearCSRBits(cpu, csr, start, bits)
+    v = cpu.csr[csr] | ((value << start) & ((1<<bits)-1))
+    cpu.csr[csr] = v
