@@ -9,6 +9,9 @@ class Serializer:
     def __init__(self, filename):
         self.file = open(filename, 'wb')
         
+    def write_i8(self, v):
+        self.file.write(int(v & ((1<<8)-1)).to_bytes(8//8, byteorder='big'))
+
     def write_i64(self, v):
         self.file.write(int(v & ((1<<64)-1)).to_bytes(64//8, byteorder='big'))
         
@@ -54,6 +57,8 @@ class Serializer:
             self.write_string(obj)
         elif (stype == "<class 'int'>"):
             self.write_i64(obj)
+        elif (stype == "<class 'bool'>"):
+            self.write_i8(obj)
         elif (stype == "<class 'tuple'>"):
             self.write_i64(len(obj))
             for x in obj:
@@ -71,6 +76,9 @@ class Deserializer:
         self.file = open(filename, 'rb')
         
         
+    def read_i8(self):
+        return int.from_bytes(self.file.read(8//8), byteorder='big')
+    
     def read_i64(self):
         return int.from_bytes(self.file.read(64//8), byteorder='big')
         
@@ -132,6 +140,8 @@ class Deserializer:
 
         if (stype == "<class 'str'>"):
             return self.read_string()
+        elif (stype == "<class 'bool'>"):
+            return bool(self.read_i8())
         elif (stype == "<class 'int'>"):
             return self.read_i64()
         elif (stype == "<class 'tuple'>"):
