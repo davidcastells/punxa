@@ -283,6 +283,18 @@ def reportCSR(csr):
 
     table1_1 = ['User', 'Supervisor', 'Reserved', 'Machine']
     table3_1 = ['',32,64,128]    
+    table3_2 = ['Atomic extension', 'Tentatively reserved for Bit operations extension',
+                'Compressed extension','Double-precision floating-point extension',
+                'RV32E base ISA','Single-precision floating-point extension',
+                'Additional standard extensions present','Reserved','RV32I/64I/128I base ISA',
+                'Tentatively reserved for Dynamically Translated Languages extension',
+                'Reserved','Tentatively reserved for Decimal Floating-Point extension',
+                'Integer Multiply/Divide extension','User-level interrupts supported',
+                'Reserved','Tentatively reserved for Packed-SIMD extension',
+                'Quad-precision floating-point extension','Reserved','Supervisor mode implemented',
+                'Tentatively reserved for Transactional Memory extension','User mode implemented',
+                'Tentatively reserved for Vector extension','Reserved','Non-standard extensions present',
+                'Reserved','Reserved']
     table3_5 = ['Direct', 'Reserved']
     
     if (csr == 'mstatus'):
@@ -327,6 +339,14 @@ def reportCSR(csr):
         print('  * Mode: {} = {}'.format(get_bits(v, 0, 2), table3_5[get_bits(v, 0, 2)]))
         print('  * Address: {:016X} '.format(v & ~3))
         
+    elif (csr == 'misa'):
+        print('misa ({:03X}): {:016X}'.format(ncsr, v))
+        print('  * MXL - Machine XLEN: {} = {}'.format(get_bits(v, 62, 2), table3_1[get_bits(v, 62, 2)]))
+        extensions = ''
+        for i in range(26):
+            ext_chr = chr(65+i) if (get_bit(v, i)) else ' '
+            extensions = ext_chr + extensions
+        print('  * Extensions =', extensions)
         
     elif (csr == 'mnstatus'):
         print('mnstatus ({:03X}):  {:016X}'.format(ncsr, v))
