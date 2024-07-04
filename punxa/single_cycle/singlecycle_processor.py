@@ -131,6 +131,10 @@ class SingleCycleRISCV(py4hw.Logic):
         self.reserved_address_stop = -1
         self.reserved_accessed = False
         
+        # debugging
+        self.debug_pc = False
+        self.debug_vm = False
+        
         self.co = self.run()
         
     def setVerbose(self, verbose):
@@ -305,6 +309,8 @@ class SingleCycleRISCV(py4hw.Logic):
         if ((self.pc % 2) != 0):
             raise Exception('pc is not multiple of 2!', self.pc)
             
+        if (self.debug_pc):
+            print(f'FETCH {self.pc:016X}')
         self.ins = yield from self.virtualMemoryLoad(self.pc, 32//8, MEMORY_OP_EXECUTE)
 
     def getPTEFromPageTables(self, pageTable, address, level):
@@ -322,9 +328,12 @@ class SingleCycleRISCV(py4hw.Logic):
         off[1] = (address) & offmask[1] 
         off[0] = (address) & offmask[0]
         
+        pteaddr = pageTable + vpn[level]*8
+        
+        if (self.debug_vm): print(f'Loading PTE from {pteaddr:016X}')
         #pr('va: {:016X} vpn2: {} vpn1: {} vpn0: {}'.format(address, vpn[2], vpn[1], vpn[0]))
         #pr('load pte: {:016X} level:{} index:{}'.format(pageTable + vpn[level]*8, level, vpn[level]))
-        pte = yield from self.memoryLoad64(pageTable + vpn[level]*8, 64//8)
+        pte = yield from self.memoryLoad64(pteaddr, 64//8)
 
         X = (pte >> 3) & 1
         W = (pte >> 2) & 1
@@ -418,13 +427,18 @@ class SingleCycleRISCV(py4hw.Logic):
                                                and (mpvr != 0) and (mpp < CSR_PRIVLEVEL_MACHINE)):
             if (satp != 0): 
                 try:
+                    va = address
                     base, offmask = self.getPhysicalAddressFromTLB(address, memory_op)
                     address = base + (address & offmask)
+                    
+                    if (self.debug_vm): print('VM VA:{va:016X} PA:{address:016X}')
                 except TLBMiss:
                     #mode = (satp >> 60) & ((1<<4)-1)
                     #smode = ['Base', '','','','','','','','Sv39','Sv48','Sv57','Sv64'][mode]
                     #asid = (satp >> 44) & ((1<<16)-1)
                     root = (satp & ((1<<44)-1)) << 12
+                    
+                    if (self.debug_vm): print(f'ROOT PA:{root:016X}')
                     
                     level, pte = yield from self.getPTEFromPageTables(root, address, 2)
                     base, offmask, off = self.getPhysicalAddressFromPTE(address, 2, pte, memory_op)
@@ -1707,7 +1721,7 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'JALR'):
             self.should_jump = True
             self.jmp_address = (self.reg[rs1] + simm12) & ((1<<64)-2)
-            jmpCall = (rd == 0)
+            jmpCall = (rd != 1) # or (rd == 0) 
             if (rd == 0):
                 pr('r{} +  {} -> {}'.format(rs1, simm12, self.addressFmt(self.jmp_address)))
             else:
@@ -1883,6 +1897,7 @@ class SingleCycleRISCV(py4hw.Logic):
             self.should_jump = True
             self.jmp_address = self.reg[c_rs1]
             if (c_rs1 == 1):
+                # function exit is identifyied by a jumping to return address register
                 self.functionExit()
             else:
                 self.functionEnter(self.jmp_address, True)
@@ -1891,7 +1906,8 @@ class SingleCycleRISCV(py4hw.Logic):
             self.should_jump = True
             self.jmp_address = self.reg[c_rs1]
             self.reg[1] = self.pc + 2
-            self.functionEnter(self.jmp_address)
+            # we assume that real function enter (without jumps) use return address register
+            self.functionEnter(self.jmp_address, c_rs1 != 1)
             pr('{:016X} ra: {:016X}'.format(self.jmp_address, self.reg[1]))
         elif (op == 'C.EBREAK'):
             # 
