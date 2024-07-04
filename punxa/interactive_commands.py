@@ -5,6 +5,8 @@ Created on Sat May 25 15:41:27 2024
 @author: dcastel1
 """
 import math
+import os
+import zlib
 from .temp_helper import *
 
 from .csr import * 
@@ -436,13 +438,16 @@ def reportCSR(csr):
         print(' dmode: {} - {}'.format(tdata_dmode, dmodes[tdata_dmode]))
         print(' data: {}'.format(get_bits(v, 0, xlen-5)))
     else:
-        print('{}: {}'.format(csr, v))
+        print('{} ({}): {:16X}'.format(csr, ncsr, v))
 
 def checkpoint(filename='checkpoint.dat'):
     import shutil
-    from serialize import Serializer 
+    from .serialize import Serializer 
     
     cpu = _ci_cpu
+    memory = cpu.behavioural_memory
+    uart = _ci_uart
+    
     if (os.path.exists(filename)):
         shutil.copyfile(filename, filename+'.bak')
         
@@ -458,7 +463,7 @@ def checkpoint(filename='checkpoint.dat'):
     for i in range(4096):
         ser.write_i64(cpu.csr[i])
 
-    ser.write_int_pair_list(cpu.stack)
+    ser.write_int_tuple_list(cpu.stack, 3)
     
     # Serialize Memory Info
     ser.write_i64(len(memory.area))
@@ -482,9 +487,12 @@ def checkpoint(filename='checkpoint.dat'):
     ser.close()
 
 def restore(filename= 'checkpoint.dat'):
-    from serialize import Deserializer 
+    from .serialize import Deserializer 
     
     cpu = _ci_cpu
+    memory = cpu.behavioural_memory
+    uart = _ci_uart
+    
     ser = Deserializer(filename)
     
     # Deserialize CPU info
@@ -497,7 +505,7 @@ def restore(filename= 'checkpoint.dat'):
     for i in range(4096):
         cpu.csr[i] = ser.read_i64()
 
-    cpu.stack = ser.read_int_pair_list()
+    cpu.stack = ser.read_int_tuple_list(3)
 
     # Deserialize Memory Info
     memory.area = []
@@ -651,39 +659,60 @@ def pageTables(root=None, vbase = 0, level=2, printPTE=True):
     print('{}{}: {:08X} level: {}'.format(indent, tableName, root, level))
     
     totalTables = 1
+    vpn_pos = [12,21,30]
     
-    for i in range(0, 512, 1):
+    for i in range(512):
         add = root+i*8
         v = memory.read_i64(add-mem_base)
         ppn2 = (v >> 28) & ((1<<26)-1)
         ppn1 = (v >> 19) & ((1<<9)-1)
         ppn0 = (v >> 10) & ((1<<9)-1)
         rsw = (v >> 8) & ((1<<2)-1)
-        D = [' ','D'][(v >> 7) & 1]
-        A = [' ','A'][(v >> 6) & 1]
-        G = [' ','G'][(v >> 5) & 1]
-        U = [' ','U'][(v >> 7) & 1]
-        X = [' ','X'][(v >> 3) & 1]
-        W = [' ','W'][(v >> 2) & 1]
-        R = [' ','R'][(v >> 1) & 1]
+        D = (v >> 7) & 1
+        A = (v >> 6) & 1
+        G = (v >> 5) & 1
+        U = (v >> 7) & 1
+        X = (v >> 3) & 1
+        W = (v >> 2) & 1
+        R = (v >> 1) & 1
         valid = v & 1
+        leaf = R or X
         
-        va = vbase + (1 << [12,21,30][level]) * i
+        D = [' ','D'][D]
+        A = [' ','A'][A]
+        G = [' ','G'][G]
+        U = [' ','U'][U]
+        X = [' ','X'][X]
+        W = [' ','W'][W]
+        R = [' ','R'][R]
+        V = [' ','V'][valid]
+        
+        
+        va = vbase + (1 << vpn_pos[level]) * i
                 
         phy = ppn2 << 30 | ppn1 << 21 | ppn0 << 12
+
+        ppn2 = (v >> 28) & ((1<<26)-1)
+        ppn1 = (v >> 19) & ((1<<(26+9))-1)
+        ppn0 = (v >> 10) & ((1<<(26+9+9))-1)
+
+        pa = [ppn0, ppn1, ppn2][level] << vpn_pos[level]
         
         if (valid):
-            if (printPTE):
-                if (level == 2):
-                    print(f'{indent} {i:3d} ppn2:{ppn2:03X} ppn1:{ppn2:03X} ppn0:{ppn2:03X}  rsw:{rsw:0} {D}{A}{G}{U}{X}{W}{R} ')
-                else:
-                    print('{} {:3d} ppn2:{:08X} ppn1:{:03X} ppn0:{:03X} rsw:{:0} '
-                          '{}{}{}{}{}{}{} va: {:016X} pa: {:016X}'.format(
-                              indent,  i, ppn2, ppn2, ppn0, rsw, 
-                              D,A,G,U,X,W,R,
-                              va, phy))
+            #if (printPTE):
+            #    if (level == 2):
+            #        print(f'{indent} {i:3d} ppn2:{ppn2:03X} ppn1:{ppn2:03X} ppn0:{ppn2:03X}  rsw:{rsw:0} {D}{A}{G}{U}{X}{W}{R} ')
+            #    else:
+            #        print('{} {:3d} ppn2:{:08X} ppn1:{:03X} ppn0:{:03X} rsw:{:0} '
+            #              '{}{}{}{}{}{}{} va: {:016X} pa: {:016X}'.format(
+            #                  indent,  i, ppn2, ppn2, ppn0, rsw, 
+            #                  D,A,G,U,X,W,R,
+            #                  va, phy))
             
-            if (X == ' ' and W == ' ' and R == ' '):
+            if (leaf):
+                print(f'{indent} {i:3d} va: {va:016X} pa: {pa:016X}')
+            else:
+                print(f'{indent} {i:3d} --> va: {va:016X}')
                 totalTables += pageTables(phy, va, level-1, printPTE)
     
     return totalTables
@@ -692,35 +721,35 @@ def translateVirtualAddress(va):
     cpu = _ci_cpu
     memory = cpu.behavioural_memory
     mem_base = 0x80000000 # @todo assuming mem_base = 0x80000000
-
+    #
     priv = cpu.csr[0xfff]
     mpvr = cpu.csr[CSR_MSTATUS] & CSR_MSTATUS_MPRV_MASK
     mpp = getCSRField(cpu, CSR_MSTATUS, CSR_MSTATUS_MPP_POS, 2)
-
+    #
     useVM = (priv != CSR_PRIVLEVEL_MACHINE) or (priv == CSR_PRIVLEVEL_MACHINE and (mpvr != 0) and (mpp < CSR_PRIVLEVEL_MACHINE)) 
     print(f'priv: {priv} mpvr: {mpvr} mpp: {mpp} using Virtual Memory: {useVM}')
-
+    #
     v = cpu.csr[0x180] # satp
     mode = (v >> 60) & ((1<<4)-1)
     smode = ['Base', '','','','','','','','Sv39','Sv48','Sv57','Sv64'][mode]
     asid = (v >> 44) & ((1<<16)-1)
     print('Virtual Memory Mode: {} {} ASID: {:04X}'.format(mode, smode, asid))
     root = (v & ((1<<44)-1)) << 12
-        
+    #
     print(f'Root:  {root:016X}')
     level = 2
     pageTable  = root
-
+    #
     vpn=[0,0,0]
     off=[0,0,0]
     offmask=[0,0,0]
-    
+    #
     vpn_bits = [9,9,9]
     vpn_pos = [12,21,30]
-    
+    #
     ppn_bits = [9,9,26]
     ppn_pos = [12,21,30]
-    
+    #
     vpn[2] = (va >> 30) & ((1<<9)-1)
     vpn[1] = (va >> 21) & ((1<<9)-1)
     vpn[0] = (va >> 12) & ((1<<9)-1)
@@ -730,15 +759,16 @@ def translateVirtualAddress(va):
     off[2] = (va) & offmask[2]
     off[1] = (va) & offmask[1] 
     off[0] = (va) & offmask[0]
-    
-    
-    
+    #
+    print(f'vpn2: {vpn[2]} vpn1: {vpn[1]} vpn0: {vpn[0]}')
+    #
     pte_addr = pageTable + vpn[level]*8
     pte = memory.read_i64(pte_addr - mem_base)
-        
+    # 
     ppn2 = (pte >> 28) & ((1<<26)-1)
-    ppn1 = (pte >> 19) & ((1<<9)-1)
-        
+    ppn1 = (pte >> 19) & ((1<<(26+9))-1)
+    ppn0 = (pte >> 10) & ((1<<(26+9+9))-1)
+    #   
     rsw = (pte >> 8) & ((1<<2)-1)
     D = [' ','D'][(pte >> 7) & 1]
     A = [' ','A'][(pte >> 6) & 1]
@@ -749,13 +779,20 @@ def translateVirtualAddress(va):
     R = [' ','R'][(pte >> 1) & 1]
     V = [' ','V'][(pte & 1)]
     valid = pte & 1
-
+    #
+    pte_type = 'Invalid'
+    if (valid): 
+        if (R == ' ') and (X == ' '):
+            pte_type = '--->'
+        else:
+            pte_type = 'leaf'
+    #
     v_vpn = vpn[level]
     v_vof = off[level]
     v_ppn = [ppn0, ppn1, ppn2][level] << ppn_pos[level]
     v_pa = v_ppn + v_vof
-    
-    print(f'PTE va level: {level} in {pte_addr:016X} VA: {v_vpn:03X} | {v_vof:08X} PA: {v_ppn:X} + {v_vof:X} = {v_pa:016X}', end='')
+    #
+    print(f'Level 2 PTE index {vpn[2]} in {pte_addr:016X}. Type={pte_type} VA: {v_vpn:03X} | {v_vof:08X} PA: {v_ppn:X} + {v_vof:X} = {v_pa:016X}', end='')
     print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
     #print(f'va level: {level}  vpn:{vpn[level]:016X} ppn1:{:03X} ppn0:{:03X} rsw:{:0} '
     #                  ' va: {:016X} pa: {:016X}'.format(
