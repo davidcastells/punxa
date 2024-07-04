@@ -28,11 +28,12 @@ class Serializer:
         for s in v:
             self.write_i64(s)
 
-    def write_int_pair_list(self, v):
+    def write_int_tuple_list(self, v, tl):
         self.write_i64(len(v))
         for s in v:
-            self.write_i64(s[0])
-            self.write_i64(s[1])
+            for i in range(tl):
+                self.write_i64(s[i])
+            
             
     def write_string(self, s):
         ba = bytes(s, 'UTF-8')
@@ -105,15 +106,17 @@ class Deserializer:
             
         return ret
 
-    def read_int_pair_list(self):
+    def read_int_tuple_list(self, tl):
         ret = []
         
         n = self.read_i64()
         
         for i in range(n):
-            v0 = self.read_i64()
-            v1 = self.read_i64()
-            ret.append((v0,v1))
+            li = []
+            for j in range(tl):
+                li.append(self.read_i64())
+            
+            ret.append(tuple(li))
             
         return ret
           
