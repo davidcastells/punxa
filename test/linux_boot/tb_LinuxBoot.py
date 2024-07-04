@@ -36,6 +36,9 @@ import zlib
 mem_base = 0x80000000
 
     
+
+
+    
 def is_hex(s):
     try:
         int(s, 16)
@@ -105,85 +108,7 @@ def loadSymbols(cpu, filename, address_fix=0):
 def write_trace(filename=ex_dir + 'newtrace.json'):
     cpu.tracer.write_json(filename)
 
-def checkpoint(filename=ex_dir + 'checkpoint.dat'):
-    import shutil
-    from punxa.serialize import Serializer 
-    
-    if (os.path.exists(filename)):
-        shutil.copyfile(filename, filename+'.bak')
-        
-    ser = Serializer(filename)
 
-    # Serialize CPU info
-    ser.write_i64(cpu.pc)    
-    
-    for i in range(32):
-        ser.write_i64(cpu.reg[i])
-    for i in range(32):
-        ser.write_i64(cpu.freg[i])
-    for i in range(4096):
-        ser.write_i64(cpu.csr[i])
-
-    ser.write_int_pair_list(cpu.stack)
-    
-    # Serialize Memory Info
-    ser.write_i64(len(memory.area))
-    for mem in memory.area:        
-        offset = mem[0]
-        size = mem[1]
-        data = mem[2]
-        zmem = zlib.compress(data)
-        ser.write_i64(offset)
-        ser.write_i64(size)
-        ser.write_i64(len(zmem))
-        ser.write_bytearray(zmem)
-        
-    # Serialize UART Info
-    ser.write_string_list(uart.console)
-    
-    
-    # Serialize pending tracing (comple tracing is discarded)
-    ser.write_dictionary(cpu.tracer.pending)
-    
-    ser.close()
-
-def restore(filename=ex_dir + 'checkpoint.dat'):
-    from punxa.serialize import Deserializer 
-    
-    ser = Deserializer(filename)
-    
-    # Deserialize CPU info
-    cpu.pc = ser.read_i64()
-    
-    for i in range(32):
-        cpu.reg[i] = ser.read_i64()
-    for i in range(32):
-        cpu.freg[i] = ser.read_i64()
-    for i in range(4096):
-        cpu.csr[i] = ser.read_i64()
-
-    cpu.stack = ser.read_int_pair_list()
-
-    # Deserialize Memory Info
-    memory.area = []
-    num_area = ser.read_i64()
-    for i in range(num_area):        
-        offset = ser.read_i64()
-        size = ser.read_i64()
-        csize = ser.read_i64()
-        zmem = ser.read_bytearray(csize)
-        
-        mem = zlib.decompress(zmem)
-        
-        memory.area.append((offset, size, bytearray(mem)))
-
-    # Deserialize UART info
-    uart.console = ser.read_string_list()
-    
-    # Deerialize pending tracing (comple tracing is discarded)
-    cpu.tracer.pending = ser.read_dictionary()
-            
-    ser.close()
 
 
 def run(upto, maxclks=100000, verbose=True, autoCheckpoint=False):
@@ -376,7 +301,8 @@ cpu = SingleCycleRISCV(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets
 cpu.behavioural_memory = memory
 
 loadSymbols(cpu, ex_dir + 'fw_payload.sym', 0) # 32*4 - 0x10054)
-loadSymbols(cpu, ex_dir + 'vmlinux.sym', 0) # 0x0000000080200000 - 0xffffffe000000000) # 32*4 - 0x10054)
+loadSymbols(cpu, ex_dir + 'vmlinux.sym',  0x0000000080200000 - 0xffffffe000000000) # 32*4 - 0x10054)
+#loadSymbols(cpu, ex_dir + 'vmlinux.sym', 0) # 0x0000000080200000 - 0xffffffe000000000) # 32*4 - 0x10054)
 
 
 cpu.min_clks_for_trace_event = 1000
@@ -385,7 +311,7 @@ cpu.min_clks_for_trace_event = 1000
 import punxa.interactive_commands
 punxa.interactive_commands._ci_hw = hw
 punxa.interactive_commands._ci_cpu = cpu
-
+punxa.interactive_commands._ci_uart = uart 
 
 #hw.getSimulator().clk(150000)
 
