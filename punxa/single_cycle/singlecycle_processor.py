@@ -183,8 +183,6 @@ class SingleCycleRISCV(py4hw.Logic):
                 elif (priv == CSR_PRIVLEVEL_SUPERVISOR): # supervisor
                     self.csr[CSR_MSTATUS] |= (1 << 11) # set M-Mode as previous mode in MPP
 
-                
-
                 medeleg = self.csr[0x302] # medeleg
                 
                 if (get_bit(medeleg, e.code)):
@@ -311,6 +309,7 @@ class SingleCycleRISCV(py4hw.Logic):
             
         if (self.debug_pc):
             print(f'FETCH {self.pc:016X}')
+            
         self.ins = yield from self.virtualMemoryLoad(self.pc, 32//8, MEMORY_OP_EXECUTE)
 
     def getPTEFromPageTables(self, pageTable, address, level):
@@ -339,6 +338,8 @@ class SingleCycleRISCV(py4hw.Logic):
         W = (pte >> 2) & 1
         R = (pte >> 1) & 1
         valid = pte & 1
+
+        if not(valid): raise LoadPageFault('')
 
         if (X == 0 and R == 0):
             # this is a pointer to the next level, page walk
@@ -431,8 +432,9 @@ class SingleCycleRISCV(py4hw.Logic):
                     base, offmask = self.getPhysicalAddressFromTLB(address, memory_op)
                     address = base + (address & offmask)
                     
-                    if (self.debug_vm): print('VM VA:{va:016X} PA:{address:016X}')
+                    if (self.debug_vm): print(f'VM VA:{va:016X} PA:{address:016X}')
                 except TLBMiss:
+                    if (self.debug_vm): print('TLB miss')
                     #mode = (satp >> 60) & ((1<<4)-1)
                     #smode = ['Base', '','','','','','','','Sv39','Sv48','Sv57','Sv64'][mode]
                     #asid = (satp >> 44) & ((1<<16)-1)
@@ -441,7 +443,11 @@ class SingleCycleRISCV(py4hw.Logic):
                     if (self.debug_vm): print(f'ROOT PA:{root:016X}')
                     
                     level, pte = yield from self.getPTEFromPageTables(root, address, 2)
-                    base, offmask, off = self.getPhysicalAddressFromPTE(address, 2, pte, memory_op)
+                    base, offmask, off = self.getPhysicalAddressFromPTE(address, level, pte, memory_op)
+                    
+                    
+                    if (self.debug_vm): print(f'tranlation VA: {address:016X} PA: {base:X} + {off:X} = {base+off:016X} ')
+                    
                     vbasemask = ((1<<64)-1) - offmask
                     vbase = address & vbasemask
                     self.tlb[vbase] = (level, pte)
@@ -620,14 +626,14 @@ class SingleCycleRISCV(py4hw.Logic):
         else:
             pr('{:08X}: {:08X}     {} '.format(self.pc , ins,  self.decoded_ins), end='' )
         
-    def getPhysicalAddressQuick(self, address):
+    def getPhysicalAddressQuick(self, address, memory_op=MEMORY_OP_LOAD):
         priv = self.csr[0xfff] # privilege
         satp = self.csr[0x180] # satp
 
         if (priv != 3):
             if (satp != 0): 
                 try:
-                    base, offmask = self.getPhysicalAddressFromTLB(address)
+                    base, offmask = self.getPhysicalAddressFromTLB(address, memory_op)
                     address = base + (address & offmask)
                     return address
                 except TLBMiss:
