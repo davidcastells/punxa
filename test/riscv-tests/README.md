@@ -9,27 +9,38 @@ To run them do
  python  tb_ISA_tests.py -c "runAllTests()"
 ```
 
-Currently, we do not check all the tests. We do not run the rv32 tests, and we also bypass the vector instructions tests.
-Moreover, not all tests pass. 
+Currently, we still have issues with virtual memory.
+We do not run the rv32 tests.
 
 ***Summary***
 
 <pre>
 rv64mi-p        93.8 %   |███████████████████████████████████████████░░|
+rv64mzicbo-p    0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64si-p        85.7 %   |███████████████████████████████████████░░░░░░|
 rv64ssvnapot-p  0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64ua-p        100.0 %  |█████████████████████████████████████████████|
+rv64ua-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64uc-p        100.0 %  |█████████████████████████████████████████████|
+rv64uc-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64ud-p        100.0 %  |█████████████████████████████████████████████|
+rv64ud-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64uf-p        100.0 %  |█████████████████████████████████████████████|
+rv64uf-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64ui-p        100.0 %  |█████████████████████████████████████████████|
+rv64ui-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64um-p        100.0 %  |█████████████████████████████████████████████|
+rv64um-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64uzba-p      100.0 %  |█████████████████████████████████████████████|
+rv64uzba-v      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64uzbb-p      100.0 %  |█████████████████████████████████████████████|
+rv64uzbb-v      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64uzbc-p      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv64uzbc-v      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64uzbs-p      100.0 %  |█████████████████████████████████████████████|
+rv64uzbs-v      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64uzfh-p      100.0 %  |█████████████████████████████████████████████|
-</pre>
+rv64uzfh-v      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|</pre>
 
 The detailed current output is:
 
@@ -50,9 +61,10 @@ Test rv64mi-p-sd-misaligned         = OK
 Test rv64mi-p-sh-misaligned         = OK
 Test rv64mi-p-sw-misaligned         = OK
 Test rv64mi-p-zicntr                = OK
+Test rv64mzicbo-p-zero              = FAILED - Test return value = 3
 Test rv64si-p-csr                   = OK
 Test rv64si-p-dirty                 = OK
-Test rv64si-p-icache-alias          = FAILED - Test return value = 0
+Test rv64si-p-icache-alias          = FAILED - Test return value = 5
 Test rv64si-p-ma_fetch              = OK
 Test rv64si-p-sbreak                = OK
 Test rv64si-p-scall                 = OK
@@ -77,7 +89,27 @@ Test rv64ua-p-amoswap_w             = OK
 Test rv64ua-p-amoxor_d              = OK
 Test rv64ua-p-amoxor_w              = OK
 Test rv64ua-p-lrsc                  = OK
+Test rv64ua-v-amoadd_d              = FAILED - Test return value = 0
+Test rv64ua-v-amoadd_w              = FAILED - Test return value = 0
+Test rv64ua-v-amoand_d              = FAILED - Test return value = 0
+Test rv64ua-v-amoand_w              = FAILED - Test return value = 0
+Test rv64ua-v-amomaxu_d             = FAILED - Test return value = 0
+Test rv64ua-v-amomaxu_w             = FAILED - Test return value = 0
+Test rv64ua-v-amomax_d              = FAILED - Test return value = 0
+Test rv64ua-v-amomax_w              = FAILED - Test return value = 0
+Test rv64ua-v-amominu_d             = FAILED - Test return value = 0
+Test rv64ua-v-amominu_w             = FAILED - Test return value = 0
+Test rv64ua-v-amomin_d              = FAILED - Test return value = 0
+Test rv64ua-v-amomin_w              = FAILED - Test return value = 0
+Test rv64ua-v-amoor_d               = FAILED - Test return value = 0
+Test rv64ua-v-amoor_w               = FAILED - Test return value = 0
+Test rv64ua-v-amoswap_d             = FAILED - Test return value = 0
+Test rv64ua-v-amoswap_w             = FAILED - Test return value = 0
+Test rv64ua-v-amoxor_d              = FAILED - Test return value = 0
+Test rv64ua-v-amoxor_w              = FAILED - Test return value = 0
+Test rv64ua-v-lrsc                  = FAILED - Test return value = 0
 Test rv64uc-p-rvc                   = OK
+Test rv64uc-v-rvc                   = FAILED - Test return value = 0
 Test rv64ud-p-fadd                  = OK
 Test rv64ud-p-fclass                = OK
 Test rv64ud-p-fcmp                  = OK
@@ -90,6 +122,18 @@ Test rv64ud-p-ldst                  = OK
 Test rv64ud-p-move                  = OK
 Test rv64ud-p-recoding              = OK
 Test rv64ud-p-structural            = OK
+Test rv64ud-v-fadd                  = FAILED - Test return value = 0
+Test rv64ud-v-fclass                = FAILED - Test return value = 0
+Test rv64ud-v-fcmp                  = FAILED - Test return value = 0
+Test rv64ud-v-fcvt                  = FAILED - Test return value = 0
+Test rv64ud-v-fcvt_w                = FAILED - Test return value = 0
+Test rv64ud-v-fdiv                  = FAILED - Test return value = 0
+Test rv64ud-v-fmadd                 = FAILED - Test return value = 0
+Test rv64ud-v-fmin                  = FAILED - Test return value = 0
+Test rv64ud-v-ldst                  = FAILED - Test return value = 0
+Test rv64ud-v-move                  = FAILED - Test return value = 0
+Test rv64ud-v-recoding              = FAILED - Test return value = 0
+Test rv64ud-v-structural            = FAILED - Test return value = 0
 Test rv64uf-p-fadd                  = OK
 Test rv64uf-p-fclass                = OK
 Test rv64uf-p-fcmp                  = OK
@@ -101,6 +145,17 @@ Test rv64uf-p-fmin                  = OK
 Test rv64uf-p-ldst                  = OK
 Test rv64uf-p-move                  = OK
 Test rv64uf-p-recoding              = OK
+Test rv64uf-v-fadd                  = FAILED - Test return value = 0
+Test rv64uf-v-fclass                = FAILED - Test return value = 0
+Test rv64uf-v-fcmp                  = FAILED - Test return value = 0
+Test rv64uf-v-fcvt                  = FAILED - Test return value = 0
+Test rv64uf-v-fcvt_w                = FAILED - Test return value = 0
+Test rv64uf-v-fdiv                  = FAILED - Test return value = 0
+Test rv64uf-v-fmadd                 = FAILED - Test return value = 0
+Test rv64uf-v-fmin                  = FAILED - Test return value = 0
+Test rv64uf-v-ldst                  = FAILED - Test return value = 0
+Test rv64uf-v-move                  = FAILED - Test return value = 0
+Test rv64uf-v-recoding              = FAILED - Test return value = 0
 Test rv64ui-p-add                   = OK
 Test rv64ui-p-addi                  = OK
 Test rv64ui-p-addiw                 = OK
@@ -153,6 +208,58 @@ Test rv64ui-p-subw                  = OK
 Test rv64ui-p-sw                    = OK
 Test rv64ui-p-xor                   = OK
 Test rv64ui-p-xori                  = OK
+Test rv64ui-v-add                   = FAILED - Test return value = 0
+Test rv64ui-v-addi                  = FAILED - Test return value = 0
+Test rv64ui-v-addiw                 = FAILED - Test return value = 0
+Test rv64ui-v-addw                  = FAILED - Test return value = 0
+Test rv64ui-v-and                   = FAILED - Test return value = 0
+Test rv64ui-v-andi                  = FAILED - Test return value = 0
+Test rv64ui-v-auipc                 = FAILED - Test return value = 0
+Test rv64ui-v-beq                   = FAILED - Test return value = 0
+Test rv64ui-v-bge                   = FAILED - Test return value = 0
+Test rv64ui-v-bgeu                  = FAILED - Test return value = 0
+Test rv64ui-v-blt                   = FAILED - Test return value = 0
+Test rv64ui-v-bltu                  = FAILED - Test return value = 0
+Test rv64ui-v-bne                   = FAILED - Test return value = 0
+Test rv64ui-v-fence_i               = FAILED - Test return value = 0
+Test rv64ui-v-jal                   = FAILED - Test return value = 0
+Test rv64ui-v-jalr                  = FAILED - Test return value = 0
+Test rv64ui-v-lb                    = FAILED - Test return value = 0
+Test rv64ui-v-lbu                   = FAILED - Test return value = 0
+Test rv64ui-v-ld                    = FAILED - Test return value = 0
+Test rv64ui-v-lh                    = FAILED - Test return value = 0
+Test rv64ui-v-lhu                   = FAILED - Test return value = 0
+Test rv64ui-v-lui                   = FAILED - Test return value = 0
+Test rv64ui-v-lw                    = FAILED - Test return value = 0
+Test rv64ui-v-lwu                   = FAILED - Test return value = 0
+Test rv64ui-v-ma_data               = FAILED - Test return value = 0
+Test rv64ui-v-or                    = FAILED - Test return value = 0
+Test rv64ui-v-ori                   = FAILED - Test return value = 0
+Test rv64ui-v-sb                    = FAILED - Test return value = 0
+Test rv64ui-v-sd                    = FAILED - Test return value = 0
+Test rv64ui-v-sh                    = FAILED - Test return value = 0
+Test rv64ui-v-simple                = FAILED - Test return value = 0
+Test rv64ui-v-sll                   = FAILED - Test return value = 0
+Test rv64ui-v-slli                  = FAILED - Test return value = 0
+Test rv64ui-v-slliw                 = FAILED - Test return value = 0
+Test rv64ui-v-sllw                  = FAILED - Test return value = 0
+Test rv64ui-v-slt                   = FAILED - Test return value = 0
+Test rv64ui-v-slti                  = FAILED - Test return value = 0
+Test rv64ui-v-sltiu                 = FAILED - Test return value = 0
+Test rv64ui-v-sltu                  = FAILED - Test return value = 0
+Test rv64ui-v-sra                   = FAILED - Test return value = 0
+Test rv64ui-v-srai                  = FAILED - Test return value = 0
+Test rv64ui-v-sraiw                 = FAILED - Test return value = 0
+Test rv64ui-v-sraw                  = FAILED - Test return value = 0
+Test rv64ui-v-srl                   = FAILED - Test return value = 0
+Test rv64ui-v-srli                  = FAILED - Test return value = 0
+Test rv64ui-v-srliw                 = FAILED - Test return value = 0
+Test rv64ui-v-srlw                  = FAILED - Test return value = 0
+Test rv64ui-v-sub                   = FAILED - Test return value = 0
+Test rv64ui-v-subw                  = FAILED - Test return value = 0
+Test rv64ui-v-sw                    = FAILED - Test return value = 0
+Test rv64ui-v-xor                   = FAILED - Test return value = 0
+Test rv64ui-v-xori                  = FAILED - Test return value = 0
 Test rv64um-p-div                   = OK
 Test rv64um-p-divu                  = OK
 Test rv64um-p-divuw                 = OK
@@ -166,6 +273,19 @@ Test rv64um-p-rem                   = OK
 Test rv64um-p-remu                  = OK
 Test rv64um-p-remuw                 = OK
 Test rv64um-p-remw                  = OK
+Test rv64um-v-div                   = FAILED - Test return value = 0
+Test rv64um-v-divu                  = FAILED - Test return value = 0
+Test rv64um-v-divuw                 = FAILED - Test return value = 0
+Test rv64um-v-divw                  = FAILED - Test return value = 0
+Test rv64um-v-mul                   = FAILED - Test return value = 0
+Test rv64um-v-mulh                  = FAILED - Test return value = 0
+Test rv64um-v-mulhsu                = FAILED - Test return value = 0
+Test rv64um-v-mulhu                 = FAILED - Test return value = 0
+Test rv64um-v-mulw                  = FAILED - Test return value = 0
+Test rv64um-v-rem                   = FAILED - Test return value = 0
+Test rv64um-v-remu                  = FAILED - Test return value = 0
+Test rv64um-v-remuw                 = FAILED - Test return value = 0
+Test rv64um-v-remw                  = FAILED - Test return value = 0
 Test rv64uzba-p-add_uw              = OK
 Test rv64uzba-p-sh1add              = OK
 Test rv64uzba-p-sh1add_uw           = OK
@@ -174,6 +294,14 @@ Test rv64uzba-p-sh2add_uw           = OK
 Test rv64uzba-p-sh3add              = OK
 Test rv64uzba-p-sh3add_uw           = OK
 Test rv64uzba-p-slli_uw             = OK
+Test rv64uzba-v-add_uw              = FAILED - Test return value = 0
+Test rv64uzba-v-sh1add              = FAILED - Test return value = 0
+Test rv64uzba-v-sh1add_uw           = FAILED - Test return value = 0
+Test rv64uzba-v-sh2add              = FAILED - Test return value = 0
+Test rv64uzba-v-sh2add_uw           = FAILED - Test return value = 0
+Test rv64uzba-v-sh3add              = FAILED - Test return value = 0
+Test rv64uzba-v-sh3add_uw           = FAILED - Test return value = 0
+Test rv64uzba-v-slli_uw             = FAILED - Test return value = 0
 Test rv64uzbb-p-andn                = OK
 Test rv64uzbb-p-clz                 = OK
 Test rv64uzbb-p-clzw                = OK
@@ -198,9 +326,36 @@ Test rv64uzbb-p-sext_b              = OK
 Test rv64uzbb-p-sext_h              = OK
 Test rv64uzbb-p-xnor                = OK
 Test rv64uzbb-p-zext_h              = OK
+Test rv64uzbb-v-andn                = FAILED - Test return value = 0
+Test rv64uzbb-v-clz                 = FAILED - Test return value = 0
+Test rv64uzbb-v-clzw                = FAILED - Test return value = 0
+Test rv64uzbb-v-cpop                = FAILED - Test return value = 0
+Test rv64uzbb-v-cpopw               = FAILED - Test return value = 0
+Test rv64uzbb-v-ctz                 = FAILED - Test return value = 0
+Test rv64uzbb-v-ctzw                = FAILED - Test return value = 0
+Test rv64uzbb-v-max                 = FAILED - Test return value = 0
+Test rv64uzbb-v-maxu                = FAILED - Test return value = 0
+Test rv64uzbb-v-min                 = FAILED - Test return value = 0
+Test rv64uzbb-v-minu                = FAILED - Test return value = 0
+Test rv64uzbb-v-orc_b               = FAILED - Test return value = 0
+Test rv64uzbb-v-orn                 = FAILED - Test return value = 0
+Test rv64uzbb-v-rev8                = FAILED - Test return value = 0
+Test rv64uzbb-v-rol                 = FAILED - Test return value = 0
+Test rv64uzbb-v-rolw                = FAILED - Test return value = 0
+Test rv64uzbb-v-ror                 = FAILED - Test return value = 0
+Test rv64uzbb-v-rori                = FAILED - Test return value = 0
+Test rv64uzbb-v-roriw               = FAILED - Test return value = 0
+Test rv64uzbb-v-rorw                = FAILED - Test return value = 0
+Test rv64uzbb-v-sext_b              = FAILED - Test return value = 0
+Test rv64uzbb-v-sext_h              = FAILED - Test return value = 0
+Test rv64uzbb-v-xnor                = FAILED - Test return value = 0
+Test rv64uzbb-v-zext_h              = FAILED - Test return value = 0
 Test rv64uzbc-p-clmul               = FAILED - Test return value = 65
 Test rv64uzbc-p-clmulh              = FAILED - Test return value = 65
 Test rv64uzbc-p-clmulr              = FAILED - Test return value = 65
+Test rv64uzbc-v-clmul               = FAILED - Test return value = 0
+Test rv64uzbc-v-clmulh              = FAILED - Test return value = 0
+Test rv64uzbc-v-clmulr              = FAILED - Test return value = 0
 Test rv64uzbs-p-bclr                = OK
 Test rv64uzbs-p-bclri               = OK
 Test rv64uzbs-p-bext                = OK
@@ -209,6 +364,14 @@ Test rv64uzbs-p-binv                = OK
 Test rv64uzbs-p-binvi               = OK
 Test rv64uzbs-p-bset                = OK
 Test rv64uzbs-p-bseti               = OK
+Test rv64uzbs-v-bclr                = FAILED - Test return value = 0
+Test rv64uzbs-v-bclri               = FAILED - Test return value = 0
+Test rv64uzbs-v-bext                = FAILED - Test return value = 0
+Test rv64uzbs-v-bexti               = FAILED - Test return value = 0
+Test rv64uzbs-v-binv                = FAILED - Test return value = 0
+Test rv64uzbs-v-binvi               = FAILED - Test return value = 0
+Test rv64uzbs-v-bset                = FAILED - Test return value = 0
+Test rv64uzbs-v-bseti               = FAILED - Test return value = 0
 Test rv64uzfh-p-fadd                = OK
 Test rv64uzfh-p-fclass              = OK
 Test rv64uzfh-p-fcmp                = OK
@@ -220,6 +383,17 @@ Test rv64uzfh-p-fmin                = OK
 Test rv64uzfh-p-ldst                = OK
 Test rv64uzfh-p-move                = OK
 Test rv64uzfh-p-recoding            = OK
-Total: 186 Correct: 180 (96.8 %)
+Test rv64uzfh-v-fadd                = FAILED - Test return value = 0
+Test rv64uzfh-v-fclass              = FAILED - Test return value = 0
+Test rv64uzfh-v-fcmp                = FAILED - Test return value = 0
+Test rv64uzfh-v-fcvt                = FAILED - Test return value = 0
+Test rv64uzfh-v-fcvt_w              = FAILED - Test return value = 0
+Test rv64uzfh-v-fdiv                = FAILED - Test return value = 0
+Test rv64uzfh-v-fmadd               = FAILED - Test return value = 0
+Test rv64uzfh-v-fmin                = FAILED - Test return value = 0
+Test rv64uzfh-v-ldst                = FAILED - Test return value = 0
+Test rv64uzfh-v-move                = FAILED - Test return value = 0
+Test rv64uzfh-v-recoding            = FAILED - Test return value = 0
+Total: 349 Correct: 180 (51.6 %)
 ```
 
