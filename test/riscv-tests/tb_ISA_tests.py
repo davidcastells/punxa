@@ -127,7 +127,7 @@ def buildHw():
     hw = HWSystem()
 
     port_c = MemoryInterface(hw, 'port_c', mem_width, 64)     # The whole address space
-    port_m = MemoryInterface(hw, 'port_m', mem_width, 14)     # 14	bits = 
+    port_m = MemoryInterface(hw, 'port_m', mem_width, 16)     # 16	bits = 
     port_u = MemoryInterface(hw, 'port_u', mem_width, 8)      # 8 bits = 256
     port_l = MemoryInterface(hw, 'port_l', mem_width, 16)      # 8 bits = 256
     port_p = MemoryInterface(hw, 'port_p', mem_width, 24)      # 8 bits = 256
@@ -198,7 +198,7 @@ def prepareTest(test_file):
     #loadSymbols(cpu,  symbolFile, 0) # 32*4 - 0x10054)
 
 
-def runTest(test_file):
+def runTest(test_file, verbose=False):
     prepareTest(test_file)
     #passAdr = findFunction('pass')
     write_tohost = findFunction('write_tohost')
@@ -209,7 +209,7 @@ def runTest(test_file):
         return
 
     #run(passAdr, verbose=False)
-    run(write_tohost, maxclks=30000, verbose=False)
+    run(write_tohost, maxclks=30000, verbose=verbose)
     run(0, maxclks=20, verbose=False)
 
     # print('Test', test_file, end='')
@@ -242,8 +242,10 @@ prefixes = ['rv32mi-p', 'rv32si-p', 'rv32ua-p',
 #            'rv64uzfh-p']
 
             
-selected_prefixes = ['rv64mi-p', 'rv64si-p', 'rv64ssvnapot-p', 'rv64ua-p', 'rv64uc-p', 
-                     'rv64ud-p', 'rv64uf-p',  'rv64ui-p',  'rv64um-p', 'rv64uzba-p', 'rv64uzbb-p', 'rv64uzbc-p', 'rv64uzbs-p', 'rv64uzfh-p']
+selected_prefixes = ['rv64mi-p', 'rv64mzicbo-p', 'rv64si-p', 'rv64ssvnapot-p', 'rv64ua-p', 'rv64ua-v', 'rv64uc-p', 
+                     'rv64uc-v', 'rv64ud-p', 'rv64ud-v', 'rv64uf-p', 'rv64uf-v', 'rv64ui-p', 'rv64ui-v', 'rv64um-p', 'rv64um-v',
+                     'rv64uzba-p', 'rv64uzba-v', 'rv64uzbb-p', 'rv64uzbb-v', 'rv64uzbc-p', 'rv64uzbc-v', 'rv64uzbs-p', 'rv64uzbs-v',
+                     'rv64uzfh-p', 'rv64uzfh-v']
 
 def computeAllTests():
     files = os.listdir(ex_dir)
