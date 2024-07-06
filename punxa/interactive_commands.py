@@ -406,7 +406,7 @@ def reportCSR(csr):
         print('   NX: inexact', get_bit(v, 0))                
         
     elif (csr == 'medeleg'): 
-        print('medeleg:')
+        print('medeleg ({:03X}):  {:016X}'.format(ncsr, v))
         print(' delegate exceptions to lower privilege modes.')
         msg = ['Instruction address misaligned',
                'Instruction access fault',
@@ -650,7 +650,7 @@ def pageTables(root=None, vbase = 0, level=2, printPTE=True):
             return 0
     
     indent = ''
-    for i in range(2-level): indent += ' '
+    for i in range(2-level): indent += '   '
     
     if (level == 2):
         tableName = 'Root'
@@ -710,7 +710,7 @@ def pageTables(root=None, vbase = 0, level=2, printPTE=True):
             #                  va, phy))
             
             if (leaf):
-                print(f'{indent} {i:3d} va: {va:016X} pa: {pa:016X}')
+                print(f'{indent} {i:3d} va: {va:016X} pa: {pa:016X} {D}{A}{G}{U}{X}{W}{R}')
             else:
                 print(f'{indent} {i:3d} --> va: {va:016X}')
                 totalTables += pageTables(phy, va, level-1, printPTE)
@@ -735,11 +735,10 @@ def translateVirtualAddress(va):
     asid = (v >> 44) & ((1<<16)-1)
     print('Virtual Memory Mode: {} {} ASID: {:04X}'.format(mode, smode, asid))
     root = (v & ((1<<44)-1)) << 12
-    #
+    
     print(f'Root:  {root:016X}')
     level = 2
-    pageTable  = root
-    #
+    
     vpn=[0,0,0]
     off=[0,0,0]
     offmask=[0,0,0]
@@ -762,7 +761,7 @@ def translateVirtualAddress(va):
     #
     print(f'vpn2: {vpn[2]} vpn1: {vpn[1]} vpn0: {vpn[0]}')
     #
-    pte_addr = pageTable + vpn[level]*8
+    pte_addr = root + vpn[level]*8
     pte = memory.read_i64(pte_addr - mem_base)
     # 
     ppn2 = (pte >> 28) & ((1<<26)-1)
@@ -781,24 +780,112 @@ def translateVirtualAddress(va):
     valid = pte & 1
     #
     pte_type = 'Invalid'
+    is_leaf = True
     if (valid): 
         if (R == ' ') and (X == ' '):
             pte_type = '--->'
+            is_leaf = False
         else:
             pte_type = 'leaf'
-    #
-    v_vpn = vpn[level]
+            is_leaf = True
+
     v_vof = off[level]
     v_ppn = [ppn0, ppn1, ppn2][level] << ppn_pos[level]
     v_pa = v_ppn + v_vof
-    #
-    print(f'Level 2 PTE index {vpn[2]} in {pte_addr:016X}. Type={pte_type} VA: {v_vpn:03X} | {v_vof:08X} PA: {v_ppn:X} + {v_vof:X} = {v_pa:016X}', end='')
+    
+    if (is_leaf):
+        print(f'Level 2 PTE index {vpn[2]} in {pte_addr:016X}. Type={pte_type} VA: {vpn[2]:03X} | {v_vof:08X} PA: {v_ppn:X} + {v_vof:X} = {v_pa:016X}', end='')
+        print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
+        return
+    
+    phy = ppn2 << 30 | ppn1 << 21 | ppn0 << 12
+    print(f'Level 2 PTE index {vpn[2]} in {pte_addr:016X}. Type={pte_type} Table = {phy:016X}', end='')
     print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
-    #print(f'va level: {level}  vpn:{vpn[level]:016X} ppn1:{:03X} ppn0:{:03X} rsw:{:0} '
-    #                  ' va: {:016X} pa: {:016X}'.format(
-    #                      ' ',  i, ppn2, ppn2, ppn0, rsw, 
-    #                      D,A,G,U,X,W,R,
-    #                      va, phy))
+
+    level = 1
+    pte_addr = phy + vpn[level]*8
+    pte = memory.read_i64(pte_addr - mem_base)    
+    
+    ppn2 = (pte >> 28) & ((1<<26)-1)
+    ppn1 = (pte >> 19) & ((1<<(26+9))-1)
+    ppn0 = (pte >> 10) & ((1<<(26+9+9))-1)
+    
+    rsw = (pte >> 8) & ((1<<2)-1)
+    D = [' ','D'][(pte >> 7) & 1]
+    A = [' ','A'][(pte >> 6) & 1]
+    G = [' ','G'][(pte >> 5) & 1]
+    U = [' ','U'][(pte >> 7) & 1]
+    X = [' ','X'][(pte >> 3) & 1]
+    W = [' ','W'][(pte >> 2) & 1]
+    R = [' ','R'][(pte >> 1) & 1]
+    V = [' ','V'][(pte & 1)]
+    valid = pte & 1
+    #
+    pte_type = 'Invalid'
+    is_leaf = True
+    if (valid): 
+        if (R == ' ') and (X == ' '):
+            pte_type = '--->'
+            is_leaf = False
+        else:
+            pte_type = 'leaf'
+            is_leaf = True
+            
+    v_vof = off[level]
+    v_ppn = [ppn0, ppn1, ppn2][level] << ppn_pos[level]
+    v_pa = v_ppn + v_vof
+    
+    if (is_leaf):
+        print(f'Level 1 PTE index {vpn[1]} in {pte_addr:016X}. Type={pte_type} VA: {vpn[2]:03X} | {vpn[1]:03X} | {v_vof:08X} PA: {v_ppn:X} + {v_vof:X} = {v_pa:016X}', end='')
+        print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
+        return
+    
+    phy = ppn2 << 30 | ppn1 << 21 | ppn0 << 12
+    print(f'Level 1 PTE index {vpn[1]} in {pte_addr:016X}. Type={pte_type} Table = {phy:016X}', end='')
+    print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
+    
+    level = 0
+    pte_addr = phy + vpn[level]*8
+    pte = memory.read_i64(pte_addr - mem_base)    
+    
+    ppn2 = (pte >> 28) & ((1<<26)-1)
+    ppn1 = (pte >> 19) & ((1<<(26+9))-1)
+    ppn0 = (pte >> 10) & ((1<<(26+9+9))-1)
+    
+    rsw = (pte >> 8) & ((1<<2)-1)
+    D = [' ','D'][(pte >> 7) & 1]
+    A = [' ','A'][(pte >> 6) & 1]
+    G = [' ','G'][(pte >> 5) & 1]
+    U = [' ','U'][(pte >> 7) & 1]
+    X = [' ','X'][(pte >> 3) & 1]
+    W = [' ','W'][(pte >> 2) & 1]
+    R = [' ','R'][(pte >> 1) & 1]
+    V = [' ','V'][(pte & 1)]
+    valid = pte & 1
+    #
+    pte_type = 'Invalid'
+    is_leaf = True
+    if (valid): 
+        if (R == ' ') and (X == ' '):
+            pte_type = '--->'
+            is_leaf = False
+        else:
+            pte_type = 'leaf'
+            is_leaf = True
+            
+    v_vof = off[level]
+    v_ppn = [ppn0, ppn1, ppn2][level] << ppn_pos[level]
+    v_pa = v_ppn + v_vof
+    
+    if (is_leaf):
+        print(f'Level 0 PTE index {vpn[0]} in {pte_addr:016X}. Type={pte_type} VA: {vpn[2]:03X} | {vpn[1]:03X} | {v_vof:08X} PA: {v_ppn:X} + {v_vof:X} = {v_pa:016X}', end='')
+        print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
+        return
+    
+    phy = ppn2 << 30 | ppn1 << 21 | ppn0 << 12
+    print(f'Level 0 PTE index {vpn[0]} in {pte_addr:016X}. Type={pte_type} Table = {phy:016X}', end='')
+    print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
+    
 
     
 def memoryMap():
