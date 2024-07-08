@@ -127,7 +127,7 @@ def buildHw():
     hw = HWSystem()
 
     port_c = MemoryInterface(hw, 'port_c', mem_width, 64)     # The whole address space
-    port_m = MemoryInterface(hw, 'port_m', mem_width, 16)     # 16	bits = 
+    port_m = MemoryInterface(hw, 'port_m', mem_width, 20)     # 20	bits = 
     port_u = MemoryInterface(hw, 'port_u', mem_width, 8)      # 8 bits = 256
     port_l = MemoryInterface(hw, 'port_l', mem_width, 16)      # 8 bits = 256
     port_p = MemoryInterface(hw, 'port_p', mem_width, 24)      # 8 bits = 256
@@ -136,7 +136,7 @@ def buildHw():
 
     memory = SparseMemory(hw, 'main_memory', mem_width, 32, port_m, mem_base=mem_base)
 
-    memory.reallocArea(0, 1 << 16)
+    memory.reallocArea(0, 1 << 20)
 
     #test = ISATestCommunication(hw, 'test', mem_width, 8, port_t)
 
@@ -192,6 +192,7 @@ def prepareTest(test_file):
     
     loadElf(memory, programFile, mem_base ) # 32*4 - 0x10054)
     loadSymbolsFromElf(cpu, programFile, 0)
+    loadSymbolsFromElf(cpu, programFile, 0xffffffff7fe00000)    # for virtual memory tests
     
     #if not(os.path.exists(symbolFile)):
     #    os.system('/opt/riscv/bin/riscv64-unknown-elf-objdump -t {} > {}'.format(programFile, symbolFile))
@@ -209,7 +210,7 @@ def runTest(test_file, verbose=False):
         return
 
     #run(passAdr, verbose=False)
-    run(write_tohost, maxclks=30000, verbose=verbose)
+    run(write_tohost, maxclks=70000, verbose=verbose)
     run(0, maxclks=20, verbose=False)
 
     # print('Test', test_file, end='')
