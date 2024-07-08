@@ -297,6 +297,7 @@ def reportCSR(csr):
                 'Tentatively reserved for Transactional Memory extension','User mode implemented',
                 'Tentatively reserved for Vector extension','Reserved','Non-standard extensions present',
                 'Reserved','Reserved']
+    table3_3 = ['Off', 'Initial', 'Clean', 'Dirty']
     table3_5 = ['Direct', 'Reserved']
     
     if (csr == 'mstatus'):
@@ -310,8 +311,8 @@ def reportCSR(csr):
         print('  * MXR - Make Executable Readable: {}'.format(get_bits(v, 19, 1)))
         print('  * SUM - Permit Supervisor User Memory Access: {}'.format(get_bits(v, 18, 1)))
         print('  * MPRV - Modify Privilege: {}'.format(get_bits(v, 17, 1)))
-        print('  * XS - Extensions status: {}'.format(get_bits(v, 15, 2)))
-        print('  * FS - Floating point status: {}'.format(get_bits(v, 13, 2)))
+        print('  * XS - Extensions status: {} = {}'.format(get_bits(v, 15, 2), table3_3[get_bits(v, 15, 2)]))
+        print('  * FS - Floating point status: {} = {}'.format(get_bits(v, 13, 2), table3_3[get_bits(v, 13, 2)]))
         print('  * MPP - M-Mode Previous Privilege: {} = {}'.format(get_bits(v, 11, 2), table1_1[get_bits(v, 11, 2)]))    
         print('  * SPP - S-Mode Previous Privilege: {} = {}'.format(get_bits(v, 8, 1), table1_1[get_bits(v, 8, 1)]))    
         
@@ -358,6 +359,7 @@ def reportCSR(csr):
 
     elif (csr == 'mepc'):
         print('mepc: {}'.format(cpu.addressFmt(v)))
+        
     elif (csr == 'satp'):
         print('satp: {:016X}'.format(v))
         n = (v >> 60) & ((1<<4)-1)
@@ -385,6 +387,7 @@ def reportCSR(csr):
         print('   MSIP: machine-mode software interrup pending', get_bit(v, 3))
         print('   SSIP: supervisor-mode software interrup pending', get_bit(v, 1))
         print('   USIP: user-mode software interrup pending', get_bit(v, 0))
+        
     elif (csr == 'mie'):
         print('mie: {:016X}'.format(v))
         print('   MEIE: machine-mode external interrup enable', get_bit(v, 11))
@@ -437,6 +440,10 @@ def reportCSR(csr):
         print(' type: {} - {}'.format(tdata_type, tdata_types[tdata_type]))
         print(' dmode: {} - {}'.format(tdata_dmode, dmodes[tdata_dmode]))
         print(' data: {}'.format(get_bits(v, 0, xlen-5)))
+    elif (csr == 'instret'):
+        print('instret ({:03X}): {:016X}'.format(ncsr, v))
+        print('  * retired instructions: {}'.format(v))
+        
     else:
         print('{} ({}): {:16X}'.format(csr, ncsr, v))
 
@@ -671,7 +678,7 @@ def pageTables(root=None, vbase = 0, level=2, printPTE=True):
         D = (v >> 7) & 1
         A = (v >> 6) & 1
         G = (v >> 5) & 1
-        U = (v >> 7) & 1
+        U = (v >> 4) & 1
         X = (v >> 3) & 1
         W = (v >> 2) & 1
         R = (v >> 1) & 1
@@ -772,7 +779,7 @@ def translateVirtualAddress(va):
     D = [' ','D'][(pte >> 7) & 1]
     A = [' ','A'][(pte >> 6) & 1]
     G = [' ','G'][(pte >> 5) & 1]
-    U = [' ','U'][(pte >> 7) & 1]
+    U = [' ','U'][(pte >> 4) & 1]
     X = [' ','X'][(pte >> 3) & 1]
     W = [' ','W'][(pte >> 2) & 1]
     R = [' ','R'][(pte >> 1) & 1]
@@ -814,7 +821,7 @@ def translateVirtualAddress(va):
     D = [' ','D'][(pte >> 7) & 1]
     A = [' ','A'][(pte >> 6) & 1]
     G = [' ','G'][(pte >> 5) & 1]
-    U = [' ','U'][(pte >> 7) & 1]
+    U = [' ','U'][(pte >> 4) & 1]
     X = [' ','X'][(pte >> 3) & 1]
     W = [' ','W'][(pte >> 2) & 1]
     R = [' ','R'][(pte >> 1) & 1]
@@ -856,7 +863,7 @@ def translateVirtualAddress(va):
     D = [' ','D'][(pte >> 7) & 1]
     A = [' ','A'][(pte >> 6) & 1]
     G = [' ','G'][(pte >> 5) & 1]
-    U = [' ','U'][(pte >> 7) & 1]
+    U = [' ','U'][(pte >> 4) & 1]
     X = [' ','X'][(pte >> 3) & 1]
     W = [' ','W'][(pte >> 2) & 1]
     R = [' ','R'][(pte >> 1) & 1]
