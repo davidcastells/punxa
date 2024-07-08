@@ -38,8 +38,9 @@ class InstructionAddressMisaligned(ProcessorException):
 class InstructionAccessFault(ProcessorException):
     code = 1
     
-    def __init__(self, msg=''):
+    def __init__(self, msg='', tval=0):
         self.msg = msg
+        self.tval = tval
 
 class IllegalInstruction(ProcessorException):
     code = 2
@@ -75,14 +76,23 @@ class EnvCallMMode(ProcessorException):
 class InstructionPageFault(ProcessorException):
     code = 12
 
+    def __init__(self, msg='', tval=0):
+        self.msg = msg
+        self.tval = tval
+
 class LoadPageFault(ProcessorException):
     code = 13
     
-    def __init__(self, msg=''):
+    def __init__(self, msg='', tval=0):
         self.msg = msg
+        self.tval = tval
 
 class StoreAMOPageFault(ProcessorException):
     code = 15
+
+    def __init__(self, msg='', tval=0):
+        self.msg = msg
+        self.tval = tval
     
 # Internal exceptions
     
