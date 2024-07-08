@@ -169,11 +169,10 @@ class SingleCycleRISCV(py4hw.Logic):
                         self.pc += 4
             
             except ProcessorException as e:
-                pr('\n\tException:', e.msg, 'code:', e.code, end=' ' )
+                pr('\n\tException:', e.msg, 'code:', e.code, f'tval: 0x{e.tval:X}',  end=' ' )
                 
                 priv = self.csr[CSR_PRIVLEVEL]
                 
-                self.csr[CSR_MTVAL] = e.tval
 
                 # Exceptions are always handled by machine mode, unless they are delegated
                 # to lower modes
@@ -187,19 +186,21 @@ class SingleCycleRISCV(py4hw.Logic):
                 
                 if (get_bit(medeleg, e.code)):
                     # this should be delegated to supervisor mode
-                    vec = self.csr[0x105] # stvec
+                    vec = self.csr[CSR_STVEC] # stvec
+                    self.csr[CSR_STVAL] = e.tval
                     self.csr[0x100] |= (priv << 8) # set previous mode in SPP
-                    self.csr[0x141] = self.pc # sepc
-                    self.csr[0x142] = e.code  # scause
+                    self.csr[CSR_SEPC] = self.pc # sepc
+                    self.csr[CSR_SCAUSE] = e.code  # scause
                     vecname = self.implemented_csrs[0x105]
                     self.csr[CSR_PRIVLEVEL] = 1
 
                 else:
                     # this is executed in machine mode    
-                    vec = self.csr[0x305] # mtvec
-                    self.csr[0x300] |= (priv << 11) # set previous mode in MPP
-                    self.csr[0x341] = self.pc # mepc
-                    self.csr[0x342] = e.code  # mcause
+                    vec = self.csr[CSR_MTVEC] # mtvec
+                    self.csr[CSR_MTVAL] = e.tval
+                    self.csr[CSR_MSTATUS] |= (priv << 11) # set previous mode in MPP
+                    self.csr[CSR_MEPC] = self.pc # mepc
+                    self.csr[CSR_MCAUSE] = e.code  
                     
                     setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPIE_POS, 1, 
                                 getCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPIE_POS, 1))
@@ -339,9 +340,9 @@ class SingleCycleRISCV(py4hw.Logic):
         R = (pte >> 1) & 1
         valid = pte & 1
 
-        if not(valid): raise LoadPageFault('')
+        # if not(valid): raise LoadPageFault('invalid PTE', address)
 
-        if (X == 0 and R == 0):
+        if (valid) and (X == 0 and R == 0):
             # this is a pointer to the next level, page walk
             ppn2 = (pte >> 28) & ((1<<26)-1)
             ppn1 = (pte >> 19) & ((1<<9)-1)
@@ -355,6 +356,8 @@ class SingleCycleRISCV(py4hw.Logic):
             return level, pte
         
     def getPhysicalAddressFromPTE(self,  address, level, pte, memory_op):
+        priv = self.csr[0xfff]
+
         offmask=[0,0,0]
         off=[0,0,0]
 
@@ -371,7 +374,7 @@ class SingleCycleRISCV(py4hw.Logic):
         D = (pte >> 7) & 1
         A = (pte >> 6) & 1
         G = (pte >> 5) & 1
-        U = (pte >> 7) & 1
+        U = (pte >> 4) & 1
         X = (pte >> 3) & 1
         W = (pte >> 2) & 1
         R = (pte >> 1) & 1
@@ -381,13 +384,19 @@ class SingleCycleRISCV(py4hw.Logic):
         
         # Check PTE bits
         if (valid == 0):
-            raise LoadPageFault('PTE @ level {} not valid trying to access va:{:016X}'.format(level, address))
+            raise LoadPageFault('PTE @ level {} not valid trying to access va:{:016X}'.format(level, address), address)
+            
+        if (priv == CSR_PRIVLEVEL_USER) and not(U):
+            raise InstructionPageFault('PTE not User accessible', address)
+
+        if (A == 0) and (memory_op != MEMORY_OP_STORE):
+            raise LoadPageFault('Access bit not set', address)
             
         if (D == 0) and (memory_op == MEMORY_OP_STORE):
-            raise StoreAMOPageFault()
+            raise StoreAMOPageFault('Dirty bit not set', address)
         
         if (level == 2) and ((ppn1 != 0) or (ppn0 != 0)):
-            raise StoreAMOPageFault()
+            raise StoreAMOPageFault('Lower PPN bits not zero', address)
         
         phy = (ppn2 << 30 | ppn1 << 21 | ppn0 << 12) 
         
@@ -520,9 +529,9 @@ class SingleCycleRISCV(py4hw.Logic):
  
         if (self.v_mem_resp == 1):
             if (memory_op == MEMORY_OP_EXECUTE):
-                raise InstructionAccessFault()
+                raise InstructionAccessFault('Failed to load physical memory', address)
             else:
-                raise LoadAccessFault() # StoreAMOPageFault()            
+                raise LoadAccessFault('Failed to load physical memory', address) # StoreAMOPageFault()            
             
         return value
     
@@ -572,7 +581,7 @@ class SingleCycleRISCV(py4hw.Logic):
             raise Exception('unsupported memory store size {}'.format(b))
             
         if (self.v_mem_resp == 1):
-            raise StoreAMOPageFault()
+            raise StoreAMOPageFault('Failed to load physical memory', address)
             
     def memoryLoad64(self, address, b,  memory_op=MEMORY_OP_LOAD):
         #if (address < 0x80000000 or address >= 0x80400000 ):
@@ -595,9 +604,9 @@ class SingleCycleRISCV(py4hw.Logic):
 
         if (self.v_mem_resp == 1):
             if (memory_op == MEMORY_OP_EXECUTE):
-                raise InstructionAccessFault()
+                raise InstructionAccessFault('Failed to load physical memory', address)
             else:
-                raise LoadAccessFault() # StoreAMOPageFault()
+                raise LoadAccessFault('Failed to load physical memory', address) # StoreAMOPageFault()
             
         return value
     
@@ -613,7 +622,7 @@ class SingleCycleRISCV(py4hw.Logic):
         yield
     
         if (self.v_mem_resp == 1):
-            raise StoreAMOPageFault()
+            raise StoreAMOPageFault('Failed to load physical memory', address)
     
     def decode(self):
         ins = self.ins
@@ -1711,7 +1720,7 @@ class SingleCycleRISCV(py4hw.Logic):
             self.jmp_address = self.csr[CSR_MEPC]
             self.functionExit()
             self.csr[CSR_PRIVLEVEL] = (self.csr[CSR_MSTATUS] >> 11) & ((1<<2)-1) # change to the MPP Mode (mstatus)
-            self.csr[CSR_MSTATUS] |= CSR_MSTATUS_MPIE
+            self.csr[CSR_MSTATUS] |= CSR_MSTATUS_MPIE_MASK
             # self.csr[CSR_MSTATUS] &= ~CSR_MSTATUS_MPRV_MASK     # clear the MPRV bit
             setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPP_POS, 2, 0) # clear MPP
             pr('pc = mepc -> {:016X}'.format(self.jmp_address)) 
@@ -2207,7 +2216,7 @@ class SingleCycleRISCV(py4hw.Logic):
         self.implemented_csrs[0x143] = 'stval'
         self.implemented_csrs[0x144] = 'sip'
 
-        self.implemented_csrs[0x180] = 'satp'
+        self.implemented_csrs[CSR_SATP] = 'satp'
 
         self.csr[CSR_MSTATUS] = CSR_MSTATUS_SXL_64_BITS_MASK | CSR_MSTATUS_UXL_64_BITS_MASK
         self.implemented_csrs[CSR_MSTATUS] = 'mstatus'
@@ -2292,7 +2301,13 @@ class SingleCycleRISCV(py4hw.Logic):
 
         csrname = self.implemented_csrs[idx]
 
-        if ((idx in csr_fix_ro) or (idx in csr_var_ro)):
+        real_idx = idx
+        if (idx in csr_mirrored.keys()):
+            # do read special things            
+            real_idx = csr_mirrored[idx]
+            self.csr[idx] = (self.csr[real_idx] & ~csr_mirror_mask[idx]) | (v & csr_mirror_mask[idx])
+
+        if ((real_idx in csr_fix_ro) or (real_idx in csr_var_ro)):
             if (self.csr[CSR_PRIVLEVEL] == CSR_PRIVLEVEL_MACHINE):
                 print('WARNING! trying to write read-only CSR {}'.format(csrname))
                 return
@@ -2300,24 +2315,24 @@ class SingleCycleRISCV(py4hw.Logic):
                 raise IllegalInstruction('trying to write read-only CSR {}'.format(csrname), self.ins)
         
         # do write special things
-        if (idx in csr_partial_wr_mask.keys()):
-            v = (self.csr[idx] & (((1<<64)-1)^csr_partial_wr_mask[idx])) | (v & csr_partial_wr_mask[idx])
+        if (real_idx in csr_partial_wr_mask.keys()):
+            v = (self.csr[real_idx] & (((1<<64)-1)^csr_partial_wr_mask[real_idx])) | (v & csr_partial_wr_mask[real_idx])
             
-        if (idx == CSR_SATP):
+        if (real_idx == CSR_SATP):
             if (self.csr[CSR_PRIVLEVEL] == CSR_PRIVLEVEL_SUPERVISOR) and (self.csr[CSR_MSTATUS] & CSR_MSTATUS_TVM_MASK):
                 raise IllegalInstruction('Trying to write SATP with TVM', self.ins)
                 
-        if (idx == CSR_FCSR):
+        if (real_idx == CSR_FCSR):
             # write also in FFLAGS
             self.csr[CSR_FFLAGS] = v & ((1<<5)-1)
             
-        if (idx == CSR_FFLAGS):
+        if (real_idx == CSR_FFLAGS):
             self.csr[CSR_FCSR] = (self.csr[CSR_FCSR] & (((1<<64)-1) ^ ((1<<5)-1))) | (v & ((1<<5)-1))
-        if (idx == CSR_FRM):
+        if (real_idx == CSR_FRM):
             self.csr[CSR_FCSR] = (self.csr[CSR_FCSR] & (((1<<64)-1) ^ CSR_FCSR_ROUNDING_MODE_MASK)) | (v << 5) 
         
         #print('CSR WRITE {} = {:016X}'.format(csrname, v))
-        self.csr[idx] = v
+        self.csr[real_idx] = v
         
     def setCSR(self, idx, v):
         #if not(idx in self.implemented_csrs):
