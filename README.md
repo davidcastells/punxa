@@ -10,9 +10,9 @@ When completed, next goal is Linux boot.
 
 ### RISC-V ISA Tests
 
-RV64 (excluding vector and cache management instructions) progress: 
+RV64 ISA tests progress: 
 
-51.6 %   |████████████████████████░░░░░░░░░░░░░░░░░░░░░|
+96.0 %   |████████████████████████████████████████████░|
 
 check [riscv-tests](https://github.com/davidcastells/punxa/blob/main/test/riscv-tests/README.md) for a complete list
 
