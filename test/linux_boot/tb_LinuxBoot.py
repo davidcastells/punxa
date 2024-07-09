@@ -301,7 +301,8 @@ cpu = SingleCycleRISCV(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets
 cpu.behavioural_memory = memory
 
 loadSymbols(cpu, ex_dir + 'fw_payload.sym', 0) # 32*4 - 0x10054)
-loadSymbols(cpu, ex_dir + 'vmlinux.sym',  0x0000000080200000 - 0xffffffe000000000) # 32*4 - 0x10054)
+loadSymbols(cpu, ex_dir + 'vmlinux.sym',  0) # 32*4 - 0x10054)
+loadSymbols(cpu, ex_dir + 'vmlinux.sym',  0xFFFFFFE00000704C - 0x8020704C) # 32*4 - 0x10054)
 #loadSymbols(cpu, ex_dir + 'vmlinux.sym', 0) # 0x0000000080200000 - 0xffffffe000000000) # 32*4 - 0x10054)
 
 
