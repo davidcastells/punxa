@@ -17,7 +17,7 @@ if not(baseDir in sys.path):
     print('appending .. to path')
     sys.path.append(baseDir)
 
-ex_dir = ''
+ex_dir = './'
 
 
 from punxa.memory import *
@@ -25,7 +25,7 @@ from punxa.bus import *
 from punxa.uart import *
 from punxa.clint import *
 from punxa.plic import *
-from punxa.single_cycle.singlecycle_processor_proxy_kernel import *
+from punxa.single_cycle.singlecycle_processor_proxy_linux import *
 from punxa.instruction_decode import *
 from punxa.interactive_commands import *
     
@@ -252,7 +252,7 @@ def buildHw():
                                           (port_p, 0xFFF1100000),
                                           (port_l, 0xFFF1020000)])
 
-    cpu = SingleCycleRISCVProxyKernel(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
+    cpu = SingleCycleRISCVProxyLinux(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
 
     cpu.min_clks_for_trace_event = 1000
     cpu.behavioural_memory = memory
@@ -299,14 +299,39 @@ def prepare():
     print(f'\tStack base: 0x{stack_base:016X} size: 0x{stack_size:016X}')
     print(f'\tHeap base:  0x{cpu.heap_base:016X} size: 0x{cpu.heap_size:016X}')
 
+    # Now push the arguments to the stack (in reverse order?)
+    args = []
+    args = [programFile] + args
+    argc = len(args)
+    argsp = [0] * argc
+    
+    
+    for i in range(argc):
+        param = args[argc-1-i]
+        cpu.pushString(param)
+        argsp[i] = cpu.reg[2] + 1
+    
+    for i in range(4):
+        cpu.pushInt64(0) # for other libc argmuments
+        
+    cpu.pushInt64(0)
+    
+    for i in range(argc):
+        add = argsp[i]
+        cpu.pushInt64(add)
+    
+    cpu.pushInt64(argc)
+    
+    cpu.reg[2] += 1
 
-def runTest():
+def runTest(verbose=False):
     prepare()
     exit_adr = findFunction('exit')
 
+    cpu.debug_insret = verbose
     
     #run(passAdr, verbose=False)
-    run(exit_adr, maxclks=10000, verbose=False)
+    run(exit_adr, maxclks=100000000, verbose=verbose)
     #run(0, maxclks=20, verbose=False)
 
     # print('Test', test_file, end='')
@@ -327,6 +352,34 @@ def runHello():
     print('Console Output')
     print('-'*80)
     console()
+    
+
+def set_FILE_debug(add):
+    for i in range(0, 184, 4):
+        cpu.funcs[add+i] = f'FILE[{i}]'
+        
+    cpu.funcs[add+18] = f'FILE::_file'
+    cpu.funcs[add+72] = f'FILE::write'
+    
+    
+def set_file_stat_debug(stat):
+    for i in range(0, 128, 4):
+        cpu.funcs[stat+i] = f'stat[{i}]'
+
+    # cpu.funcs[stat + 0] = 'stat::st_dev'
+    #cpu.funcs[stat + 8] = 'stat::st_ino'
+    #cpu.funcs[stat + ]
+    #st_mode - offset: 16 size: 4 value: 0x00002190
+    #st_nlink - offset: 20 size: 2 value: 0x0001
+    #st_uid - offset: 24 size: 4 value: 0x00001000
+    #st_gid - offset: 28 size: 4 value: 0x00001000
+    #st_rdev - offset: 32 size: 4 value: 0x00880001
+    #st_size - offset: 40 size: 8 value: 0x0000000000000000
+    #st_atime - offset: 48 size: 8 value: 0x0000000066921D7F
+    #st_mtime - offset: 64 size: 8 value: 0x0000000066921D7F
+    #st_ctime - offset: 80 size: 8 value: 0x00000000456F7080
+    #st_blksize - offset: 96 size: 4 value: 0x00010000
+    #st_blocks - offset: 104 size: 8 value: 0x0000000000000000
 
 if __name__ == "__main__":
     print(sys.argv)
