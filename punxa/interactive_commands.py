@@ -706,7 +706,7 @@ def pageTables(root=None, vbase = 0, level=2, printPTE=True):
         pa = [ppn0, ppn1, ppn2][level] << vpn_pos[level]
         
         if (valid):
-            #if (printPTE):
+            if (printPTE):
             #    if (level == 2):
             #        print(f'{indent} {i:3d} ppn2:{ppn2:03X} ppn1:{ppn2:03X} ppn0:{ppn2:03X}  rsw:{rsw:0} {D}{A}{G}{U}{X}{W}{R} ')
             #    else:
@@ -716,11 +716,11 @@ def pageTables(root=None, vbase = 0, level=2, printPTE=True):
             #                  D,A,G,U,X,W,R,
             #                  va, phy))
             
-            if (leaf):
-                print(f'{indent} {i:3d} va: {va:016X} pa: {pa:016X} {D}{A}{G}{U}{X}{W}{R}')
-            else:
-                print(f'{indent} {i:3d} --> va: {va:016X}')
-                totalTables += pageTables(phy, va, level-1, printPTE)
+                if (leaf):
+                    print(f'{indent} {i:3d} va: {va:016X} pa: {pa:016X} {D}{A}{G}{U}{X}{W}{R}')
+                else:
+                    print(f'{indent} {i:3d} --> va: {va:016X}')
+                    totalTables += pageTables(phy, va, level-1, printPTE)
     
     return totalTables
 
