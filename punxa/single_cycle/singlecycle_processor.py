@@ -134,6 +134,7 @@ class SingleCycleRISCV(py4hw.Logic):
         # debugging
         self.debug_pc = False
         self.debug_vm = False
+        self.debug_insret = False
         
         self.co = self.run()
         
@@ -231,6 +232,10 @@ class SingleCycleRISCV(py4hw.Logic):
         # jmp is True if the enter to the function was done with a jump, which
         # should provoke to pop the parent from the stack when exiting
 
+        if (jmp):
+            if (len(self.stack) > 1) and (self.stack[-1][0] == f):
+                return
+        
         pair = (f, self.csr[CSR_CYCLE], jmp)
         self.stack.append(pair)
 
@@ -238,8 +243,9 @@ class SingleCycleRISCV(py4hw.Logic):
             return
         
         fn = f
-        if (fn in self.funcs.keys()):
-            fn = self.funcs[f]
+        # @todo remove fn ,translation should be done at stack command
+        #if (fn in self.funcs.keys()): 
+        #    fn = self.funcs[f]
         
         pairn = (fn, self.csr[CSR_CYCLE], jmp)        
         self.tracer.start(pairn)
@@ -310,7 +316,10 @@ class SingleCycleRISCV(py4hw.Logic):
             
         if (self.debug_pc):
             print(f'FETCH {self.pc:016X}')
-            
+
+        if (self.debug_insret):
+            print(self.csr[CSR_INSTRET], end = ' - ')
+        
         self.ins = yield from self.virtualMemoryLoad(self.pc, 32//8, MEMORY_OP_EXECUTE)
 
     def getPTEFromPageTables(self, pageTable, address, level):
@@ -1299,18 +1308,19 @@ class SingleCycleRISCV(py4hw.Logic):
             #    r2 -> [rs1]
             address = self.reg[rs1]
             
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
-            self.reg[rd] = signExtend(self.reg[rd], 32,64) 
-
-            newvalue = self.reg[rs2] & 0xFFFFFFFF            
+            oldvalue = yield from self.virtualMemoryLoad(address, 32//8)
+            oldvalue = signExtend(oldvalue, 32,64)                 
+            newvalue = self.reg[rs2] & 0xFFFFFFFF
+            self.reg[rd] = oldvalue            
             yield from self.virtualMemoryWrite(address, 32//8, newvalue)
-            pr('r{}:[r{}] X r{} -> {:016X} [{}]={:08X}'.format(rd, rs1, rs2, self.reg[rd], self.addressFmt(address), newvalue))
+            pr('r{} = [r{}], [r{}] = r{} -> {:016X} [{}]={:08X}'.format(rd, rs1, rs1, rs2, self.reg[rd], self.addressFmt(address), newvalue))
         elif (op == 'AMOSWAP.D'):
             # [rs1] -> rd
             #    r2 -> [rs1]
             address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
+            oldvalue = yield from self.virtualMemoryLoad(address, 64//8)
             newvalue = self.reg[rs2]
+            self.reg[rd] = oldvalue
             yield from self.virtualMemoryWrite(address, 64//8, newvalue)
             pr('r{}:[r{}] X r{} -> {:016X} [{}]={:016X}'.format(rd, rs1, rs2, self.reg[rd], self.addressFmt(address), newvalue))
         elif (op == 'AMOMAX.W'):
@@ -1921,9 +1931,9 @@ class SingleCycleRISCV(py4hw.Logic):
             self.should_jump = True
             self.jmp_address = self.reg[c_rs1]
             self.reg[1] = self.pc + 2
-            # we assume that real function enter (without jumps) use return address register
-            self.functionEnter(self.jmp_address, c_rs1 != 1)
-            pr('{:016X} ra: {:016X}'.format(self.jmp_address, self.reg[1]))
+            pr('r{}, r1 = pc+2 -> {},{}'.format(c_rs1, self.addressFmt(self.jmp_address), self.addressFmt(self.reg[1])))
+            self.functionEnter(self.jmp_address, True)
+            
         elif (op == 'C.EBREAK'):
             # 
             pr('BUG?')
@@ -1952,12 +1962,12 @@ class SingleCycleRISCV(py4hw.Logic):
             address = self.reg[2] + off
             v = yield from self.virtualMemoryLoad(address, 32//8)
             self.reg[c_rd] = signExtend(v, 32, 64) 
-            pr('r{} = [r2 + {}] -> {:016X}'.format(c_rd, off, self.reg[c_rd]))
+            pr('r{} = [r2 + {}] -> [{}] = {:016X}'.format(c_rd, off, self.addressFmt(address), self.reg[c_rd]))
         elif (op == 'C.LDSP'):
             off = compose(ins, [[2,3], [12,1], [5,2]]) << 3
             address = self.reg[2] + off
             self.reg[c_rd] = yield from self.virtualMemoryLoad(address, 64//8)
-            pr('r{} = [r2 + {}] -> [{:016X}]={:016X}'.format(c_rd, off, address, self.reg[c_rd]))
+            pr('r{} = [r2 + {}] -> [{}]={:016X}'.format(c_rd, off, self.addressFmt(address), self.reg[c_rd]))
         elif (op == 'C.LQSP'):
             raise Exception('128 instruction')
             # off = compose(ins, [[2,4],[12,1],[6,1]]) << 4
@@ -2145,12 +2155,12 @@ class SingleCycleRISCV(py4hw.Logic):
             address = self.reg[c_rs1] + off
             v = yield from self.virtualMemoryLoad(address, 32//8)
             self.reg[c_rd] = signExtend(v, 32,64)  
-            pr('r{} = [r{} + {}] -> [{:016X}]={:08X}'.format(c_rd, c_rs1, off, address, self.reg[c_rd]))
+            pr('r{} = [r{} + {}] -> [{}]={:08X}'.format(c_rd, c_rs1, off, self.addressFmt(address), self.reg[c_rd]))
         elif (op == 'C.LD'):
             off = compose(ins, [[5,2],[10,3]]) << 3
             address = self.reg[c_rs1] + off
             self.reg[c_rd] = yield from self.virtualMemoryLoad(address, 64//8)
-            pr('r{} = [r{} + {}] -> [{:016X}]={:016X}'.format(c_rd, c_rs1, off, address, self.reg[c_rd]))
+            pr('r{} = [r{} + {}] -> [{}]={:016X}'.format(c_rd, c_rs1, off, self.addressFmt(address), self.reg[c_rd]))
         elif (op == 'C.FLW'):
             off = compose(ins, [[5,1],[10,3],[6,1]]) << 2
             address = self.reg[c_rs1] + off
