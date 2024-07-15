@@ -15,6 +15,7 @@ _ic_verbose = False
 tbreak_address = None
 _ci_hw = None
 _ci_cpu = None
+_ci_bus = None
 
 def list_commands():
     print('punxa interactive commands:')
@@ -111,9 +112,12 @@ def loadSymbolsFromElf(cpu,  filename, offset):
             if hasattr(section, 'iter_symbols'):
                 for symbol in section.iter_symbols():
                     #if symbol['st_info']['type'] == 'STT_FUNC':
-                    addr = symbol['st_value'] + offset
-                    name = symbol.name
-                    cpu.funcs[addr]= name
+                    try:
+                        addr = symbol['st_value'] + offset
+                        name = symbol.name
+                        cpu.funcs[addr]= name
+                    except Exception as e:
+                        print('WARNING no symbol', e)
 
 
 def loadProgram(memory, filename, offset):
@@ -896,6 +900,10 @@ def translateVirtualAddress(va):
 
     
 def memoryMap():
+    bus = _ci_bus
+    memory = _ci_cpu.behavioural_memory
+    mem_base = memory.mem_base
+    
     for i in range(len(bus.start)):
         size = bus.stop[i] - bus.start[i]
         units = 'B'
