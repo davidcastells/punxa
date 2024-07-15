@@ -13,6 +13,8 @@ import os
 # Syscalls are listed in
 # https://elixir.bootlin.com/linux/latest/source/include/uapi/asm-generic/unistd.h
 
+SYSCALL_DUP = 23
+SYSCALL_FCNTL = 25
 SYSCALL_IOCTL = 29
 SYSCALL_OPENAT = 56
 SYSCALL_CLOSE = 57
@@ -83,26 +85,20 @@ class SingleCycleRISCVProxyLinux(SingleCycleRISCV):
                 self.syscall_ioctl()
             elif (syscall == SYSCALL_BRK):
                 self.syscall_brk()
-
             elif (syscall == SYSCALL_READ):
-                fd = self.reg[10]
-                buf = self.reg[11]
-                count = self.reg[12]
-                print(f'READ fd:0x{fd:X} buf:0x{buf:X} count:0x{count:X}')                
-                self.reg[10] = self.syscall_read(fd, buf, count)
+                self.syscall_read()
             elif (syscall == SYSCALL_WRITE):
                 self.syscall_write()
             elif (syscall == SYSCALL_EXIT):
                 self.syscall_exit()
             elif (syscall == SYSCALL_EXIT_GROUP):
                 self.syscall_exit_group()
-                
+            elif (syscall == SYSCALL_DUP):
+                self.syscall_dup()
             elif (syscall == SYSCALL_OPEN):
-                filename = self.readMemoryStringz(self.reg[10])
-                flags = self.reg[11]
-                mode = self.reg[12]
-                print(f'OPEN {filename} f:0x{flags:X} m:0x{mode:X}')
-                self.reg[10] = self.syscall_open(filename, flags, mode)
+                self.syscall_open()
+            elif (syscall == SYSCALL_OPENAT):
+                self.syscall_openat()    
             elif (syscall == SYSCALL_CLOSE):
                 self.syscall_close()
                 
@@ -136,6 +132,16 @@ class SingleCycleRISCVProxyLinux(SingleCycleRISCV):
         else:
             yield from super().executeIIns()
             
+    
+    def syscall_dup(self):
+        oldfd = self.reg[10]
+        newfd = self.reg[11]
+        flags = self.reg[12]
+        
+        print(f'DUP oldfd:{oldfd} newfd:{newfd} flags:0x{flags:X}')
+        
+        self.reg[10] = 0
+        
     def syscall_brk(self):
         heap_end = self.heap_base + self.heap_size
         ptr = self.reg[10]
@@ -235,14 +241,26 @@ class SingleCycleRISCVProxyLinux(SingleCycleRISCV):
 
         self.reg[10] = count
                         
-    def syscall_read(self, fd, buf, count):
+        
+        
+
+            
+
+    
+    def syscall_read(self):
+        fd = self.reg[10]
+        buf = self.reg[11]
+        count = self.reg[12]
+        print(f'READ fd:0x{fd:X} buf:0x{buf:X} count:0x{count:X}')                
+    
         f = self.open_files[fd]
         
         for i in range(count):
             b = f.read(1)
 
             if (len(b) == 0):
-                return i
+                self.reg[10] = i
+                return 
                 
             if (isinstance(b, str)):
                 b = ord(b)
@@ -251,7 +269,42 @@ class SingleCycleRISCVProxyLinux(SingleCycleRISCV):
             
             self.behavioural_memory.writeByte(buf+i, b)
             
-    def syscall_open(self, filename, flags, mode):
+        self.reg[10] = count
+            
+            
+    def syscall_openat(self):
+        dirfd = self.reg[10]
+        filename = self.readMemoryStringz(self.reg[11])
+        flags = self.reg[12]
+        mode = self.reg[13]
+        print(f'OPENAT dirfd:{dirfd} {filename} f:0x{flags:X} m:0x{mode:X}')
+        
+        
+        if (flags == 0x0 and mode ==0x0):
+            py_mode = 'r'
+        elif (flags == 0x241 and mode ==0x1b6):
+            py_mode = 'wb'
+        elif (flags == 0x601 and mode ==0x1b6):
+            py_mode = 'wb'
+        elif (flags == 0x0 and mode == 0x1B6):
+            py_mode = 'rb'
+        else:
+            print(f'Unknown flags/mode 0x{flags:X}/0x{mode:X}')
+            self.parent.getSimulator().stop()
+            return -1
+
+        file = open(filename, py_mode)
+        self.open_files[file.fileno()] = file
+        self.reg[10] = file.fileno()
+        print(f'  fileno() = {self.reg[10]}')
+    
+
+    def syscall_open(self):
+        filename = self.readMemoryStringz(self.reg[10])
+        flags = self.reg[11]
+        mode = self.reg[12]
+        print(f'OPEN {filename} f:0x{flags:X} m:0x{mode:X}')
+        
         if (flags == 0x601 and mode ==0x1b6):
             py_mode = 'wb'
         elif (flags == 0x0 and mode == 0x1B6):
@@ -263,7 +316,8 @@ class SingleCycleRISCVProxyLinux(SingleCycleRISCV):
 
         file = open(filename, py_mode)
         self.open_files[file.fileno()] = file
-        return file.fileno()
+        self.reg[10] = file.fileno()
+    
         
     def syscall_close(self):
         fd = self.reg[10]
