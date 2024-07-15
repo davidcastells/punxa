@@ -100,12 +100,12 @@ class SparseMemory(Logic):
     def getMaxSize(self):
         return self.maxSize
     
-    def reallocArea(self, offset, size):
+    def reallocArea(self, offset, size, verbose=True):
         start = offset
         end = offset + size -1
         mem_base = self.mem_base
         
-        print(f'original area: {start+mem_base:016X}-{end+mem_base:016X}')
+        if (verbose): print(f'original area: {start+mem_base:016X}-{end+mem_base:016X}')
 
         # first check if it is already included , and expand 
         for block in self.area:
@@ -113,23 +113,23 @@ class SparseMemory(Logic):
             bend = block[0] + block[1] -1
             
             if (start >= bstart and start <= bend and end >= bstart and end <= bend):
-                print('new block already included in {:016X}-{:016X}'.format(bstart+mem_base, bend+mem_base))
+                if (verbose): print('new block already included in {:016X}-{:016X}'.format(bstart+mem_base, bend+mem_base))
                 return
             
             if (start >= bstart and start <= bend):
-                print('new block start {:016X} included in {:016X}-{:016X}, updating start'.format(start+mem_base, bstart+mem_base, bend+mem_base))
+                if (verbose): print('new block start {:016X} included in {:016X}-{:016X}, updating start'.format(start+mem_base, bstart+mem_base, bend+mem_base))
                 start = bstart
                 
             if (end >= bstart and end <= bend):
-                print('new block end {:016X} included in {:016X}-{:016X}, updating end'.format(end+mem_base, bstart+mem_base, bend+mem_base))
+                if (verbose): print('new block end {:016X} included in {:016X}-{:016X}, updating end'.format(end+mem_base, bstart+mem_base, bend+mem_base))
                 end = bend
                 
-        print(f'reshaped area: {start+mem_base:016X}-{end+mem_base:016X}')
+        if (verbose): print(f'reshaped area: {start+mem_base:016X}-{end+mem_base:016X}')
         newsize = end + 1 - start
         
         if (newsize > size):
             size = newsize
-            print('updating size to {:X} bytes'.format(size))
+            if (verbose): print('updating size to {:X} bytes'.format(size))
         
         # create area
         newarea = bytearray(size)
@@ -141,7 +141,7 @@ class SparseMemory(Logic):
             bdata = block[2]
             
             if (bstart >= start and bstart <= end and bend >= start and bend <= end):
-                print('copying block {:016X}-{:016X} into new block {:016X}-{:016X}'.format(bstart+mem_base, bend+mem_base, start+mem_base, end+mem_base))
+                if (verbose): print('copying block {:016X}-{:016X} into new block {:016X}-{:016X}'.format(bstart+mem_base, bend+mem_base, start+mem_base, end+mem_base))
                 for i in range(len(bdata)):
                     newarea[bstart-start+i] = bdata[i]
                     
@@ -187,6 +187,12 @@ class SparseMemory(Logic):
             
         return v
     
+    def write_i32(self, address, value):
+        # writes in little endian (LEAST SIGNIFICANT BYTE FIRST)
+        
+        for i in range(4):
+            self.writeByte(address+i, (value >> (8*i)) & 0xFF) 
+
     def write_i64(self, address, value):
         # writes in little endian (LEAST SIGNIFICANT BYTE FIRST)
         

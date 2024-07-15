@@ -255,5 +255,5 @@ def getCSRField(cpu, csr, start, bits):
     
 def setCSRField(cpu, csr, start, bits, value):
     clearCSRBits(cpu, csr, start, bits)
-    v = cpu.csr[csr] | ((value << start) & ((1<<bits)-1))
+    v = cpu.csr[csr] | ((value & (1<<bits)-1) << start)
     cpu.csr[csr] = v
