@@ -252,7 +252,7 @@ def buildHw():
                                           (port_p, 0xFFF1100000),
                                           (port_l, 0xFFF1020000)])
 
-    cpu = SingleCycleRISCVProxyLinux(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
+    cpu = SingleCycleRISCVProxyLinux(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, 0)
 
     cpu.min_clks_for_trace_event = 1000
     cpu.behavioural_memory = memory
