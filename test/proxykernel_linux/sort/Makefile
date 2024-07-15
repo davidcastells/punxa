@@ -1,6 +1,6 @@
 CC = riscv64-unknown-linux-gnu-g++
 CC_FLAGS=-DLINUX -O2 -g -static
-LINK=$(CC) -o $@  $< 
+LINK=$(CC) -static -o $@  $< 
 OBJDUMP = riscv64-unknown-linux-gnu-objdump
 
 EXEC = sort.elf
@@ -12,7 +12,7 @@ SOURCES=sort.c
 OBJECTS=$(SOURCES:.c=.o)
 
 $(EXEC): $(OBJECTS)
-	$(CC) $(OBJECTS) -o $(EXEC)
+	$(CC) $(OBJECTS) -static -o $(EXEC)
 
 # To obtain object files
 %.o: %.c
