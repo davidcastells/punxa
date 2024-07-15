@@ -1,5 +1,5 @@
 CC = riscv64-unknown-linux-gnu-g++
-CC_FLAGS=-DLINUX -O2 -g
+CC_FLAGS=-DLINUX -O2 -g -static
 LINK=$(CC) -o $@  $< 
 OBJDUMP = riscv64-unknown-linux-gnu-objdump
 
