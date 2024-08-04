@@ -5,7 +5,8 @@ It suppports full system simulation and proxy kernel simulation (as in Spike).
 
 ## Testing
 
-We started focussing on RV64 and Baremetal applications (compiled with risc64-unknown-elf-gcc).
+We started focussing on RV64 and Baremetal applications (compiled with riscv64-unknown-elf-gcc).
+We are also implementing support for Linux applications (compiled with riscv64-unknown-linux-gnu-gcc).
 When completed, next goal is Linux boot.
 
 ### RISC-V ISA Tests
