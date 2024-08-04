@@ -224,13 +224,13 @@ class SparseMemory(Logic):
                 value = value | (self.readByte(address+i) << (i*8))
                 
             self.port.read_data.prepare(value)
-            if (self.verbose): print('reading address ', hex(address+mem_base), '=', hex(value))
+            if (self.verbose): print('reading address ', hex(address+self.mem_base), '=', hex(value))
 
         elif (self.port.write.get()):
 
             value = self.port.write_data.get()
 
-            if (self.verbose): print('writing address ', hex(address+mem_base), '=', hex(value))
+            if (self.verbose): print('writing address ', hex(address+self.mem_base), '=', hex(value))
             
             # in little endian less significant byte is stored first
             # 0x0102 would be stored as 0x02 0x01
