@@ -1,19 +1,28 @@
 # punxa
 Python-based RISC-V Full System Simulator.
 
-It suppports full system simulation and proxy kernel simulation (as in Spike).
+Punxa provides HDL models of different parts of a full RISC-V system designed in different design styles using py4hw.
+
+For the processor, we currently support two 64-bit models :
+
+- Behavioral Model of a single-cycle execution processor without pipeline
+- Microcoded structural design with an algorithmic Control Unit implementation
+ 
+
+The single-cycle version suppports full system simulation and proxy-kernel simulation (as in Spike).
+We also introduce a Linux proxy-kernel to simulate applications compiled with riscv64-unknown-linux-gnu-gcc.
 
 ## Testing
 
-We started focussing on RV64 and Baremetal applications (compiled with riscv64-unknown-elf-gcc).
-We are also implementing support for Linux applications (compiled with riscv64-unknown-linux-gnu-gcc).
+We started focussing on RV64 and Baremetal applications (compiled with risc64-unknown-elf-gcc).
 When completed, next goal is Linux boot.
 
 ### RISC-V ISA Tests
 
 RV64 ISA tests progress: 
 
-96.0 %   |████████████████████████████████████████████░|
+Single Cycle Version: 96.0 %   |████████████████████████████████████████████░|
+Microcoded Version:    2.6 %   |██░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 
 check [riscv-tests](https://github.com/davidcastells/punxa/blob/main/test/riscv-tests/README.md) for a complete list
 
