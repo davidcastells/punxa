@@ -136,6 +136,7 @@ class SingleCycleRISCV(py4hw.Logic):
         self.debug_vm = False
         self.debug_insret = False
         
+        
         self.co = self.run()
         
     def setVerbose(self, verbose):
@@ -2282,6 +2283,12 @@ class SingleCycleRISCV(py4hw.Logic):
 
         self.csr[CSR_PRIVLEVEL] = CSR_PRIVLEVEL_MACHINE # (Machine =3, Supervisor = 1, User = 0)
         
+    def getCSR(self, idx):
+        return self.csr[idx]
+    
+    def getPc(self):
+        return self.pc
+    
     def readCSR(self, idx):
         # Returns the value of the CSR, and if the access was allowed
         # Take into consideration that some accesses raise an exception, while others just do not return the value
