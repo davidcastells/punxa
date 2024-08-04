@@ -38,14 +38,20 @@ def list_commands():
 
 def regs():
     cpu = _ci_cpu
-    print('pc: {:016X}'.format(cpu.pc))
+    print('pc: {:016X}'.format(cpu.getPc()))
     for i in range(8):
-        print('r{:2}={:016X}  |  r{:2}={:016X}  |  r{:2}={:016X}  |  r{:2}={:016X} '.format(
-            i, cpu.reg[i], i+8, cpu.reg[i+8], i+16, cpu.reg[i+16], i+24, cpu.reg[i+24]))
+        ri = cpu.getReg(i)
+        ri8 = cpu.getReg(i+8)
+        ri16 = cpu.getReg(i+16)
+        ri24 = cpu.getReg(i+24)
+        print(f'r{i:2}={ri:016X}  |  r{i+8:2}={ri8:016X}  |  r{i+16:2}={ri16:016X}  |  r{i+24:2}={ri24:016X} ')
             
     for i in range(8):
-        print('fr{:2}={:016X}  |  fr{:2}={:016X}  |  fr{:2}={:016X}  |  fr{:2}={:016X} '.format(
-            i, cpu.freg[i], i+8, cpu.freg[i+8], i+16, cpu.freg[i+16], i+24, cpu.freg[i+24]))
+        ri = cpu.getFreg(i)
+        ri8 = cpu.getFreg(i+8)
+        ri16 = cpu.getFreg(i+16)
+        ri24 = cpu.getFreg(i+24)
+        print(f'fr{i:2}={ri:016X}  |  fr{i+8:2}={ri8:016X}  |  fr{i+16:2}={ri16:016X}  |  fr{i+24:2}={ri24:016X} ')
 
 
 def write_trace(filename='newtrace.json'):
@@ -213,8 +219,8 @@ def step(steps = 1):
         
         
     while (count < steps and sim.do_run == True ):
-        inipc = _ci_cpu.pc
-        while (_ci_cpu.pc == inipc and sim.do_run == True ):
+        inipc = _ci_cpu.getPc()
+        while (_ci_cpu.getPc() == inipc and sim.do_run == True ):
             sim.clk(1)
             
         count += 1
@@ -255,9 +261,9 @@ def go():
     t0 = time.time()
     clk0 = sim.total_clks
     
-    while (_ci_cpu.pc != tbreak_address and sim.do_run == True ):
-        inipc = _ci_cpu.pc
-        while (_ci_cpu.pc == inipc and sim.do_run == True ):
+    while (_ci_cpu.getPc() != tbreak_address and sim.do_run == True ):
+        inipc = _ci_cpu.getPc()
+        while (_ci_cpu.getPc() == inipc and sim.do_run == True ):
             sim.clk(1)
             
         count += 1            
@@ -285,7 +291,7 @@ def reportCSR(csr):
              return
          ncsr = rlist[0]
 
-    v = cpu.csr[ncsr]
+    v = cpu.getCSR(ncsr)
 
     table1_1 = ['User', 'Supervisor', 'Reserved', 'Machine']
     table3_1 = ['',32,64,128]    
@@ -557,13 +563,13 @@ def run(upto, maxclks=100000, verbose=True, autoCheckpoint=False):
     clk0 = sim.total_clks
     
     count = 0
-    istart = _ci_cpu.csr[0xC02]
+    istart = _ci_cpu.getCSR(CSR_INSTRET)
     ilast = istart
     
-    while (_ci_cpu.pc != upto):
+    while (_ci_cpu.getPc() != upto):
         sim.clk(1)
         count += 1
-        icur = _ci_cpu.csr[0xC02]
+        icur = _ci_cpu.getCSR(CSR_INSTRET)
         
         if not(sim.do_run):
             break;
@@ -573,7 +579,7 @@ def run(upto, maxclks=100000, verbose=True, autoCheckpoint=False):
             print('ins: {:n}'.format(icur))
             ilast = icur
             
-    if (_ci_cpu.pc != upto):
+    if (_ci_cpu.getPc() != upto):
         print('did not reach address')
 
         if (sim.do_run and autoCheckpoint):
