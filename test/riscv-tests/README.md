@@ -411,7 +411,7 @@ To run them do
 ***Summary***
 
 <pre>
-rv64mi-p        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv64mi-p        12.5 %   |██████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64mzicbo-p    0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64si-p        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64ssvnapot-p  0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
@@ -423,13 +423,13 @@ rv64ud-p        0.0 %    |░░░░░░░░░░░░░░░░░░
 rv64ud-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64uf-p        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64uf-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
-rv64ui-p        17.3 %   |████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv64ui-p        30.8 %   |██████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64ui-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
-rv64um-p        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv64um-p        7.7 %    |████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64um-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64uzba-p      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64uzba-v      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
-rv64uzbb-p      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv64uzbb-p      8.3 %    |████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64uzbb-v      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64uzbc-p      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64uzbc-v      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
@@ -442,29 +442,29 @@ rv64uzfh-v      0.0 %    |░░░░░░░░░░░░░░░░░░
 The detailed current output is:
 
 ```
-Test rv64mi-p-access                = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64mi-p-breakpoint            = FAILED - 'ControlUnit' object has no attribute 'readCSR'
-Test rv64mi-p-csr                   = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64mi-p-illegal               = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64mi-p-access                = FAILED - 'sel_alu_2_k4'
+Test rv64mi-p-breakpoint            = FAILED - Test return value = 5
+Test rv64mi-p-csr                   = FAILED - Test return value = 45
+Test rv64mi-p-illegal               = FAILED - Test return value = 0
 Test rv64mi-p-ld-misaligned         = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64mi-p-lh-misaligned         = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64mi-p-lw-misaligned         = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64mi-p-ma_addr               = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64mi-p-ma_fetch              = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64mi-p-ma_fetch              = FAILED - 'sel_alu_2_k4'
 Test rv64mi-p-mcsr                  = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64mi-p-sbreak                = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64mi-p-scall                 = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64mi-p-sbreak                = OK
+Test rv64mi-p-scall                 = OK
 Test rv64mi-p-sd-misaligned         = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64mi-p-sh-misaligned         = FAILED - not implemented
 Test rv64mi-p-sw-misaligned         = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64mi-p-zicntr                = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64mi-p-zicntr                = FAILED - 'ControlUnit' object has no attribute 'readCSR'
 Test rv64mzicbo-p-zero              = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64si-p-csr                   = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64si-p-csr                   = FAILED - 'ControlUnit' object has no attribute 'csr'
 Test rv64si-p-dirty                 = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64si-p-icache-alias          = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64si-p-ma_fetch              = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64si-p-ma_fetch              = FAILED - 'sel_alu_2_k4'
 Test rv64si-p-sbreak                = FAILED - 'ControlUnit' object has no attribute 'csr'
-Test rv64si-p-scall                 = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64si-p-scall                 = FAILED - 'ControlUnit' object has no attribute 'csr'
 Test rv64si-p-wfi                   = FAILED - 'ControlUnit' object has no attribute 'readCSR'
 Test rv64ssvnapot-p-napot           = FAILED - bytearray index out of range
 Test rv64ua-p-amoadd_d              = FAILED - 'ControlUnit' object has no attribute 'reg'
@@ -540,7 +540,7 @@ Test rv64uf-p-fdiv                  = FAILED - 'ControlUnit' object has no attri
 Test rv64uf-p-fmadd                 = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64uf-p-fmin                  = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64uf-p-ldst                  = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64uf-p-move                  = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64uf-p-move                  = FAILED - Test return value = 5
 Test rv64uf-p-recoding              = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64uf-v-fadd                  = FAILED - 'sel_alu_1_P'
 Test rv64uf-v-fclass                = FAILED - 'sel_alu_1_P'
@@ -557,18 +557,18 @@ Test rv64ui-p-add                   = OK
 Test rv64ui-p-addi                  = OK
 Test rv64ui-p-addiw                 = OK
 Test rv64ui-p-addw                  = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64ui-p-and                   = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64ui-p-andi                  = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64ui-p-and                   = OK
+Test rv64ui-p-andi                  = OK
 Test rv64ui-p-auipc                 = FAILED - 'sel_alu_1_P'
 Test rv64ui-p-beq                   = OK
-Test rv64ui-p-bge                   = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64ui-p-bge                   = FAILED - Test return value = 13
 Test rv64ui-p-bgeu                  = OK
-Test rv64ui-p-blt                   = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64ui-p-blt                   = FAILED - Test return value = 7
 Test rv64ui-p-bltu                  = OK
 Test rv64ui-p-bne                   = OK
 Test rv64ui-p-fence_i               = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64ui-p-jal                   = FAILED - 'sel_alu_1_P'
-Test rv64ui-p-jalr                  = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64ui-p-jalr                  = FAILED - 'sel_alu_2_k4'
 Test rv64ui-p-lb                    = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64ui-p-lbu                   = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64ui-p-ld                    = FAILED - 'ControlUnit' object has no attribute 'reg'
@@ -578,17 +578,17 @@ Test rv64ui-p-lui                   = FAILED - 'ControlUnit' object has no attri
 Test rv64ui-p-lw                    = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64ui-p-lwu                   = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64ui-p-ma_data               = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64ui-p-or                    = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64ui-p-ori                   = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64ui-p-or                    = OK
+Test rv64ui-p-ori                   = OK
 Test rv64ui-p-sb                    = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64ui-p-sd                    = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64ui-p-sh                    = FAILED - not implemented
 Test rv64ui-p-simple                = OK
-Test rv64ui-p-sll                   = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64ui-p-sll                   = OK
 Test rv64ui-p-slli                  = OK
 Test rv64ui-p-slliw                 = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64ui-p-sllw                  = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64ui-p-slt                   = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64ui-p-slt                   = FAILED - Test return value = 13
 Test rv64ui-p-slti                  = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64ui-p-sltiu                 = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64ui-p-sltu                  = FAILED - 'ControlUnit' object has no attribute 'reg'
@@ -596,14 +596,14 @@ Test rv64ui-p-sra                   = FAILED - 'ControlUnit' object has no attri
 Test rv64ui-p-srai                  = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64ui-p-sraiw                 = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64ui-p-sraw                  = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64ui-p-srl                   = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64ui-p-srl                   = FAILED - Test return value = 7
 Test rv64ui-p-srli                  = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64ui-p-srliw                 = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64ui-p-srlw                  = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64ui-p-sub                   = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64ui-p-sub                   = OK
 Test rv64ui-p-subw                  = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64ui-p-sw                    = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64ui-p-xor                   = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64ui-p-xor                   = OK
 Test rv64ui-p-xori                  = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64ui-v-add                   = FAILED - 'sel_alu_1_P'
 Test rv64ui-v-addi                  = FAILED - 'sel_alu_1_P'
@@ -661,7 +661,7 @@ Test rv64um-p-div                   = FAILED - 'ControlUnit' object has no attri
 Test rv64um-p-divu                  = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64um-p-divuw                 = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64um-p-divw                  = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64um-p-mul                   = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64um-p-mul                   = OK
 Test rv64um-p-mulh                  = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64um-p-mulhsu                = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64um-p-mulhu                 = FAILED - 'ControlUnit' object has no attribute 'reg'
@@ -706,17 +706,17 @@ Test rv64uzbb-p-cpop                = FAILED - name 'pop_count' is not defined
 Test rv64uzbb-p-cpopw               = FAILED - name 'pop_count' is not defined
 Test rv64uzbb-p-ctz                 = FAILED - name 'count_trailing_zeros' is not defined
 Test rv64uzbb-p-ctzw                = FAILED - name 'count_trailing_zeros' is not defined
-Test rv64uzbb-p-max                 = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64uzbb-p-maxu                = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64uzbb-p-min                 = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64uzbb-p-minu                = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64uzbb-p-max                 = FAILED - Test return value = 13
+Test rv64uzbb-p-maxu                = OK
+Test rv64uzbb-p-min                 = FAILED - Test return value = 13
+Test rv64uzbb-p-minu                = OK
 Test rv64uzbb-p-orc_b               = FAILED - name 'gorc' is not defined
 Test rv64uzbb-p-orn                 = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64uzbb-p-rev8                = FAILED - name 'grev' is not defined
-Test rv64uzbb-p-rol                 = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64uzbb-p-rol                 = FAILED - Test return value = 17
 Test rv64uzbb-p-rolw                = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64uzbb-p-ror                 = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64uzbb-p-rori                = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64uzbb-p-ror                 = FAILED - Test return value = 17
+Test rv64uzbb-p-rori                = FAILED - cannot access local variable 'vrd' where it is not associated with a value
 Test rv64uzbb-p-roriw               = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64uzbb-p-rorw                = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64uzbb-p-sext_b              = FAILED - 'ControlUnit' object has no attribute 'reg'
@@ -778,7 +778,7 @@ Test rv64uzfh-p-fdiv                = FAILED - 'ControlUnit' object has no attri
 Test rv64uzfh-p-fmadd               = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64uzfh-p-fmin                = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64uzfh-p-ldst                = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64uzfh-p-move                = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64uzfh-p-move                = FAILED - Test return value = 5
 Test rv64uzfh-p-recoding            = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64uzfh-v-fadd                = FAILED - 'sel_alu_1_P'
 Test rv64uzfh-v-fclass              = FAILED - 'sel_alu_1_P'
@@ -791,6 +791,6 @@ Test rv64uzfh-v-fmin                = FAILED - 'sel_alu_1_P'
 Test rv64uzfh-v-ldst                = FAILED - 'sel_alu_1_P'
 Test rv64uzfh-v-move                = FAILED - 'sel_alu_1_P'
 Test rv64uzfh-v-recoding            = FAILED - 'sel_alu_1_P'
-Total: 349 Correct: 9 (2.6 %)
+Total: 349 Correct: 21 (6.0 %)
 ```
 
