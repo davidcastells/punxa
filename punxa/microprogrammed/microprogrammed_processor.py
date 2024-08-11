@@ -20,6 +20,25 @@ from ..tracing import *
 from ..processor_exceptions import *
 from ..temp_helper import *
 
+def compose_sign(v, parts):
+    ret = 0
+    bits = 0
+    total_bits = 0
+    
+    for p in parts:        
+        start = p[0]
+        bits = p[1]
+        
+        ret = ret << bits
+        
+        ret |= (v >> start) & ((1 << bits)-1)
+        
+        total_bits += bits
+
+    # @todo remove the assert
+    assert(IntegerHelper.c2_to_signed(ret, total_bits) == signExtend_toremove(ret, total_bits))
+    return IntegerHelper.c2_to_signed(ret, total_bits)
+
 def dummy_print(*args, **kargs):
     pass
 
@@ -46,6 +65,8 @@ class ControlUnit(py4hw.Logic):
             
 
         self.state = 'init'
+        self.decoded_ins = ''
+        
         self.verbose = False
         
         self.co = self.run()
@@ -59,6 +80,7 @@ class ControlUnit(py4hw.Logic):
             self.control[key].prepare(self.vcontrol[key])
     
     def fetchIns(self):
+        # Fetches instruction from PC address
         self.state = 'fetch'
         self.vcontrol['sel_data_address'] = 0
         self.vcontrol['read'] = 1
@@ -86,20 +108,24 @@ class ControlUnit(py4hw.Logic):
             pr('{:08X}: {:08X}     {} '.format(self.parent.getPc() , ins, self.decoded_ins), end='' )
         
     def nextPC(self):
+        # PC = PC + 4
         self.state = 'nextpc'
         self.vcontrol['sel_alu_1_PC'] = 1
-        self.vcontrol['sel_alu_2_4'] = 1
+        self.vcontrol['sel_alu_2_control_imm'] = 1
+        self.vcontrol['control_imm'] = 4
         self.vcontrol['alu_op_sum'] = 1
         self.vcontrol['ena_PC'] = 1
         yield
         self.vcontrol['sel_alu_1_PC'] = 0
-        self.vcontrol['sel_alu_2_4'] = 0
+        self.vcontrol['sel_alu_2_control_imm'] = 0
+        self.vcontrol['control_imm'] = 0
         self.vcontrol['alu_op_sum'] = 0
         self.vcontrol['ena_PC'] = 0
         yield
 
     def writeCsr(self, csr, v):
-        yield from self.loadRegFromImm('R', v)
+        # @todo check that csr and v are constants 
+        yield from self.loadRegFromImm('R', v, 'B')
         yield from self.saveRegToCsr('R', csr)
     
     def setCsr(self, csr, v):
@@ -124,13 +150,52 @@ class ControlUnit(py4hw.Logic):
         yield from self.clearCSRBits(csr, start, bits)
         yield from self.setCsr(csr, ((value & (1<<bits)-1) << start))
         
-    def loadRegFromImm(self, intReg, imm):
+    def loadRegFromImm(self, intReg, imm, auxReg):
+        # @todo make sure imm is a  constant
         self.state = f'{intReg} = 0x{imm:X}'
         yield
-            
-        if (imm >= (1 << 32)):
-            raise Exception('big imm (>32 bits) not supported yet!')
-        if (imm >= (1 << 16)):
+          
+        if (imm >= (1 << 48)):
+            immh = imm >> 48
+            self.vcontrol['control_imm'] = immh
+            yield from self.aluOp('bypass2', 'A', 'control_imm', auxReg)
+            self.vcontrol['control_imm'] = 48
+            yield from self.aluOp('shift_left', auxReg, 'control_imm', intReg)
+
+            immh = imm >> 32
+            self.vcontrol['control_imm'] = immh
+            yield from self.aluOp('bypass2', 'A', 'control_imm', auxReg)
+            self.vcontrol['control_imm'] = 32
+            yield from self.aluOp('shift_left', auxReg, 'control_imm', auxReg)
+            yield from self.aluOp('or', intReg, auxReg, intReg)
+
+            immh = imm >> 16
+            self.vcontrol['control_imm'] = immh
+            yield from self.aluOp('bypass2', 'A', 'control_imm', auxReg)
+            self.vcontrol['control_imm'] = 16
+            yield from self.aluOp('shift_left', auxReg, 'control_imm', auxReg)
+            yield from self.aluOp('or', intReg, auxReg, intReg)
+
+            self.vcontrol['control_imm'] = imm
+            yield from self.aluOp('or', intReg, 'control_imm', intReg)
+
+        elif (imm >= (1 << 32)):
+            immh = imm >> 32
+            self.vcontrol['control_imm'] = immh
+            yield from self.aluOp('bypass2', 'A', 'control_imm', auxReg)
+            self.vcontrol['control_imm'] = 32
+            yield from self.aluOp('shift_left', auxReg, 'control_imm', intReg)
+
+            immh = imm >> 16
+            self.vcontrol['control_imm'] = immh
+            yield from self.aluOp('bypass2', 'A', 'control_imm', auxReg)
+            self.vcontrol['control_imm'] = 16
+            yield from self.aluOp('shift_left', auxReg, 'control_imm', auxReg)
+            yield from self.aluOp('or', intReg, auxReg, intReg)
+
+            self.vcontrol['control_imm'] = imm
+            yield from self.aluOp('or', intReg, 'control_imm', intReg)
+        elif (imm >= (1 << 16)):
             immh = imm >> 16
             self.vcontrol['control_imm'] = immh
             yield from self.aluOp('bypass2', 'A', 'control_imm', intReg)
@@ -142,15 +207,10 @@ class ControlUnit(py4hw.Logic):
             self.vcontrol['control_imm'] = imm
             yield from self.aluOp('bypass2', 'A', 'control_imm', intReg)
 
-    def loadRegFromCsr(self, intReg, csr):
-        self.state = f'{intReg} = CSR[0x{csr:X}]'
-        self.vcontrol['control_imm'] = 0x200 + csr * 8 
-        
-        yield from self.aluOp('sum', 'reg_base', 'control_imm', 'MAR')
-        
+    def loadReg(self, intReg):
+        # Loads reg from MAR
         # MAR already contains the address
 
-        
         # Read
         # [intreg] = [MAR] 
         self.vcontrol['read'] = 1
@@ -166,6 +226,24 @@ class ControlUnit(py4hw.Logic):
         self.vcontrol[f'sel_{intReg}_mem'] = 0
         yield
         
+    def loadRegFromAux(self, intReg, aux):
+        self.state = f'{intReg} = AUX{aux}'
+        self.vcontrol['control_imm'] = self.parent.register_aux_offset + aux * 8 
+        yield from self.aluOp('sum', 'reg_base', 'control_imm', 'MAR')
+        yield from self.loadReg(intReg)
+        
+        vr = self.parent._wires[intReg].get()
+        
+        if (self.verbose):
+            pr(f'[CU] loadRegFromAux {intReg} = AUX{aux} -> {vr}')
+        
+    def loadRegFromCsr(self, intReg, csr):
+        self.state = f'{intReg} = CSR[0x{csr:X}]'
+        self.vcontrol['control_imm'] = self.parent.register_csr_offset + csr * 8 
+        
+        yield from self.aluOp('sum', 'reg_base', 'control_imm', 'MAR')
+        yield from self.loadReg(intReg)
+        
         vr = self.parent._wires[intReg].get()
         
         if (self.verbose):
@@ -174,8 +252,7 @@ class ControlUnit(py4hw.Logic):
     def loadRegFromMem(self, intReg, extRegName):
         # intReg in ['A', 'B', 'R', 'PC']
         # extRegName in ['r1', 'r2', 'rd']
-        self.state = f'{intReg} = {extRegName}'
-        
+        self.state = f'{intReg} = {extRegName}'        
         
         # MAR = baseRegisters + extReg * 8
         self.vcontrol[f'sel_mar_{extRegName}_offset'] = 1
@@ -184,46 +261,29 @@ class ControlUnit(py4hw.Logic):
         self.vcontrol[f'sel_mar_{extRegName}_offset'] = 0
         self.vcontrol['ena_MAR'] = 0
         yield
-        
-        # Read
-        # [MAR] = [intreg]
-        self.vcontrol['read'] = 1
-        self.vcontrol['sel_data_address'] = 1
-        yield
-        yield
-        self.vcontrol[f'ena_{intReg}'] = 1
-        self.vcontrol[f'sel_{intReg}_mem'] = 1
-        self.vcontrol['read'] = 0
-        yield
-        self.vcontrol['sel_data_address'] = 0
-        self.vcontrol[f'ena_{intReg}'] = 0
-        self.vcontrol[f'sel_{intReg}_mem'] = 0
-        yield
-        
+
+        yield from self.loadReg(intReg)
+                
         vr = self.parent._wires[intReg].get()
         
         if (self.verbose): 
             pr(f'[CU] loadRegFromMem {intReg} = {extRegName} -> {vr}')
         
-    def saveRegToCsr(self, intReg, csr):
-        self.state = f'CSR[0x{csr:X}] = {intReg}'
-        self.vcontrol['control_imm'] = 0x200 + csr * 8 
+    def saveRegToAux(self, intReg, aux):
+        self.state = f'AUX{csr} = {intReg}'
+        self.vcontrol['control_imm'] = self.parent.register_aux_offset + aux * 8 
         
         yield from self.aluOp('sum', 'reg_base', 'control_imm', 'MAR')
+        yield from self.saveReg(intReg)
 
-        # [MAR] = [intreg]
-        self.vcontrol[f'sel_writedata_{intReg}'] = 1
-        self.vcontrol['sel_data_address'] = 1
-        self.vcontrol['write'] = 1
-        self.vcontrol['be'] = 0xF
-        yield
-        self.vcontrol[f'sel_writedata_{intReg}'] = 0
-        self.vcontrol['sel_data_address'] = 0
-        self.vcontrol['write'] = 0
-        self.vcontrol['be'] = 0
-        yield
+    def saveRegToCsr(self, intReg, csr):
+        self.state = f'CSR[0x{csr:X}] = {intReg}'
+        self.vcontrol['control_imm'] = self.parent.register_csr_offset + csr * 8 
         
-    def saveReg(self, intReg, be=0xF):
+        yield from self.aluOp('sum', 'reg_base', 'control_imm', 'MAR')
+        yield from self.saveReg(intReg)
+        
+    def saveReg(self, intReg, be=0xFF):
         # saves the reg to the current MAR address
         # [MAR] = [intreg]
         self.vcontrol[f'sel_writedata_{intReg}'] = 1
@@ -277,6 +337,29 @@ class ControlUnit(py4hw.Logic):
         #setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPP_POS, 2, 0) # clear MPP
         yield
 
+    def executeCJIns(self):
+        op = self.decoded_ins
+        ins = self.ins
+        
+        
+        if (op == 'C.J'):
+            self.should_jump = True
+
+            off12 = compose_sign(ins, [[12,1],[8,1],[9,2],[6,1],[7,1],[2,1],[11,1],[3,3]]) << 1
+            
+            # PC = PC + off21_J
+            yield from self.aluOp('sum', 'PC', 'off12_JC', 'PC')
+            self.jmp_address = self.parent._wires['PC'].get()
+
+            #off12 = compose_sign(ins, [[12,1],[8,1],[9,2],[6,1],[7,1],[2,1],[11,1],[3,3]]) << 1
+            #self.should_jump = True
+            #self.jmp_address = self.pc + off12
+            pr('{} -> {:016X}'.format(off12, self.jmp_address))
+            self.parent.functionEnter(self.jmp_address, True)
+        else:
+            print(' - CJ-Type instruction not supported!')
+            self.parent.getSimulator().stop()
+
     def executeRIns(self):
         op = self.decoded_ins
         ins = self.ins
@@ -300,7 +383,18 @@ class ControlUnit(py4hw.Logic):
             pr('r{} = r{} + r{} -> {:016X}'.format(rd, rs1, rs2, vrd))
 
         elif (op == 'ADD.UW'):
-            self.reg[rd] = (zeroExtend(self.reg[rs1], 32) + self.reg[rs2] ) & ((1<<64)-1)  
+            # A = rs1
+            yield from self.loadRegFromMem('A', 'r1')
+            # B = rs2
+            yield from self.loadRegFromMem('B', 'r2')
+            # R = A + B
+            yield from self.aluOp('sum', 'A', 'B', 'R')
+            
+            yield from self.signExtend('R', 32, 64)
+            vrd = self.parent._wires['R'].get()
+            # rd = R
+            yield from self.saveRegToMem('R', 'rd')
+
             pr('r{} = r{} + r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'AND'):
             # A = rs1
@@ -474,10 +568,19 @@ class ControlUnit(py4hw.Logic):
             self.reg[rd] = vr      
             pr('r{} = r{} % r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))       
         elif (op == 'ADDW'):
-            v = (self.reg[rs1] & ((1<<32) -1)) + ( self.reg[rs2] & ((1<<32) -1))
-            v = v & ((1<<32) -1)
-            self.reg[rd] = signExtend(v,32,64)      
-            pr('r{} = r{} + r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+            # A = rs1
+            yield from self.loadRegFromMem('A', 'r1')
+            # B = rs2
+            yield from self.loadRegFromMem('B', 'r2')
+            # R = A + B
+            yield from self.aluOp('sum', 'A', 'B', 'R')
+            
+            yield from self.signExtend('R', 32, 64)
+            vrd = self.parent._wires['R'].get()
+            # rd = R
+            yield from self.saveRegToMem('R', 'rd')
+
+            pr('r{} = r{} + r{} -> {:016X}'.format(rd, rs1, rs2, vrd))
         elif (op == 'SUBW'):
             v1 = IntegerHelper.c2_to_signed(self.reg[rs1] & ((1<<32) -1), 32)
             v2 = IntegerHelper.c2_to_signed(self.reg[rs2] & ((1<<32) -1), 32)
@@ -609,14 +712,29 @@ class ControlUnit(py4hw.Logic):
             self.reg[rd] = int(self.reg[rs1] < self.reg[rs2])
             pr('r{} = r{} < r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))                
         elif (op == 'ROR'): 
+            # we take profit of a r>> n -> a >> n | a << (w-n)
+
             # A = rs1
             yield from self.loadRegFromMem('A', 'r1')
             # B = rs2
             yield from self.loadRegFromMem('B', 'r2')
             shv = self.parent._wires['B'].get()
-            # R = A + B
-            yield from self.aluOp('rotate_right', 'A', 'B', 'R')
+
+            # R = A >> B
+            yield from self.aluOp('shift_right', 'A', 'B', 'R')
             vrd = self.parent._wires['R'].get()
+            
+            # B = w - B
+            self.vcontrol['control_imm'] = 64
+            yield from self.aluOp('sub', 'control_imm', 'B', 'B')
+            self.vcontrol['control_imm'] = 0
+
+            # B = A << B
+            yield from self.aluOp('shift_left', 'A', 'B', 'B')
+
+            # R = R | B
+            yield from self.aluOp('or', 'R', 'B', 'R')
+            
             # rd = R
             yield from self.saveRegToMem('R', 'rd')
             pr('r{} = r{} R>> r{} -> {:016X}'.format(rd, rs1, rs2, vrd))
@@ -636,22 +754,80 @@ class ControlUnit(py4hw.Logic):
             # B = rs2
             yield from self.loadRegFromMem('B', 'r2')
             shv = self.parent._wires['B'].get()
-            # R = A + B
-            yield from self.aluOp('rotate_left', 'A', 'B', 'R')
+
+            # R = A << B
+            yield from self.aluOp('shift_left', 'A', 'B', 'R')
             vrd = self.parent._wires['R'].get()
+            
+            # B = w - B
+            self.vcontrol['control_imm'] = 64
+            yield from self.aluOp('sub', 'control_imm', 'B', 'B')
+            self.vcontrol['control_imm'] = 0
+
+            # B = A >> B
+            yield from self.aluOp('shift_right', 'A', 'B', 'B')
+
+            # R = R | B
+            yield from self.aluOp('or', 'R', 'B', 'R')
+            
             # rd = R
             yield from self.saveRegToMem('R', 'rd')
 
-            pr('r{} = r{} R>> r{} -> {:016X}'.format(rd, rs1, rs2, vrd))
+            pr('r{} = r{} R<< r{} -> {:016X}'.format(rd, rs1, rs2, vrd))
             
         elif (op == 'ROLW'):
-            shv = self.reg[rs2] & ((1<<5)-1)
-            if (shv > 0): 
-                v = zeroExtend(self.reg[rs1], 32)
-                v = ((v << shv ) | (v >> (32 - shv) )) & ((1<<32)-1)
-            else: v = self.reg[rs1] 
-            self.reg[rd] = signExtend(v , 32,64) 
-            pr('r{} = r{} R<< r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+            # A = rs1
+            yield from self.loadRegFromMem('A', 'r1')
+            # B = rs2
+            yield from self.loadRegFromMem('B', 'r2')
+            shv = self.parent._wires['B'].get()
+
+            self.vcontrol['control_imm'] = (1 << 5) -1 
+            yield from self.aluOp('and', 'B', 'control_imm', 'B')
+
+            self.vcontrol['control_imm'] = 0
+            yield from self.aluOp('cmp', 'B', 'control_imm', 'R')
+
+            # @todo move this to status signals
+            vr = self.parent._wires['R'].get() 
+    
+            iseq = vr & 1
+            isneq = not(iseq)
+            isltu = (vr >> 1) & 1
+            islt = (vr >> 2) & 1
+            isgtu = (vr >> 3) & 1
+            isgt = (vr >> 4) & 1
+            isge = isgt or iseq
+            isgeu = isgtu or iseq
+
+            if (isgt):
+                yield from self.zeroExtend('A', 32, 64)
+                
+                # R = A << B
+                yield from self.aluOp('shift_left', 'A', 'B', 'R')
+                                
+                # B = w - B
+                self.vcontrol['control_imm'] = 32
+                yield from self.aluOp('sub', 'control_imm', 'B', 'B')
+                self.vcontrol['control_imm'] = 0
+    
+                # B = A >> B
+                yield from self.aluOp('shift_right', 'A', 'B', 'B')
+    
+                # R = R | B
+                yield from self.aluOp('or', 'R', 'B', 'R')
+                
+            else:
+                self.vcontrol['control_imm'] = 0
+                yield from self.aluOp('sum', 'A', 'control_imm', 'R')
+
+            yield from self.signExtend('R', 32, 64)
+
+            # rd = R
+            vrd = self.parent._wires['R'].get()
+            yield from self.saveRegToMem('R', 'rd')
+
+            pr('r{} = r{} R<< r{} -> {:016X}'.format(rd, rs1, rs2, vrd))
 
         elif (op == 'SLL'):
             # A = rs1
@@ -668,10 +844,18 @@ class ControlUnit(py4hw.Logic):
             pr('r{} = r{} << r{} -> {:016X}'.format(rd, rs1, rs2, vrd))
             
         elif (op == 'SLLW'):
-            shv = self.reg[rs2] & ((1<<5)-1)
-            shifted = (self.reg[rs1] << shv) & ((1<<32)-1)
-            self.reg[rd] = signExtend(shifted , 32, 64)       
-            pr('r{} = r{} << r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+            # A = rs1
+            yield from self.loadRegFromMem('A', 'r1')
+            # B = rs2
+            yield from self.loadRegFromMem('B', 'r2')
+            #vr2 = self.parent._wires['B'].get()
+            # R = A << shamt6
+            yield from self.aluOp('shift_left', 'A', 'B', 'R')
+            yield from self.signExtend('R', 32, 64)
+            # rd = R
+            vrd = self.parent._wires['R'].get()
+            yield from self.saveRegToMem('R', 'rd')
+            pr('r{} = r{} << r{} -> {:016X}'.format(rd, rs1, rs2, vrd))
         elif (op == 'SRL'):
             # A = rs1
             yield from self.loadRegFromMem('A', 'r1')
@@ -696,9 +880,18 @@ class ControlUnit(py4hw.Logic):
                 self.reg[rd] = signExtend(v, 32, 64) 
             pr('r{} = r{} >> r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'SRA'):
-            shv = self.reg[rs2] & ((1<<6)-1)
-            self.reg[rd] = (IntegerHelper.c2_to_signed(self.reg[rs1], 64) >> shv ) & ((1<<64) -1)      
-            pr('r{} = r{} >> r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
+            # A = rs1
+            yield from self.loadRegFromMem('A', 'r1')
+            # B = rs2
+            yield from self.loadRegFromMem('B', 'r2')
+            #vr2 = self.parent._wires['B'].get()
+            # R = A << shamt6
+            yield from self.aluOp('shift_right', 'A', 'B', 'R')
+            # rd = R
+            vrd = self.parent._wires['R'].get()
+            yield from self.saveRegToMem('R', 'rd')
+            pr('r{} = r{} >> r{} -> {:016X}'.format(rd, rs1, rs2, vrd))
+            
         elif (op == 'SRAW'):
             shv = self.reg[rs2] & ((1<<5)-1)
             v = IntegerHelper.c2_to_signed(self.reg[rs1] & ((1<<32) -1), 32) 
@@ -950,31 +1143,122 @@ class ControlUnit(py4hw.Logic):
                 self.reg[rd] = 1
                 pr('[r{}] = r{}, r{}=1 -> [{}] not reserved'.format(rs1, rs2, rd, self.addressFmt(address)))
         elif (op == 'AMOADD.D'):
-            address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
-            newvalue= self.reg[rd] + self.reg[rs2] & ((1<<64)-1)
-            yield from self.virtualMemoryWrite(address, 64//8, newvalue)
-            pr('[r{}] = [r{}] + r{} -> [{}]={:016X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
+            # B = r1 (address)
+            yield from self.loadRegFromMem('B', 'r1')
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            
+            # A = [address]
+            yield from self.loadReg('A') 
+
+            # R = rd
+            yield from self.loadRegFromMem('R', 'r2')
+
+            # newvalue = R + A
+            yield from self.aluOp('sum', 'A', 'R', 'R')
+            newvalue = self.parent._wires['R'].get()
+
+            # [address] = R
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            yield from self.saveReg('R')
+            
+            # rd = A
+            yield from self.saveRegToMem('A', 'rd')
+            
+            #address = self.reg[rs1]
+            #self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
+            #newvalue= self.reg[rd] + self.reg[rs2] & ((1<<64)-1)
+            #yield from self.virtualMemoryWrite(address, 64//8, newvalue)
+            pr('[r{}] = [r{}] + r{} -> [{}]={:016X}'.format(rs1, rs1, rs2, self.parent.addressFmt(address), newvalue))
+
         elif (op == 'AMOADD.W'):
-            address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
-            self.reg[rd] = signExtend(self.reg[rd], 32, 64) 
-            newvalue= self.reg[rd] + self.reg[rs2] & 0xFFFFFFFF
-            yield from self.virtualMemoryWrite(address, 32//8, newvalue)
-            pr('[r{}] = [r{}] + r{} -> [{}]={:08X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
+            # B = r1 (address)
+            yield from self.loadRegFromMem('B', 'r1')
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            
+            # A = [address]
+            yield from self.loadReg('A') 
+            yield from self.signExtend('A', 32, 64)
+
+            # R = rd
+            yield from self.loadRegFromMem('R', 'r2')
+
+            # newvalue = R + A
+            yield from self.aluOp('sum', 'A', 'R', 'R')
+            newvalue = self.parent._wires['R'].get()
+
+            # [address] = R
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            yield from self.saveReg('R')
+            
+            # rd = A
+            yield from self.saveRegToMem('A', 'rd')
+
+            #address = self.reg[rs1]
+            #self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
+            #self.reg[rd] = signExtend(self.reg[rd], 32, 64) 
+            #newvalue= self.reg[rd] + self.reg[rs2] & 0xFFFFFFFF
+            #yield from self.virtualMemoryWrite(address, 32//8, newvalue)
+            pr('[r{}] = [r{}] + r{} -> [{}]={:08X}'.format(rs1, rs1, rs2, self.parent.addressFmt(address), newvalue))
         elif (op == 'AMOAND.W'):
-            address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
-            self.reg[rd] = signExtend(self.reg[rd], 32, 64) 
-            newvalue= self.reg[rd] & self.reg[rs2] & 0xFFFFFFFF
-            yield from self.virtualMemoryWrite(address, 32//8, newvalue)
-            pr('[r{}] = [r{}] & r{} -> [{}]={:08X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
+            # B = r1 (address)
+            yield from self.loadRegFromMem('B', 'r1')
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            
+            # A = [address]
+            yield from self.loadReg('A') 
+            yield from self.signExtend('A', 32, 64)
+
+            # R = rd
+            yield from self.loadRegFromMem('R', 'r2')
+
+            # newvalue = R + A
+            yield from self.aluOp('and', 'A', 'R', 'R')
+            newvalue = self.parent._wires['R'].get()
+
+            # [address] = R
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            yield from self.saveReg('R')
+            
+            # rd = A
+            yield from self.saveRegToMem('A', 'rd')
+
+
+            #address = self.reg[rs1]
+            #self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
+            #self.reg[rd] = signExtend(self.reg[rd], 32, 64) 
+            #newvalue= self.reg[rd] & self.reg[rs2] & 0xFFFFFFFF
+            #yield from self.virtualMemoryWrite(address, 32//8, newvalue)
+            pr('[r{}] = [r{}] & r{} -> [{}]={:08X}'.format(rs1, rs1, rs2, self.parent.addressFmt(address), newvalue))
         elif (op == 'AMOAND.D'):
-            address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
-            newvalue= self.reg[rd] & self.reg[rs2] 
-            yield from self.virtualMemoryWrite(address, 64//8, newvalue)
-            pr('[r{}] = [r{}] & r{} -> [{}]={:016X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
+            # B = r1 (address)
+            yield from self.loadRegFromMem('B', 'r1')
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            
+            # A = [address]
+            yield from self.loadReg('A') 
+
+            # R = rd
+            yield from self.loadRegFromMem('R', 'r2')
+
+            # newvalue = R + A
+            yield from self.aluOp('and', 'A', 'R', 'R')
+            newvalue = self.parent._wires['R'].get()
+
+            # [address] = R
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            yield from self.saveReg('R')
+            
+            # rd = A
+            yield from self.saveRegToMem('A', 'rd')
+            #address = self.reg[rs1]
+            #self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
+            #newvalue= self.reg[rd] & self.reg[rs2] 
+            #yield from self.virtualMemoryWrite(address, 64//8, newvalue)
+            pr('[r{}] = [r{}] & r{} -> [{}]={:016X}'.format(rs1, rs1, rs2, self.parent.addressFmt(address), newvalue))
         elif (op == 'AMOOR.W'):
             address = self.reg[rs1]
             self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
@@ -983,11 +1267,34 @@ class ControlUnit(py4hw.Logic):
             yield from self.virtualMemoryWrite(address, 32//8, newvalue)
             pr('[r{}] = [r{}] | r{} -> [{}]={:08X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
         elif (op == 'AMOOR.D'):
-            address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
-            newvalue= self.reg[rd] | self.reg[rs2] 
-            yield from self.virtualMemoryWrite(address, 64//8, newvalue)
-            pr('[r{}] = [r{}] | r{} -> [{}]={:016X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
+            # B = r1 (address)
+            yield from self.loadRegFromMem('B', 'r1')
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            
+            # A = [address]
+            yield from self.loadReg('A') 
+
+            # R = rd
+            yield from self.loadRegFromMem('R', 'r2')
+
+            # newvalue = R + A
+            yield from self.aluOp('or', 'A', 'R', 'R')
+            newvalue = self.parent._wires['R'].get()
+
+            # [address] = R
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            yield from self.saveReg('R')
+            
+            # rd = A
+            yield from self.saveRegToMem('A', 'rd')
+            
+            #address = self.reg[rs1]
+            #self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
+            #newvalue= self.reg[rd] | self.reg[rs2] 
+            #yield from self.virtualMemoryWrite(address, 64//8, newvalue)
+            pr('[r{}] = [r{}] | r{} -> [{}]={:016X}'.format(rs1, rs1, rs2, self.parent.addressFmt(address), newvalue))
+
         elif (op == 'AMOXOR.W'):
             address = self.reg[rs1]
             self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
@@ -996,11 +1303,36 @@ class ControlUnit(py4hw.Logic):
             yield from self.virtualMemoryWrite(address, 32//8, newvalue)
             pr('[r{}] = [r{}] ^ r{} -> [{}]={:08X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
         elif (op == 'AMOXOR.D'):
-            address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
-            newvalue= self.reg[rd] ^ self.reg[rs2] 
-            yield from self.virtualMemoryWrite(address, 64//8, newvalue)
-            pr('[r{}] = [r{}] ^ r{} -> [{}]={:016X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
+            # B = r1 (address)
+            yield from self.loadRegFromMem('B', 'r1')
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            
+            # A = [address]
+            yield from self.loadReg('A') 
+
+            # R = rd
+            yield from self.loadRegFromMem('R', 'r2')
+
+            # newvalue = R + A
+            yield from self.aluOp('xor', 'A', 'R', 'R')
+            newvalue = self.parent._wires['R'].get()
+
+            # [address] = R
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            yield from self.saveReg('R')
+            
+            # rd = A
+            yield from self.saveRegToMem('A', 'rd')
+            #address = self.reg[rs1]
+            #self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
+            #newvalue= self.reg[rd] & self.reg[rs2] 
+            #yield from self.virtualMemoryWrite(address, 64//8, newvalue)
+            #address = self.reg[rs1]
+            #self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
+            #newvalue= self.reg[rd] ^ self.reg[rs2] 
+            #yield from self.virtualMemoryWrite(address, 64//8, newvalue)
+            pr('[r{}] = [r{}] ^ r{} -> [{}]={:016X}'.format(rs1, rs1, rs2, self.parent.addressFmt(address), newvalue))
         elif (op == 'AMOSWAP.W'):
             # [rs1] -> rd
             #    r2 -> [rs1]
@@ -1111,19 +1443,17 @@ class ControlUnit(py4hw.Logic):
                     pr('[CU] R = PC + 4')
                 
                 # R = pc + 4
-                yield from self.aluOp('sum', 'P', '4', 'R')
-                
+                self.vcontrol['control_imm'] = 4
+                yield from self.aluOp('sum', 'PC', 'control_imm', 'R')
+                self.vcontrol['control_imm'] = 0
+
                 # reg[rd] = R
                 # pr(f'[CU] r{rd} = R')
-
-                yield from saveRegToMem('R', 'rd')
-
-
+                vrd = self.parent._wires['R'].get()
+                yield from self.saveRegToMem('R', 'rd')
                 
             self.should_jump = True
             self.jmp_address = self.parent.getPc() + off21_J
-            
-            
             
             # PC = PC + off21_J
             yield from self.aluOp('sum', 'PC', 'off21_J', 'PC')
@@ -1133,7 +1463,7 @@ class ControlUnit(py4hw.Logic):
             if (rd== 0):
                 pr('pc + {} ->  {}'.format(off21_J, self.parent.addressFmt(self.jmp_address)))
             else:                
-                pr('pc + {}  r{}=pc+4 ->  {},{:016X}'.format(off21_J, rd, self.parent.addressFmt(self.jmp_address), self.reg[rd]))
+                pr('pc + {}  r{}=pc+4 ->  {},{:016X}'.format(off21_J, rd, self.parent.addressFmt(self.jmp_address), vrd))
     
         yield
         
@@ -1201,8 +1531,12 @@ class ControlUnit(py4hw.Logic):
         
         soff12_S = compose_sign(ins, [[25,7],[7,5]])
 
-        yield from self.loadRegFromMem('B', 'r2')
-        vr2 = self.parent._wires['B'].get()
+        if (op == 'SD' or op == 'SW' or op == 'SH'):
+            yield from self.loadRegFromMem('B', 'r2')
+            vr2 = self.parent._wires['B'].get()
+        if (op == 'FSH'):
+            yield from self.loadRegFromMem('B', 'fr2')
+            vr2 = self.parent._wires['B'].get()
         
         yield from self.loadRegFromMem('A', 'r1')
         yield from self.aluOp('sum', 'A', 'soff12_S', 'MAR')
@@ -1212,10 +1546,11 @@ class ControlUnit(py4hw.Logic):
 
         
         if (op == 'SD'):
-            pr('[r{} + {}] = r{} -> [{}]={:016X}'.format(rs1, soff12_S, rs2, saddr, self.reg[rs2]))
-            yield from self.virtualMemoryWrite(address, 64//8, self.reg[rs2])
+            yield from self.saveReg('B', be=0xFF)
+            pr('[r{} + {}] = r{} -> [{}]={:016X}'.format(rs1, soff12_S, rs2, saddr, vr2))            
+            # yield from self.virtualMemoryWrite(address, 64//8, self.reg[rs2])
         elif (op == 'FSH'):
-            pr('[r{} + {}] = fr{} -> [{}]={:016X}'.format(rs1, soff12_S, rs2, saddr, self.freg[rs2]))
+            pr('[r{} + {}] = fr{} -> [{}]={:016X}'.format(rs1, soff12_S, rs2, saddr, vr2))
             yield from self.virtualMemoryWrite(address, 16//8, self.freg[rs2])
         elif (op == 'FSD'):
             pr('[r{} + {}] = fr{} -> [{}]={:016X}'.format(rs1, soff12_S, rs2, saddr, self.freg[rs2]))
@@ -1224,14 +1559,13 @@ class ControlUnit(py4hw.Logic):
             pr('[r{} + {}] = fr{} -> [{}]={:08X}'.format(rs1, soff12_S, rs2, saddr, self.freg[rs2]))
             yield from self.virtualMemoryWrite(address, 32//8, self.freg[rs2])
         elif (op == 'SW'):
-            yield from self.saveReg('B', be=0x7)
+            yield from self.saveReg('B', be=0xF)
             pr('[r{} + {}] = r{} -> [{}]={:08X}'.format(rs1, soff12_S, rs2, saddr, vr2 & ((1<<32)-1)))
             #yield from self.virtualMemoryWrite(address, 32//8, self.reg[rs2])
         elif (op == 'SH'):
-            
+            yield from self.saveReg('B', be=0x3)            
             pr('[r{} + {}] = r{} -> [{}]={:04X}'.format(rs1, soff12_S, rs2, saddr, vr2 & ((1<<16)-1)))
             #yield from self.virtualMemoryWrite(address, 16//8, self.reg[rs2])
-            raise Exception('not implemented')
         elif (op == 'SB'):
             address = self.reg[rs1]+soff12
             pr('[r{} + {}] = r{} -> [{}]={:02X}'.format(rs1, soff12_S, rs2, saddr, self.reg[rs2] & ((1<<8)-1)))
@@ -1244,7 +1578,6 @@ class ControlUnit(py4hw.Logic):
         sop = {'sum':'+', 'sub':'-', 'mul':'*', 'cmp':'cmp', 
                'and':'&', 'or':'|', 'xor':'^',
                'shift_left':'<<', 'shift_right':'>>',
-               'rotate_left':'r<<', 'rotate_right':'r>>',
                'bypass2':'*0 + '}
         
         self.state = f'{prr} = {p1} {sop[op]} {p2}'
@@ -1265,8 +1598,23 @@ class ControlUnit(py4hw.Logic):
  
     def signExtend(self, reg, wfrom, wto):
         rs = wto - wfrom
-        yield from self.aluOp('shift_left', reg, str(rs), reg)
-        yield from self.aluOp('shift_right', reg, str(rs), reg)
+        self.vcontrol['control_imm'] = rs
+        yield from self.aluOp('shift_left', reg, 'control_imm', reg)
+        self.vcontrol['control_imm'] = rs
+        self.vcontrol['alu_op_shift_righta'] = 1
+        yield from self.aluOp('shift_right', reg, 'control_imm', reg)
+        self.vcontrol['alu_op_shift_righta'] = 0
+        self.vcontrol['control_imm'] = 0
+
+    def zeroExtend(self, reg, wfrom, wto):
+        rs = wto - wfrom
+        self.vcontrol['control_imm'] = rs
+        yield from self.aluOp('shift_left', reg, 'control_imm', reg)
+        self.vcontrol['control_imm'] = rs
+        self.vcontrol['alu_op_shift_righta'] = 0
+        yield from self.aluOp('shift_right', reg, 'control_imm', reg)
+        self.vcontrol['alu_op_shift_righta'] = 0
+        self.vcontrol['control_imm'] = 0
 
     def executeIIns(self):
         op = self.decoded_ins
@@ -1292,15 +1640,68 @@ class ControlUnit(py4hw.Logic):
             
             pr('r{} = r{} + {} -> {:016X}'.format(rd, rs1, simm12, vr))
         elif (op == 'SLTI'):
-            self.reg[rd] = 0            
-            if  (IntegerHelper.c2_to_signed(self.reg[rs1], 64) < simm12):
-                self.reg[rd] = 1
-            pr('r{} = r{} < {} -> {:016X}'.format(rd, rs1, simm12, self.reg[rd]))
+            # rd = r1 < simm12
+            # A = r1
+            yield from self.loadRegFromMem('A', 'r1')
+            # B = simm12
+            yield from self.aluOp('bypass2', 'A', 'simm12', 'B')
+            # cmp
+            yield from self.aluOp('cmp', 'A', 'B', 'R')
+            
+            vr = self.parent._wires['R'].get() 
+
+            iseq = vr & 1
+            isneq = not(iseq)
+            isltu = (vr >> 1) & 1
+            islt = (vr >> 2) & 1
+            isgtu = (vr >> 3) & 1
+            isgt = (vr >> 4) & 1
+            isge = isgt or iseq
+            isgeu = isgtu or iseq
+
+            
+            if  (islt):
+                self.vcontrol['control_imm'] = 1
+            else:
+                self.vcontrol['control_imm'] = 0
+
+            yield from self.aluOp('bypass2', 'A', 'control_imm', 'R')
+            vrd = self.parent._wires['R'].get() 
+            yield from self.saveRegToMem('R', 'rd')
+    
+            pr('r{} = r{} < {} -> {:016X}'.format(rd, rs1, simm12, vrd))
+
         elif (op == 'SLTIU'):
-            self.reg[rd] = 0            
-            if  (self.reg[rs1] < signExtend(simm12, 12, 64)):
-                self.reg[rd] = 1
-            pr('r{} = r{} < {} -> {:016X}'.format(rd, rs1, simm12, self.reg[rd]))
+            # rd = r1 < simm12
+            # A = r1
+            yield from self.loadRegFromMem('A', 'r1')
+            # B = simm12
+            yield from self.aluOp('bypass2', 'A', 'simm12', 'B')
+            # cmp
+            yield from self.aluOp('cmp', 'A', 'B', 'R')
+            
+            vr = self.parent._wires['R'].get() 
+
+            iseq = vr & 1
+            isneq = not(iseq)
+            isltu = (vr >> 1) & 1
+            islt = (vr >> 2) & 1
+            isgtu = (vr >> 3) & 1
+            isgt = (vr >> 4) & 1
+            isge = isgt or iseq
+            isgeu = isgtu or iseq
+
+            
+            if  (isltu):
+                self.vcontrol['control_imm'] = 1
+            else:
+                self.vcontrol['control_imm'] = 0
+
+            yield from self.aluOp('bypass2', 'A', 'control_imm', 'R')
+            vrd = self.parent._wires['R'].get() 
+            yield from self.saveRegToMem('R', 'rd')
+    
+            pr('r{} = r{} < {} -> {:016X}'.format(rd, rs1, simm12, vrd))
         elif (op == 'ANDI'):
             if (self.verbose): pr('[CU] ANDI')
             yield from self.loadRegFromMem('A', 'r1')
@@ -1390,37 +1791,103 @@ class ControlUnit(py4hw.Logic):
             self.reg[rd] = signExtend(self.reg[rs1] & 0xFFFF, 16, 64) 
             pr('r{} = sign extend 16 (r{}) -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'LD'):
-            address = self.reg[rs1] + simm12
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
-            pr('r{} = [r{} + {}] -> [{}]={:016X}'.format(rd, rs1, simm12, self.addressFmt(address), self.reg[rd]))
+            # A = r1
+            yield from self.loadRegFromMem('A', 'r1')
+            # MAR = A + simm12
+            yield from self.aluOp('sum', 'A', 'simm12', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            yield from self.loadReg('R')
+            vrd = self.parent._wires['R'].get()
+            yield from self.saveRegToMem('R', 'rd')
+            # address = self.reg[rs1] + simm12
+            # self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
+            pr('r{} = [r{} + {}] -> [{}]={:016X}'.format(rd, rs1, simm12, self.parent.addressFmt(address), vrd))
         elif (op == 'LW'):
-            address = self.reg[rs1] + simm12
-            pr('r{} = [r{} + {}] '.format(rd, rs1, simm12), end = '')
-            v = yield from self.virtualMemoryLoad(address, 32//8)
-            self.reg[rd] = signExtend(v, 32, 64) 
-            pr('-> [{}]={:016X}'.format(self.addressFmt(address), self.reg[rd]))
+            # A = r1
+            yield from self.loadRegFromMem('A', 'r1')
+            # MAR = A + simm12
+            yield from self.aluOp('sum', 'A', 'simm12', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            yield from self.loadReg('R')
+            yield from self.signExtend('R', 32, 64)
+            vrd = self.parent._wires['R'].get()
+            yield from self.saveRegToMem('R', 'rd')
+
+            #address = self.reg[rs1] + simm12
+            #pr('r{} = [r{} + {}] '.format(rd, rs1, simm12), end = '')
+            #v = yield from self.virtualMemoryLoad(address, 32//8)
+            #self.reg[rd] = signExtend(v, 32, 64) 
+            pr('-> [{}]={:016X}'.format(self.parent.addressFmt(address), vrd))
         elif (op == 'LWU'):
-            address = self.reg[rs1] + simm12
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
-            pr('r{} = [r{} + {}] -> [{}]={:016X}'.format(rd, rs1, simm12, self.addressFmt(address), self.reg[rd]))
+            # A = r1
+            yield from self.loadRegFromMem('A', 'r1')
+            # MAR = A + simm12
+            yield from self.aluOp('sum', 'A', 'simm12', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            yield from self.loadReg('R')
+            yield from self.zeroExtend('R', 32, 64)
+            vrd = self.parent._wires['R'].get()
+            yield from self.saveRegToMem('R', 'rd')
+
+            #address = self.reg[rs1] + simm12
+            #self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
+            pr('r{} = [r{} + {}] -> [{}]={:016X}'.format(rd, rs1, simm12, self.parent.addressFmt(address), vrd))
         elif (op == 'LH'):
-            address = self.reg[rs1] + simm12
-            v = yield from self.virtualMemoryLoad(address, 16//8)
-            self.reg[rd] = signExtend(v, 16, 64) 
-            pr('r{} = [r{} + {}] -> [{}]={:016X}'.format(rd, rs1, simm12, self.addressFmt(address), self.reg[rd]))
+            # A = r1
+            yield from self.loadRegFromMem('A', 'r1')
+            # MAR = A + simm12
+            yield from self.aluOp('sum', 'A', 'simm12', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            yield from self.loadReg('R')
+            yield from self.signExtend('R', 16, 64)
+            vrd = self.parent._wires['R'].get()
+            yield from self.saveRegToMem('R', 'rd')
+
+            #address = self.reg[rs1] + simm12
+            #v = yield from self.virtualMemoryLoad(address, 16//8)
+            #self.reg[rd] = signExtend(v, 16, 64) 
+            pr('r{} = [r{} + {}] -> [{}]={:016X}'.format(rd, rs1, simm12, self.parent.addressFmt(address), vrd))
         elif (op == 'LHU'):
-            address = self.reg[rs1] + simm12
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 16//8)
-            pr('r{} = [r{} + {}] -> [{}]={:04X}'.format(rd, rs1, simm12, self.addressFmt(address), self.reg[rd]))
+            yield from self.loadRegFromMem('A', 'r1')
+            # MAR = A + simm12
+            yield from self.aluOp('sum', 'A', 'simm12', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            yield from self.loadReg('R')
+            yield from self.zeroExtend('R', 16, 64)
+            vrd = self.parent._wires['R'].get()
+            yield from self.saveRegToMem('R', 'rd')
+            #address = self.reg[rs1] + simm12
+            #self.reg[rd] = yield from self.virtualMemoryLoad(address, 16//8)
+            pr('r{} = [r{} + {}] -> [{}]={:04X}'.format(rd, rs1, simm12, self.parent.addressFmt(address), vrd))
         elif (op == 'LB'):
-            address = self.reg[rs1] + simm12
-            v = yield from self.virtualMemoryLoad(address, 8//8)
-            self.reg[rd] = signExtend(v, 8, 64) 
-            pr('r{} = [r{} + {}] -> [{}]={:016X}'.format(rd, rs1, simm12, self.addressFmt(address), self.reg[rd]))
+            # A = r1
+            yield from self.loadRegFromMem('A', 'r1')
+            # MAR = A + simm12
+            yield from self.aluOp('sum', 'A', 'simm12', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            yield from self.loadReg('R')
+            yield from self.signExtend('R', 8, 64)
+            vrd = self.parent._wires['R'].get()
+            yield from self.saveRegToMem('R', 'rd')
+
+            #address = self.reg[rs1] + simm12
+            #v = yield from self.virtualMemoryLoad(address, 8//8)
+            #self.reg[rd] = signExtend(v, 8, 64) 
+            pr('r{} = [r{} + {}] -> [{}]={:016X}'.format(rd, rs1, simm12, self.parent.addressFmt(address), vrd))
         elif (op == 'LBU'):
-            address = self.reg[rs1] + simm12
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 8//8)
-            pr('r{} = [r{} + {}] -> [{}]={:02X}'.format(rd, rs1, simm12, self.addressFmt(address), self.reg[rd]))
+            # A = r1
+            yield from self.loadRegFromMem('A', 'r1')
+            # MAR = A + simm12
+            yield from self.aluOp('sum', 'A', 'simm12', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            yield from self.loadReg('R')
+            yield from self.zeroExtend('R', 8, 64)
+            vrd = self.parent._wires['R'].get()
+            yield from self.saveRegToMem('R', 'rd')
+
+            #address = self.reg[rs1] + simm12
+            #self.reg[rd] = yield from self.virtualMemoryLoad(address, 8//8)
+            pr('r{} = [r{} + {}] -> [{}]={:02X}'.format(rd, rs1, simm12, self.parent.addressFmt(address), vrd))
         elif (op == 'FLH'):
             address = self.reg[rs1] + simm12
             v = yield from self.virtualMemoryLoad(address, 16//8)
@@ -1586,26 +2053,99 @@ class ControlUnit(py4hw.Logic):
                 pr('r{} = {}, {} |= {} -> {:016X}, {:016X}'.format(rd, csrname, csrname, rs1, vrd, vcsr))       
                  
         elif (op == 'CSRRCI'):
-            crsv, allowed = self.readCSR(csr)
-            if (rs1 != 0): self.clearCSR(csr, rs1)
-            if (rd != 0) and allowed: self.reg[rd] = crsv
-            csrname = self.implemented_csrs[csr]
-            pr('r{} = {}, {} &= ~{} -> {:016X}'.format(rd, csrname, csrname, rs1, self.reg[rd]))                        
-        elif (op == 'RORI'):
             # A = r1
-            yield from self.loadRegFromMem('A', 'r1')
-            # R = A r>> shamt6
-            yield from self.aluOp('rotate_right', 'A', 'shamt6', 'R')
-            # rd = R
+            #yield from self.loadRegFromMem('A', 'r1')
+            yield from self.aluOp('bypass2', 'A', 'r1', 'A')
+            
+            # B = csr
+            yield from self.loadRegFromMem('B', 'csr')            
+            
+            # rd = B, 
+            if (rd != 0):
+                yield from self.saveRegToMem('B', 'rd')
+                vrd = self.parent._wires['B'].get()
+            
+            # R = A & (-1 ^ B) 
+            yield from self.aluOp('xor', 'A', 'm1', 'A')
+            yield from self.aluOp('and', 'A', 'B', 'R')
+            
+            # csr = R
             vcsr = self.parent._wires['R'].get()
+            yield from self.saveRegToMem('R', 'csr')
+
+
+
+            #crsv, allowed = self.readCSR(csr)
+            #if (rs1 != 0): self.clearCSR(csr, rs1)
+            #if (rd != 0) and allowed: self.reg[rd] = crsv
+            csrname = self.parent.implemented_csrs[csr]
+            
+            if (rd == 0):
+                pr('{} &= ~{} -> {:016X}'.format(csrname, rs1, vcsr))
+            else:
+                pr('r{} = {}, {} &= ~{} -> {:016X}, {:016X}'.format(rd, csrname, csrname, rs1, vrd, vcsr))                        
+        elif (op == 'RORI'):
+            # we take profit of a r>> n -> a >> n | a << (w-n)
+
+            # A = rs1
+            yield from self.loadRegFromMem('A', 'r1')
+            # B = shamt6
+            yield from self.aluOp('bypass2', 'B', 'shamt6', 'B')
+            shv = self.parent._wires['B'].get()
+
+            # R = A >> B
+            yield from self.aluOp('shift_right', 'A', 'B', 'R')
+            vrd = self.parent._wires['R'].get()
+            
+            # B = w - B
+            self.vcontrol['control_imm'] = 64
+            yield from self.aluOp('sub', 'control_imm', 'B', 'B')
+            self.vcontrol['control_imm'] = 0
+
+            # B = A << B
+            yield from self.aluOp('shift_left', 'A', 'B', 'B')
+
+            # R = R | B
+            yield from self.aluOp('or', 'R', 'B', 'R')
+            
+            # rd = R
+            vrd = self.parent._wires['R'].get()
             yield from self.saveRegToMem('R', 'rd')
 
             pr('r{} = r{} >> {} -> {:016X}'.format(rd, rs1, shamt6, vrd))
             
         elif (op == 'RORIW'):
-            v = ((self.reg[rs1] >> shamt6) | (self.reg[rs1] << (32-shamt6))) & ((1<<32)-1)
-            self.reg[rd] = signExtend(v, 32, 64)
-            pr('r{} = r{} >> {} -> {:016X}'.format(rd, rs1, shamt6, self.reg[rd]))
+            # we take profit of a r>> n -> a >> n | a << (w-n)
+
+            # A = rs1
+            yield from self.loadRegFromMem('A', 'r1')
+            # B = shamt6
+            yield from self.aluOp('bypass2', 'B', 'shamt6', 'B')
+            shv = self.parent._wires['B'].get()
+
+            # R = A >> B
+            yield from self.aluOp('shift_right', 'A', 'B', 'R')
+            vrd = self.parent._wires['R'].get()
+            
+            # B = w - B
+            self.vcontrol['control_imm'] = 32
+            yield from self.aluOp('sub', 'control_imm', 'B', 'B')
+            self.vcontrol['control_imm'] = 0
+
+            # B = A << B
+            yield from self.aluOp('shift_left', 'A', 'B', 'B')
+
+            # R = R | B
+            yield from self.aluOp('or', 'R', 'B', 'R')
+            
+            yield from self.signExtend('R', 32, 64)
+            
+            # rd = R
+            vrd = self.parent._wires['R'].get()
+            yield from self.saveRegToMem('R', 'rd')
+
+            pr('r{} = r{} >> {} -> {:016X}'.format(rd, rs1, shamt6, vrd))
+
         elif (op == 'SLLI'):
             # A = rs1
             yield from self.loadRegFromMem('A', 'r1')
@@ -1615,26 +2155,65 @@ class ControlUnit(py4hw.Logic):
             vrd = self.parent._wires['R'].get()
             yield from self.saveRegToMem('R', 'rd')
             pr('r{} = r{} << {} -> {:016X}'.format(rd, rs1, shamt6, vrd))
+            
         elif (op == 'SLLIW'):
-            v = self.reg[rs1] << shamt6
-            self.reg[rd] = signExtend(v & ((1<<32)-1), 32, 64) 
-            pr('r{} = r{} << {} -> {:016X}'.format(rd, rs1, shamt6, self.reg[rd]))
+            # A = rs1
+            yield from self.loadRegFromMem('A', 'r1')
+            # R = A << shamt6
+            yield from self.aluOp('shift_left', 'A', 'shamt6', 'R')
+            yield from self.signExtend('R', 32, 64)
+            # rd = R
+            vrd = self.parent._wires['R'].get()
+            yield from self.saveRegToMem('R', 'rd')
+            pr('r{} = r{} << {} -> {:016X}'.format(rd, rs1, shamt6, vrd))
         elif (op == 'SLLI.UW'):
-            v = zeroExtend(self.reg[rs1], 32) <<  shamt6
-            self.reg[rd] = v  & ((1<<64)-1)
-            pr('r{} = r{} << {} -> {:016X}'.format(rd, rs1, shamt6, self.reg[rd]))
+            # A = rs1
+            yield from self.loadRegFromMem('A', 'r1')
+            # R = A << shamt6
+            yield from self.aluOp('shift_left', 'A', 'shamt6', 'R')
+            yield from self.zeroExtend('R', 32, 64)
+            # rd = R
+            vrd = self.parent._wires['R'].get()
+            yield from self.saveRegToMem('R', 'rd')
+            pr('r{} = r{} << {} -> {:016X}'.format(rd, rs1, shamt6, vrd))
         elif (op == 'SRLI'):
-            self.reg[rd] = self.reg[rs1] >> shamt6
-            pr('r{} = r{} >> {} -> {:016X}'.format(rd, rs1, shamt6, self.reg[rd]))
+            # A = rs1
+            yield from self.loadRegFromMem('A', 'r1')
+            # R = A << shamt6
+            yield from self.aluOp('shift_right', 'A', 'shamt6', 'R')
+            # rd = R
+            vrd = self.parent._wires['R'].get()
+            yield from self.saveRegToMem('R', 'rd')
+            pr('r{} = r{} >> {} -> {:016X}'.format(rd, rs1, shamt6, vrd))
+            
         elif (op == 'SRLIW'):
             self.reg[rd] = IntegerHelper.c2_to_signed((self.reg[rs1] & ((1<<32)-1)) >> shamt6, 32) & ((1<<64)-1)
             pr('r{} = r{} >> {} -> {:016X}'.format(rd, rs1, shamt6, self.reg[rd]))
         elif (op == 'SRAI'):
-            self.reg[rd] = (IntegerHelper.c2_to_signed(self.reg[rs1], 64) >> shamt6) & ((1<<64)-1)
-            pr('r{} = r{} >> {} -> {:016X}'.format(rd, rs1, shamt6, self.reg[rd]))
+            # A = rs1
+            yield from self.loadRegFromMem('A', 'r1')
+            # R = A a>> shamt6
+            self.vcontrol['alu_op_shift_righta'] = 1
+            yield from self.aluOp('shift_right', 'A', 'shamt6', 'R')
+            self.vcontrol['alu_op_shift_righta'] = 0
+            # rd = R
+            vrd = self.parent._wires['R'].get()
+            yield from self.saveRegToMem('R', 'rd')
+
+            pr('r{} = r{} >> {} -> {:016X}'.format(rd, rs1, shamt6, vrd))
         elif (op == 'SRAIW'):
-            self.reg[rd] = (IntegerHelper.c2_to_signed(self.reg[rs1] & ((1<<32)-1), 32) >> shamt6) & ((1<<64)-1)
-            pr('r{} = r{} >> {} -> {:016X}'.format(rd, rs1, shamt6, self.reg[rd]))
+            # A = rs1
+            yield from self.loadRegFromMem('A', 'r1')
+            # A = zext(A)
+            yield from self.zeroExtend('A', 32, 64)
+            # R = A >> shamt6
+            yield from self.aluOp('shift_right', 'A', 'shamt6', 'R')
+            yield from self.signExtend('R', 32, 64)
+            # rd = R
+            vrd = self.parent._wires['R'].get()
+            yield from self.saveRegToMem('R', 'rd')
+
+            pr('r{} = r{} >> {} -> {:016X}'.format(rd, rs1, shamt6, vrd))
         elif (op == 'WFI'):
             pr('ignored')
         elif (op == 'MRET'):
@@ -1663,15 +2242,18 @@ class ControlUnit(py4hw.Logic):
         elif (op == 'JALR'):
             self.should_jump = True
             
-            if (rd != 0):
-                # R = PC + 4
-                yield from self.aluOp('sum', 'PC', 'k4', 'R')
-                # rd = R
-                yield from self.saveRegToMem('R', 'rd')
-                vrd = self.parent._wires['R'].get()
-                
             # A = r1
             yield from self.loadRegFromMem('A', 'r1')
+
+            if (rd != 0):
+                # R = PC + 4
+                self.vcontrol['control_imm'] = 4
+                yield from self.aluOp('sum', 'PC', 'control_imm', 'R')
+                # rd = R
+                self.vcontrol['control_imm'] = 0
+                vrd = self.parent._wires['R'].get()
+                yield from self.saveRegToMem('R', 'rd')
+                
             # PC = r1 + simm12
             yield from self.aluOp('sum', 'A', 'simm12', 'PC')
             
@@ -1734,7 +2316,7 @@ class ControlUnit(py4hw.Logic):
             
         elif (op == 'LUI'):
             # A = 0 (probably rs1 is 0)
-            yield from self.loadRegFromImm('A', 0)
+            yield from self.loadRegFromImm('A', 0, 'A') # aux will not be used
             
             # R = A + simm20            
             yield from self.aluOp('sum', 'A', 'simm20', 'R')
@@ -1764,14 +2346,40 @@ class ControlUnit(py4hw.Logic):
             yield from self.executeUIns()  
         elif (op in STypeIns):
             yield from self.executeSIns()
+        elif (op in CJTypeIns):
+            yield from self.executeCJIns()
         elif (op == 'FENCE'):
             pr('ignored')
         elif (op == 'FENCE.I'):
             pr('ignored')
         else:
             raise Exception('{} - Not supported!'.format(op))
+    
+    def encodeFeatures(self, str):
+        r = 0
+        for c in str:
+            r |= 1 << (ord(c)-65)
+        return r
+   
+    def initStaticCSRs(self):
+        # CSRs can be found here
+        # https://people.eecs.berkeley.edu/~krste/papers/riscv-priv-spec-1.7.pdf
+        # and here
+        # https://web.cecs.pdx.edu/~harry/riscv/RISCV-Summary.pdf
+    
+        yield from self.writeCsr(CSR_MISA, 2 << 62 | self.encodeFeatures('ACDIFMSU')) # misa
+        yield from self.writeCsr(CSR_MCPUID, 2 << 62 | self.encodeFeatures('ACDIFMSU')) # mcpuid
+        yield from self.writeCsr(0xf10, 0)  # mhartid @todo is this wrong???
+    
+        yield from self.writeCsr(CSR_MVENDORID, 0x414255) # UAB
+        yield from self.writeCsr(CSR_MARCHID,  0)
+        yield from self.writeCsr(CSR_MIMPID, 0x70756e7861323431)  # @todo should be reversed
+        yield from self.writeCsr(CSR_MHARTID, 0) # mhartid
+    
 
     def run(self):
+        yield from self.initStaticCSRs()
+        
         while True:
             try:
                 self.should_jump = False
@@ -1791,7 +2399,7 @@ class ControlUnit(py4hw.Logic):
                 if (priv == CSR_PRIVLEVEL_MACHINE): # machine
                     yield from self.setCsr(CSR_MSTATUS, (3 << 11))
                 elif (priv == CSR_PRIVLEVEL_SUPERVISOR): # supervisor
-                    self.csr[CSR_MSTATUS] |= (1 << 11) # set M-Mode as previous mode in MPP
+                    yield from self.setCsr(CSR_MSTATUS, (1 << 11))
 
                 yield from self.loadRegFromCsr('R', CSR_MEDELEG)
                 medeleg = self.parent._wires['R'].get() 
@@ -1799,13 +2407,16 @@ class ControlUnit(py4hw.Logic):
                 
                 if (get_bit(medeleg, e.code)):
                     # this should be delegated to supervisor mode
-                    vec = self.csr[CSR_STVEC] # stvec
-                    self.csr[CSR_STVAL] = e.tval
-                    self.csr[0x100] |= (priv << 8) # set previous mode in SPP
-                    self.csr[CSR_SEPC] = self.pc # sepc
-                    self.csr[CSR_SCAUSE] = e.code  # scause
-                    vecname = self.implemented_csrs[0x105]
-                    self.csr[CSR_PRIVLEVEL] = 1
+                    yield from self.loadRegFromCsr('R', CSR_STVEC)
+                    vec = self.parent._wires['R'].get() 
+
+                    yield from self.writeCsr(CSR_STVAL, e.tval)
+
+                    yield from self.setCsr(CSR_SSTATUS, priv << 8) # set previous mode in SPP
+                    yield from self.saveRegToCsr('PC', CSR_SEPC)
+                    yield from self.writeCsr(CSR_SCAUSE, e.code)
+                    vecname = self.parent.implemented_csrs[0x105]
+                    yield from self.writeCsr(CSR_PRIVLEVEL, 1)
 
                 else:
                     # this is executed in machine mode    
@@ -1828,12 +2439,13 @@ class ControlUnit(py4hw.Logic):
                 self.should_jump = True
                 
                 if ((vec & 3) == 0):
-                    # should change this
+                    # @todo should change this, imm should be constant
                     pr('jumping to {}'.format(vecname), hex(addr))
-                    yield from self.loadRegFromImm('PC', addr)
+                    yield from self.loadRegFromImm('PC', addr, 'B')
                 elif ((vec & 3) == 1):
+                    # @todo should change this, imm should be constant
                     addr = addr + e.code * 4
-                    yield from self.loadRegFromImm('PC', addr)
+                    yield from self.loadRegFromImm('PC', addr, 'B')
             
                                
                 
@@ -1923,7 +2535,8 @@ class ALU(py4hw.Logic):
         
         hlp = py4hw.LogicHelper(self)
         k_reg_base = hlp.hw_constant(64, registerBase)
-        
+
+        off12_JC = compose_sign_hw(self, 'off12_JC', q_i, [[12,1],[8,1],[9,2],[6,1],[7,1],[2,1],[11,1],[3,3]], 1)         
         off21_J = compose_sign_hw(self, 'off21_J', q_i, [[31,1], [12,8], [20,1], [21,10]], 1)   
         soff12 = compose_sign_hw(self, 'soff12', q_i, [[31,1], [7,1], [25,6], [8,4]], 1) 
         soff12_S = compose_sign_hw(self, 'soff12_S', q_i, [[25,7],[7,5]], 0)
@@ -1933,14 +2546,13 @@ class ALU(py4hw.Logic):
         shamt6 = compose_hw(self, 'shamt6', q_i, [[20,6]], 0)
 
         used_controls = ['sel_alu_1_A', 'sel_alu_1_B', 'sel_alu_1_R', 'sel_alu_1_PC', 'sel_alu_1_reg_base',
-                         'sel_alu_2_4', 'sel_alu_2_32', 'sel_alu_2_m1', 'sel_alu_2_r1',
-                         'sel_alu_2_off21_J', 
+                         'sel_alu_2_m1', 'sel_alu_2_r1',
+                         'sel_alu_2_off12_JC','sel_alu_2_off21_J', 
                          'sel_alu_2_soff12', 'sel_alu_2_soff12_S', 'sel_alu_2_simm12', 
                          'sel_alu_2_simm20', 'sel_alu_2_shamt6', 'sel_alu_2_B',
                          'sel_alu_2_control_imm', 
                          'alu_op_sum', 'alu_op_sub', 'alu_op_mul', 'alu_op_cmp', 'alu_op_or',
-                         'alu_op_shift_left', 'alu_op_shift_right',
-                         'alu_op_rotate_left', 'alu_op_rotate_right',
+                         'alu_op_shift_left', 'alu_op_shift_right', 'alu_op_shift_righta',
                          'alu_op_bypass2',
                          'control_imm']
         
@@ -1952,16 +2564,12 @@ class ALU(py4hw.Logic):
         alu_1 = self.wire('alu_1', 64)
         alu_2 = self.wire('alu_2', 64)
         
-        k4 = self.wire('k4', 64)
-        k32 = self.wire('k32', 64)
         km1 = self.wire('km1', 64)
         r1 = self.wire('r1', 64)
         control_imm = self.wire('control_imm', 64)
         
         py4hw.ZeroExtend(self, 'control_imm', control['control_imm'], control_imm)
         
-        py4hw.Constant(self, 'k4', 4, k4)
-        py4hw.Constant(self, 'k32', 32, k32)
         py4hw.Constant(self, 'km1', -1, km1)
         
         r1 = compose_hw(self, 'r1', q_i, [[15,5]], 0)
@@ -1971,15 +2579,15 @@ class ALU(py4hw.Logic):
                       control['sel_alu_1_B'], 
                       control['sel_alu_1_R'], 
                       control['sel_alu_1_PC'],
-                      control['sel_alu_1_reg_base']], 
-                     [q_a, q_b, q_r, q_pc, k_reg_base], 
+                      control['sel_alu_1_reg_base'],
+                      control['sel_alu_1_control_imm']], 
+                     [q_a, q_b, q_r, q_pc, k_reg_base, control_imm], 
                      alu_1)
         
         py4hw.OneHotMux(self, 'alu_2', 
-                     [control['sel_alu_2_4'],
-                      control['sel_alu_2_32'],
-                      control['sel_alu_2_m1'],
+                     [control['sel_alu_2_m1'],
                       control['sel_alu_2_r1'],
+                      control['sel_alu_2_off12_JC'],
                       control['sel_alu_2_off21_J'], 
                       control['sel_alu_2_soff12'],
                       control['sel_alu_2_soff12_S'],
@@ -1987,8 +2595,9 @@ class ALU(py4hw.Logic):
                       control['sel_alu_2_simm20'],
                       control['sel_alu_2_shamt6'],
                       control['sel_alu_2_B'],
+                      control['sel_alu_2_R'],
                       control['sel_alu_2_control_imm']], 
-                     [k4, k32, km1, r1, off21_J, soff12, soff12_S, simm12, simm20, shamt6, q_b, control_imm], 
+                     [km1, r1, off12_JC, off21_J, soff12, soff12_S, simm12, simm20, shamt6, q_b, q_r, control_imm], 
                      alu_2)
         
         alu_add_r = self.wire('alu_add_r', 64)
@@ -2028,9 +2637,7 @@ class ALU(py4hw.Logic):
         py4hw.Range(self, 'alu_2_shift', alu_2, 5, 0, alu_2_shift)
         
         py4hw.ShiftLeft(self, 'shift_left', alu_1, alu_2_shift, alu_shift_left_r)
-        py4hw.ShiftRight(self, 'shift_right', alu_1, alu_2_shift, alu_shift_right_r)
-        py4hw.RotateLeft(self, 'rotate_left', alu_1, alu_2_shift, alu_rotate_left_r)
-        py4hw.RotateRight(self, 'rotate_right', alu_1, alu_2_shift, alu_rotate_right_r)
+        py4hw.ShiftRight(self, 'shift_right', alu_1, alu_2_shift, alu_shift_right_r, control['alu_op_shift_righta'])
         
         py4hw.OneHotMux(self, 'select_alu_r', 
                         [control['alu_op_sum'], 
@@ -2042,13 +2649,10 @@ class ALU(py4hw.Logic):
                          control['alu_op_xor'],
                          control['alu_op_shift_left'],
                          control['alu_op_shift_right'],
-                         control['alu_op_rotate_left'],
-                         control['alu_op_rotate_right'],
                          control['alu_op_bypass2']],
                         [alu_add_r, alu_sub_r, alu_mul_r, alu_cmp_r, 
                          alu_and_r, alu_or_r, alu_xor_r,
                          alu_shift_left_r, alu_shift_right_r, 
-                         alu_rotate_left_r, alu_rotate_right_r, 
                          alu_2],
                         alu_r)
                         
@@ -2116,12 +2720,11 @@ class MicroprogrammedRISCV(py4hw.Logic):
         control['sel_alu_1_R'] = self.wire('sel_alu_1_R')
         control['sel_alu_1_PC'] = self.wire('sel_alu_1_PC')
         control['sel_alu_1_reg_base'] = self.wire('sel_alu_1_reg_base')
+        control['sel_alu_1_control_imm'] = self.wire('sel_alu_1_control_imm')
         
-        
-        control['sel_alu_2_4'] = self.wire('sel_alu_2_4')
-        control['sel_alu_2_32'] = self.wire('sel_alu_2_32')
         control['sel_alu_2_m1'] = self.wire('sel_alu_2_m1')
         control['sel_alu_2_r1'] = self.wire('sel_alu_2_r1')
+        control['sel_alu_2_off12_JC'] = self.wire('sel_alu_2_off12_JC')
         control['sel_alu_2_off21_J'] = self.wire('sel_alu_2_off21_J')
         control['sel_alu_2_soff12'] = self.wire('sel_alu_2_soff12')
         control['sel_alu_2_soff12_S'] = self.wire('sel_alu_2_soff12_S')
@@ -2130,6 +2733,7 @@ class MicroprogrammedRISCV(py4hw.Logic):
         control['sel_alu_2_simm20'] = self.wire('sel_alu_2_simm20')
         control['sel_alu_2_shamt6'] = self.wire('sel_alu_2_shamt6')
         control['sel_alu_2_B'] = self.wire('sel_alu_2_B')
+        control['sel_alu_2_R'] = self.wire('sel_alu_2_R')
         control['sel_alu_2_control_imm'] = self.wire('sel_alu_2_control_imm')
         #control['sel_alu_2_r1_offset'] = self.wire('sel_alu_2_r1_offset')
         #control['sel_alu_2_r2_offset'] = self.wire('sel_alu_2_r2_offset')
@@ -2177,9 +2781,14 @@ class MicroprogrammedRISCV(py4hw.Logic):
         csr_m8 = compose_hw(self, 'csr_m8', q_i, [[20, 12]], 3)
         #csrimm_m8 = compose_hw(self, 'csrimm_m8', q_i, [[0, 12]], 3)
 
+        self.register_integer_offset = 0
+        self.register_floating_point_offset = 32 * 8
+        self.register_aux_offset = (32+32) * 8
+        self.register_csr_offset = (32+32+32) * 8
+        
         base_regs = hlp.hw_constant(64, registerBase)
-        base_fregs = hlp.hw_constant(64, 32 * 8)
-        base_csrs =  hlp.hw_constant(64, 64 * 8)
+        base_fregs = hlp.hw_constant(64, self.register_floating_point_offset)
+        base_csrs =  hlp.hw_constant(64, self.register_csr_offset)
         r1_offset = hlp.hw_or2(base_regs, rs1_m8)
         r2_offset = hlp.hw_or2(base_regs, rs2_m8)
         rd_offset = hlp.hw_or2(base_regs, rd_m8)
@@ -2219,6 +2828,7 @@ class MicroprogrammedRISCV(py4hw.Logic):
         control['alu_op_xor'] = self.wire('alu_op_xor')
         control['alu_op_shift_left'] = self.wire('alu_op_shift_left')
         control['alu_op_shift_right'] = self.wire('alu_op_shift_right')
+        control['alu_op_shift_righta'] = self.wire('alu_op_shift_righta')
         control['alu_op_rotate_left'] = self.wire('alu_op_rotate_left')
         control['alu_op_rotate_right'] = self.wire('alu_op_rotate_right')
         control['alu_op_bypass2'] = self.wire('alu_op_bypass2')
