@@ -21,9 +21,9 @@ When completed, next goal is Linux boot.
 
 RV64 ISA tests progress: 
 
-Single Cycle Version:    96.0 % |████████████████████████████████████████████░|
+Single Cycle Version:    96.0 %   |████████████████████████████████████████████░|
 
-Microprogrammed Version: 20.1 % |██████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+Microprogrammed Version: 24.1 %   |███████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 
 check [riscv-tests](https://github.com/davidcastells/punxa/blob/main/test/riscv-tests/README.md) for a complete list
 
