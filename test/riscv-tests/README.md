@@ -415,7 +415,7 @@ rv64mi-p        68.8 %   |██████████████████
 rv64mzicbo-p    0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64si-p        42.9 %   |████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64ssvnapot-p  0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
-rv64ua-p        31.6 %   |███████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv64ua-p        42.1 %   |███████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64ua-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64uc-p        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64uc-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
@@ -423,7 +423,7 @@ rv64ud-p        0.0 %    |░░░░░░░░░░░░░░░░░░
 rv64ud-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64uf-p        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64uf-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
-rv64ui-p        76.9 %   |███████████████████████████████████░░░░░░░░░░|
+rv64ui-p        100.0 %  |█████████████████████████████████████████████|
 rv64ui-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64um-p        7.7 %    |████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64um-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
@@ -480,11 +480,11 @@ Test rv64ua-p-amominu_w             = FAILED - 'ControlUnit' object has no attri
 Test rv64ua-p-amomin_d              = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64ua-p-amomin_w              = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64ua-p-amoor_d               = OK
-Test rv64ua-p-amoor_w               = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64ua-p-amoor_w               = OK
 Test rv64ua-p-amoswap_d             = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64ua-p-amoswap_w             = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64ua-p-amoxor_d              = OK
-Test rv64ua-p-amoxor_w              = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64ua-p-amoxor_w              = OK
 Test rv64ua-p-lrsc                  = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64ua-v-amoadd_d              = FAILED - 'ControlUnit' object has no attribute 'csr'
 Test rv64ua-v-amoadd_w              = FAILED - 'ControlUnit' object has no attribute 'csr'
@@ -577,34 +577,34 @@ Test rv64ui-p-lhu                   = OK
 Test rv64ui-p-lui                   = OK
 Test rv64ui-p-lw                    = OK
 Test rv64ui-p-lwu                   = OK
-Test rv64ui-p-ma_data               = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64ui-p-ma_data               = OK
 Test rv64ui-p-or                    = OK
-Test rv64ui-p-ori                   = FAILED - Test return value = 13
-Test rv64ui-p-sb                    = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64ui-p-ori                   = OK
+Test rv64ui-p-sb                    = OK
 Test rv64ui-p-sd                    = OK
 Test rv64ui-p-sh                    = OK
 Test rv64ui-p-simple                = OK
 Test rv64ui-p-sll                   = OK
 Test rv64ui-p-slli                  = OK
 Test rv64ui-p-slliw                 = OK
-Test rv64ui-p-sllw                  = FAILED - Test return value = 35
+Test rv64ui-p-sllw                  = OK
 Test rv64ui-p-slt                   = OK
 Test rv64ui-p-slti                  = OK
 Test rv64ui-p-sltiu                 = OK
-Test rv64ui-p-sltu                  = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64ui-p-sra                   = FAILED - Test return value = 7
+Test rv64ui-p-sltu                  = OK
+Test rv64ui-p-sra                   = OK
 Test rv64ui-p-srai                  = OK
-Test rv64ui-p-sraiw                 = FAILED - Test return value = 7
-Test rv64ui-p-sraw                  = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64ui-p-sraiw                 = OK
+Test rv64ui-p-sraw                  = OK
 Test rv64ui-p-srl                   = OK
 Test rv64ui-p-srli                  = OK
-Test rv64ui-p-srliw                 = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64ui-p-srlw                  = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64ui-p-srliw                 = OK
+Test rv64ui-p-srlw                  = OK
 Test rv64ui-p-sub                   = OK
-Test rv64ui-p-subw                  = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64ui-p-subw                  = OK
 Test rv64ui-p-sw                    = OK
 Test rv64ui-p-xor                   = OK
-Test rv64ui-p-xori                  = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64ui-p-xori                  = OK
 Test rv64ui-v-add                   = FAILED - 'ControlUnit' object has no attribute 'csr'
 Test rv64ui-v-addi                  = FAILED - 'ControlUnit' object has no attribute 'csr'
 Test rv64ui-v-addiw                 = FAILED - 'ControlUnit' object has no attribute 'csr'
@@ -791,6 +791,6 @@ Test rv64uzfh-v-fmin                = FAILED - 'ControlUnit' object has no attri
 Test rv64uzfh-v-ldst                = FAILED - 'ControlUnit' object has no attribute 'csr'
 Test rv64uzfh-v-move                = FAILED - 'ControlUnit' object has no attribute 'csr'
 Test rv64uzfh-v-recoding            = FAILED - 'ControlUnit' object has no attribute 'csr'
-Total: 349 Correct: 70 (20.1 %)
+Total: 349 Correct: 84 (24.1 %)
 ```
 
