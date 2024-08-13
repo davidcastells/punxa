@@ -1467,66 +1467,411 @@ class ControlUnit(py4hw.Logic):
             yield from self.virtualMemoryWrite(address, 64//8, newvalue)
             pr('r{}:[r{}] X r{} -> {:016X} [{}]={:016X}'.format(rd, rs1, rs2, self.reg[rd], self.addressFmt(address), newvalue))
         elif (op == 'AMOMAX.W'):
-            address = self.reg[rs1]
-            v = yield from self.virtualMemoryLoad(address, 32//8)
-            v = IntegerHelper.c2_to_signed(v, 32) 
-            self.reg[rd] = v & ((1<<64)-1)
-            newvalue= max(v , IntegerHelper.c2_to_signed(self.reg[rs2], 32)) & ((1<<32)-1)
-            yield from self.virtualMemoryWrite(address, 32//8, newvalue)
-            pr('[r{}] = max([r{}] , r{}) -> [{}]={:08X}'.format(rd, rs1, rs2, self.addressFmt(address), newvalue))
+            # B = r1 (address)
+            yield from self.loadRegFromMem('B', 'r1')
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            
+            # A = [address]
+            yield from self.loadReg('A') 
+            yield from self.signExtend('A', 32, 64)
+            
+            # R = rd
+            yield from self.loadRegFromMem('R', 'r2')
+            yield from self.signExtend('R', 32, 64)
+
+            # newvalue = R + A
+            yield from self.aluOp('cmp', 'A', 'R', 'R')
+            
+            vr = self.parent._wires['R'].get() 
+    
+            iseq = vr & 1
+            isneq = not(iseq)
+            isltu = (vr >> 1) & 1
+            islt = (vr >> 2) & 1
+            isgtu = (vr >> 3) & 1
+            isgt = (vr >> 4) & 1
+            isge = isgt or iseq
+            isgeu = isgtu or iseq
+
+            if (islt):
+                # r1 < r2, r2 is max
+                yield from self.loadRegFromMem('R', 'r2')
+            else:
+                self.vcontrol['control_imm'] = 0
+                yield from self.aluOp('or', 'A', 'control_imm', 'R')
+            
+            yield from self.signExtend('R', 32, 64)
+            newvalue = self.parent._wires['R'].get()
+
+            # [address] = R
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            yield from self.saveReg('R')
+            
+            # rd = A
+            vrd = self.parent._wires['A'].get()
+            yield from self.saveRegToMem('A', 'rd')
+
+
+            #address = self.reg[rs1]
+            #v = yield from self.virtualMemoryLoad(address, 32//8)
+            #v = IntegerHelper.c2_to_signed(v, 32) 
+            #self.reg[rd] = v & ((1<<64)-1)
+            #newvalue= max(v , IntegerHelper.c2_to_signed(self.reg[rs2], 32)) & ((1<<32)-1)
+            #yield from self.virtualMemoryWrite(address, 32//8, newvalue)
+            pr('[r{}] = max([r{}] , r{}) -> [{}]={:08X}'.format(rd, rs1, rs2, self.parent.addressFmt(address), newvalue))
         elif (op == 'AMOMAXU.W'):
-            address = self.reg[rs1]
-            v = yield from self.virtualMemoryLoad(address, 32//8)
-            v = zeroExtend(v, 32) 
-            self.reg[rd] = signExtend(v, 32,64) 
-            newvalue= max(v , self.reg[rs2] & ((1<<32)-1))
-            yield from self.virtualMemoryWrite(address, 32//8, newvalue)
-            pr('[r{}] = max([r{}] , r{}) -> [{}]={:08X}'.format(rd, rs1, rs2, self.addressFmt(address), newvalue))
+            # B = r1 (address)
+            yield from self.loadRegFromMem('B', 'r1')
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            
+            # A = [address]
+            yield from self.loadReg('A') 
+            
+            # R = rd
+            yield from self.loadRegFromMem('R', 'r2')
+            yield from self.zeroExtend('R', 32, 64)
+
+            # newvalue = R + A
+            yield from self.aluOp('cmp', 'A', 'R', 'R')
+            
+            vr = self.parent._wires['R'].get() 
+    
+            iseq = vr & 1
+            isneq = not(iseq)
+            isltu = (vr >> 1) & 1
+            islt = (vr >> 2) & 1
+            isgtu = (vr >> 3) & 1
+            isgt = (vr >> 4) & 1
+            isge = isgt or iseq
+            isgeu = isgtu or iseq
+
+            if (isltu):
+                # r1 < r2, r2 is max
+                yield from self.loadRegFromMem('R', 'r2')
+            else:
+                self.vcontrol['control_imm'] = 0
+                yield from self.aluOp('or', 'A', 'control_imm', 'R')
+            
+            yield from self.zeroExtend('R', 32, 64)
+            newvalue = self.parent._wires['R'].get()
+
+            # [address] = R
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            yield from self.saveReg('R')
+            
+            # rd = A
+            yield from self.signExtend('A', 32, 64)
+            vrd = self.parent._wires['A'].get()
+            yield from self.saveRegToMem('A', 'rd')
+
+            #address = self.reg[rs1]
+            #v = yield from self.virtualMemoryLoad(address, 32//8)
+            #v = zeroExtend(v, 32) 
+            #self.reg[rd] = signExtend(v, 32,64) 
+            #newvalue= max(v , self.reg[rs2] & ((1<<32)-1))
+            #yield from self.virtualMemoryWrite(address, 32//8, newvalue)
+            pr('[r{}] = max([r{}] , r{}) -> [{}]={:08X}'.format(rd, rs1, rs2, self.parent.addressFmt(address), newvalue))
         elif (op == 'AMOMAX.D'):
-            address = self.reg[rs1]
-            v = yield from self.virtualMemoryLoad(address, 64//8)
-            self.reg[rd] = signExtend(v, 64, 64) 
-            newvalue= max(self.reg[rd] , self.reg[rs2]) & ((1<<64)-1)
-            yield from self.virtualMemoryWrite(address, 64//8, newvalue)
-            pr('[r{}] = max([r{}] , r{}) -> [{}]={:08X}'.format(rd, rs1, rs2, self.addressFmt(address), newvalue))
+            # B = r1 (address)
+            yield from self.loadRegFromMem('B', 'r1')
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            
+            # A = [address]
+            yield from self.loadReg('A') 
+
+            # R = rd
+            yield from self.loadRegFromMem('R', 'r2')
+
+            # newvalue = R + A
+            yield from self.aluOp('cmp', 'A', 'R', 'R')
+
+            vr = self.parent._wires['R'].get() 
+    
+            iseq = vr & 1
+            isneq = not(iseq)
+            isltu = (vr >> 1) & 1
+            islt = (vr >> 2) & 1
+            isgtu = (vr >> 3) & 1
+            isgt = (vr >> 4) & 1
+            isge = isgt or iseq
+            isgeu = isgtu or iseq
+
+            if (islt):
+                # r1 < r2, r2 is max
+                yield from self.loadRegFromMem('R', 'r2')
+            else:
+                self.vcontrol['control_imm'] = 0
+                yield from self.aluOp('or', 'A', 'control_imm', 'R')
+                
+            newvalue = self.parent._wires['R'].get()
+
+            # [address] = R
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            yield from self.saveReg('R')
+            
+            # rd = A
+            yield from self.saveRegToMem('A', 'rd')
+
+            #address = self.reg[rs1]
+            #v = yield from self.virtualMemoryLoad(address, 64//8)
+            #self.reg[rd] = signExtend(v, 64, 64) 
+            #newvalue= max(self.reg[rd] , self.reg[rs2]) & ((1<<64)-1)
+            #yield from self.virtualMemoryWrite(address, 64//8, newvalue)
+            pr('[r{}] = max([r{}] , r{}) -> [{}]={:08X}'.format(rd, rs1, rs2, self.parent.addressFmt(address), newvalue))
         elif (op == 'AMOMAXU.D'):
-            address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
+            # B = r1 (address)
+            yield from self.loadRegFromMem('B', 'r1')
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            
+            # A = [address]
+            yield from self.loadReg('A') 
+
+            # R = rd
+            yield from self.loadRegFromMem('R', 'r2')
+
+            # newvalue = R + A
+            yield from self.aluOp('cmp', 'A', 'R', 'R')
+
+            vr = self.parent._wires['R'].get() 
+    
+            iseq = vr & 1
+            isneq = not(iseq)
+            isltu = (vr >> 1) & 1
+            islt = (vr >> 2) & 1
+            isgtu = (vr >> 3) & 1
+            isgt = (vr >> 4) & 1
+            isge = isgt or iseq
+            isgeu = isgtu or iseq
+
+            if (isltu):
+                # r1 < r2, r2 is max
+                yield from self.loadRegFromMem('R', 'r2')
+            else:
+                self.vcontrol['control_imm'] = 0
+                yield from self.aluOp('or', 'A', 'control_imm', 'R')
+                
+            newvalue = self.parent._wires['R'].get()
+
+            # [address] = R
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            yield from self.saveReg('R')
+            
+            # rd = A
+            yield from self.saveRegToMem('A', 'rd')
+
+            #address = self.reg[rs1]
+            #self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
             #self.reg[rd] = signExtend(self.reg[rd], 32) & ((1<<64)-1)
-            newvalue= max(self.reg[rd] , self.reg[rs2]) & ((1<<64)-1)
-            yield from self.virtualMemoryWrite(address, 64//8, newvalue)
-            pr('[r{}] = max([r{}] , r{}) -> [{}]={:08X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
+            #newvalue= max(self.reg[rd] , self.reg[rs2]) & ((1<<64)-1)
+            #yield from self.virtualMemoryWrite(address, 64//8, newvalue)
+            pr('[r{}] = max([r{}] , r{}) -> [{}]={:08X}'.format(rs1, rs1, rs2, self.parent.addressFmt(address), newvalue))
         elif (op == 'AMOMIN.W'):
-            address = self.reg[rs1]
-            v = yield from self.virtualMemoryLoad(address, 32//8)
-            v = IntegerHelper.c2_to_signed(v, 32) 
-            self.reg[rd] = v & ((1<<64)-1)
-            newvalue= min(v , IntegerHelper.c2_to_signed(self.reg[rs2] & ((1<<32)-1), 32)) & ((1<<32)-1)
-            yield from self.virtualMemoryWrite(address, 32//8, newvalue)
-            pr('[r{}] = min([r{}] , r{}) -> [{}]={:08X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
+            # B = r1 (address)
+            yield from self.loadRegFromMem('B', 'r1')
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            
+            # A = [address]
+            yield from self.loadReg('A') 
+            yield from self.signExtend('A', 32, 64)
+            
+            # R = rd
+            yield from self.loadRegFromMem('R', 'r2')
+            yield from self.signExtend('R', 32, 64)
+
+            # newvalue = R + A
+            yield from self.aluOp('cmp', 'A', 'R', 'R')
+            
+            vr = self.parent._wires['R'].get() 
+    
+            iseq = vr & 1
+            isneq = not(iseq)
+            isltu = (vr >> 1) & 1
+            islt = (vr >> 2) & 1
+            isgtu = (vr >> 3) & 1
+            isgt = (vr >> 4) & 1
+            isge = isgt or iseq
+            isgeu = isgtu or iseq
+
+            if (isgt):
+                # r1 > r2, r2 is min
+                yield from self.loadRegFromMem('R', 'r2')
+            else:
+                self.vcontrol['control_imm'] = 0
+                yield from self.aluOp('or', 'A', 'control_imm', 'R')
+            
+            yield from self.signExtend('R', 32, 64)
+            newvalue = self.parent._wires['R'].get()
+
+            # [address] = R
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            yield from self.saveReg('R')
+            
+            # rd = A
+            vrd = self.parent._wires['A'].get()
+            yield from self.saveRegToMem('A', 'rd')
+
+            #address = self.reg[rs1]
+            #v = yield from self.virtualMemoryLoad(address, 32//8)
+            #v = IntegerHelper.c2_to_signed(v, 32) 
+            #self.reg[rd] = v & ((1<<64)-1)
+            #newvalue= min(v , IntegerHelper.c2_to_signed(self.reg[rs2] & ((1<<32)-1), 32)) & ((1<<32)-1)
+            #yield from self.virtualMemoryWrite(address, 32//8, newvalue)
+            pr('r{} = [r{}], [r{}] = min([r{}] , r{}) -> {:08X}, [{}]={:08X}'.format(rd, rs1, rs1, rs1, rs2, vrd, self.parent.addressFmt(address), newvalue))
         elif (op == 'AMOMINU.W'):
-            address = self.reg[rs1]
-            v = yield from self.virtualMemoryLoad(address, 32//8)
-            v = zeroExtend(v, 32) 
-            self.reg[rd] = signExtend(v, 32,64) 
-            newvalue= min(v , self.reg[rs2] & ((1<<32)-1))
-            yield from self.virtualMemoryWrite(address, 32//8, newvalue)
-            pr('[r{}] = min([r{}] , r{}) -> [{}]={:08X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
+            # B = r1 (address)
+            yield from self.loadRegFromMem('B', 'r1')
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            
+            # A = [address]
+            yield from self.loadReg('A') 
+            
+            # R = rd
+            yield from self.loadRegFromMem('R', 'r2')
+            yield from self.zeroExtend('R', 32, 64)
+
+            # newvalue = R + A
+            yield from self.aluOp('cmp', 'A', 'R', 'R')
+            
+            vr = self.parent._wires['R'].get() 
+    
+            iseq = vr & 1
+            isneq = not(iseq)
+            isltu = (vr >> 1) & 1
+            islt = (vr >> 2) & 1
+            isgtu = (vr >> 3) & 1
+            isgt = (vr >> 4) & 1
+            isge = isgt or iseq
+            isgeu = isgtu or iseq
+
+            if (isgtu):
+                # r1 > r2, r2 is min
+                yield from self.loadRegFromMem('R', 'r2')
+            else:
+                self.vcontrol['control_imm'] = 0
+                yield from self.aluOp('or', 'A', 'control_imm', 'R')
+            
+            yield from self.zeroExtend('R', 32, 64)
+            newvalue = self.parent._wires['R'].get()
+
+            # [address] = R
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            yield from self.saveReg('R')
+            
+            # rd = A
+            yield from self.signExtend('A', 32, 64)
+            vrd = self.parent._wires['A'].get()
+            yield from self.saveRegToMem('A', 'rd')
+
+            #address = self.reg[rs1]
+            #v = yield from self.virtualMemoryLoad(address, 32//8)
+            #v = zeroExtend(v, 32) 
+            #self.reg[rd] = signExtend(v, 32,64) 
+            #newvalue= min(v , self.reg[rs2] & ((1<<32)-1))
+            #yield from self.virtualMemoryWrite(address, 32//8, newvalue)
+            pr('r{} = [r{}], [r{}] = min([r{}] , r{}) -> {:08X}, [{}]={:08X}'.format(rd, rs1, rs1, rs1, rs2, vrd, self.parent.addressFmt(address), newvalue))
         elif (op == 'AMOMIN.D'):
-            address = self.reg[rs1]
-            vm = yield from self.virtualMemoryLoad(address, 64//8)
-            vm = IntegerHelper.c2_to_signed(vm, 64)
-            vr = IntegerHelper.c2_to_signed(self.reg[rs2], 64)
-            self.reg[rd] = vm & ((1<<64)-1)
-            newvalue= min(vm , vr) & ((1<<64)-1)
-            yield from self.virtualMemoryWrite(address, 64//8, newvalue)
-            pr('[r{}] = min([r{}] , r{}) -> [{}]={:08X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
+            # B = r1 (address)
+            yield from self.loadRegFromMem('B', 'r1')
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            
+            # A = [address]
+            yield from self.loadReg('A') 
+
+            # R = rd
+            yield from self.loadRegFromMem('R', 'r2')
+
+            # newvalue = R + A
+            yield from self.aluOp('cmp', 'A', 'R', 'R')
+
+            vr = self.parent._wires['R'].get() 
+    
+            iseq = vr & 1
+            isneq = not(iseq)
+            isltu = (vr >> 1) & 1
+            islt = (vr >> 2) & 1
+            isgtu = (vr >> 3) & 1
+            isgt = (vr >> 4) & 1
+            isge = isgt or iseq
+            isgeu = isgtu or iseq
+
+            if (isgt):
+                # r1 < r2, r2 is max
+                yield from self.loadRegFromMem('R', 'r2')
+            else:
+                self.vcontrol['control_imm'] = 0
+                yield from self.aluOp('or', 'A', 'control_imm', 'R')
+                
+            newvalue = self.parent._wires['R'].get()
+
+            # [address] = R
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            yield from self.saveReg('R')
+            
+            # rd = A
+            yield from self.saveRegToMem('A', 'rd')
+
+            #address = self.reg[rs1]
+            #vm = yield from self.virtualMemoryLoad(address, 64//8)
+            #vm = IntegerHelper.c2_to_signed(vm, 64)
+            #vr = IntegerHelper.c2_to_signed(self.reg[rs2], 64)
+            #self.reg[rd] = vm & ((1<<64)-1)
+            #newvalue= min(vm , vr) & ((1<<64)-1)
+            #yield from self.virtualMemoryWrite(address, 64//8, newvalue)
+            pr('[r{}] = min([r{}] , r{}) -> [{}]={:08X}'.format(rs1, rs1, rs2, self.parent.addressFmt(address), newvalue))
         elif (op == 'AMOMINU.D'):
-            address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
-            newvalue= min(self.reg[rd] , self.reg[rs2]) & ((1<<64)-1)
-            yield from self.virtualMemoryWrite(address, 64//8, newvalue)
-            pr('[r{}] = min([r{}] , r{}) -> [{}]={:08X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
+            # B = r1 (address)
+            yield from self.loadRegFromMem('B', 'r1')
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            
+            # A = [address]
+            yield from self.loadReg('A') 
+
+            # R = rd
+            yield from self.loadRegFromMem('R', 'r2')
+
+            # newvalue = R + A
+            yield from self.aluOp('cmp', 'A', 'R', 'R')
+
+            vr = self.parent._wires['R'].get() 
+    
+            iseq = vr & 1
+            isneq = not(iseq)
+            isltu = (vr >> 1) & 1
+            islt = (vr >> 2) & 1
+            isgtu = (vr >> 3) & 1
+            isgt = (vr >> 4) & 1
+            isge = isgt or iseq
+            isgeu = isgtu or iseq
+
+            if (isgtu):
+                # r1 < r2, r2 is max
+                yield from self.loadRegFromMem('R', 'r2')
+            else:
+                self.vcontrol['control_imm'] = 0
+                yield from self.aluOp('or', 'A', 'control_imm', 'R')
+                
+            newvalue = self.parent._wires['R'].get()
+
+            # [address] = R
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            yield from self.saveReg('R')
+            
+            # rd = A
+            yield from self.saveRegToMem('A', 'rd')
+
+            #address = self.reg[rs1]
+            #self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
+            #newvalue= min(self.reg[rd] , self.reg[rs2]) & ((1<<64)-1)
+            #yield from self.virtualMemoryWrite(address, 64//8, newvalue)
+            pr('[r{}] = min([r{}] , r{}) -> [{}]={:08X}'.format(rs1, rs1, rs2, self.parent.addressFmt(address), newvalue))
         elif (op == 'SFENCE.VMA'):
             if (self.csr[CSR_PRIVLEVEL] == CSR_PRIVLEVEL_SUPERVISOR) and (self.csr[CSR_MSTATUS] & CSR_MSTATUS_TVM_MASK):
                 raise IllegalInstruction('TVM does not allow SFENCE.VMA', self.ins)
