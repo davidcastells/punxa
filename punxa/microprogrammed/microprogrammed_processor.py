@@ -20,6 +20,9 @@ from ..tracing import *
 from ..processor_exceptions import *
 from ..temp_helper import *
 
+REG_AUX_RESERVED_ADDRESS_LOW = 30
+REG_AUX_RESERVED_ADDRESS_HIGH = 31
+
 def compose_sign(v, parts):
     ret = 0
     bits = 0
@@ -270,7 +273,7 @@ class ControlUnit(py4hw.Logic):
             pr(f'[CU] loadRegFromMem {intReg} = {extRegName} -> {vr}')
         
     def saveRegToAux(self, intReg, aux):
-        self.state = f'AUX{csr} = {intReg}'
+        self.state = f'AUX{aux} = {intReg}'
         self.vcontrol['control_imm'] = self.parent.register_aux_offset + aux * 8 
         
         yield from self.aluOp('sum', 'reg_base', 'control_imm', 'MAR')
@@ -1178,10 +1181,27 @@ class ControlUnit(py4hw.Logic):
             pr('fr{} = r{} -> {:016X}'.format(rd, rs1, self.freg[rd]))
 
         elif (op == 'LR.W'):
-            address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
-            self.reserveAddress(address, 32//8)
-            pr('r{} = [r{}] -> [{}]={:08X}'.format(rd, rs1, self.addressFmt(address), self.reg[rd]))
+            # B = r1 (address)
+            yield from self.loadRegFromMem('B', 'r1')
+            address = self.parent._wires['B'].get()
+
+            yield from self.aluOp('bypass2', 'A', 'B', 'MAR')
+            yield from self.loadReg('A')
+            
+            vrd = self.parent._wires['A'].get()
+            yield from self.saveRegToMem('A', 'rd')
+            
+            yield from self.saveRegToAux('B', REG_AUX_RESERVED_ADDRESS_LOW)
+            self.vcontrol['control_imm'] = 4
+            yield from self.aluOp('sum', 'control_imm', 'B', 'B')
+            self.vcontrol['control_imm'] = 0
+            yield from self.saveRegToAux('B', REG_AUX_RESERVED_ADDRESS_HIGH)
+
+            # address = self.reg[rs1]
+            # self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
+            # self.reserveAddress(address, 32//8)
+            pr('r{} = [r{}] -> [{}]={:08X}'.format(rd, rs1, self.parent.addressFmt(address), vrd))
+
         elif (op == 'LR.D'):
             address = self.reg[rs1]
             self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
@@ -1198,16 +1218,86 @@ class ControlUnit(py4hw.Logic):
             else:
                 self.reg[rd] = 1
                 pr('[r{}] = r{}, r[{}]=1 -> not reserved'.format(rs1, rs2, rd))
+                
         elif (op == 'SC.W'):
-            address = self.reg[rs1]
-            newvalue = self.reg[rs2]
-            if (self.isReserved(address, 32//8)):
-                yield from self.virtualMemoryWrite(address, 32//8, newvalue)
-                self.reg[rd] = 0    
-                pr('[r{}] = r{}, r{}=0 -> [{}]={:016X}'.format(rs1, rs2, rd, self.addressFmt(address), newvalue))
+            # B = r1 (address)
+            yield from self.loadRegFromMem('B', 'r1')
+            address = self.parent._wires['B'].get()
+            
+            # A = reserved
+            yield from self.loadRegFromAux('A', REG_AUX_RESERVED_ADDRESS_LOW)
+
+            yield from self.aluOp('cmp', 'A', 'B', 'R')
+            
+            vr = self.parent._wires['R'].get() 
+    
+            iseq = vr & 1
+            isneq = not(iseq)
+            isltu = (vr >> 1) & 1
+            islt = (vr >> 2) & 1
+            isgtu = (vr >> 3) & 1
+            isgt = (vr >> 4) & 1
+            isge = isgt or iseq
+            isgeu = isgtu or iseq
+
+            if (isltu):
+                self.vcontrol['control_imm'] = 1
+                pr('[r{}] = r{}, r{}=1 -> [{}] not reserved'.format(rs1, rs2, rd, self.parent.addressFmt(address)))
             else:
-                self.reg[rd] = 1
-                pr('[r{}] = r{}, r{}=1 -> [{}] not reserved'.format(rs1, rs2, rd, self.addressFmt(address)))
+                self.vcontrol['control_imm'] = 4
+                yield from self.aluOp('sum', 'control_imm', 'B', 'B')
+                
+                yield from self.loadRegFromAux('A', REG_AUX_RESERVED_ADDRESS_HIGH)
+
+                yield from self.aluOp('cmp', 'A', 'B', 'R')
+                
+                vr = self.parent._wires['R'].get() 
+        
+                iseq = vr & 1
+                isneq = not(iseq)
+                isltu = (vr >> 1) & 1
+                islt = (vr >> 2) & 1
+                isgtu = (vr >> 3) & 1
+                isgt = (vr >> 4) & 1
+                isge = isgt or iseq
+                isgeu = isgtu or iseq
+
+                if (isgtu):
+                    self.vcontrol['control_imm'] = 1
+                    pr('[r{}] = r{}, r{}=1 -> [{}] not reserved'.format(rs1, rs2, rd, self.parent.addressFmt(address)))
+                else:
+                                        # newvalue = r2
+                    yield from self.loadRegFromMem('A', 'r2')
+                    newvalue = self.parent._wires['A'].get()
+                    yield from self.loadRegFromMem('B', 'r1')
+                    yield from self.aluOp('bypass2', 'A', 'B', 'MAR')
+
+                    yield from self.saveReg('A', be=0xF)
+    
+                    self.vcontrol['control_imm'] = 0
+                    pr('[r{}] = r{}, r{}=0 -> [{}]={:016X}'.format(rs1, rs2, rd, self.parent.addressFmt(address), newvalue))
+
+            yield from self.aluOp('bypass2', 'A', 'control_imm', 'R')               
+            self.vcontrol['control_imm'] = 0
+            
+            yield from self.saveRegToMem('R', 'rd')
+                        
+            # clear reservation
+            self.vcontrol['control_imm'] = 0
+            yield from self.aluOp('bypass2', 'A', 'control_imm', 'B')
+            yield from self.saveRegToAux('B', REG_AUX_RESERVED_ADDRESS_LOW)
+            yield from self.saveRegToAux('B', REG_AUX_RESERVED_ADDRESS_HIGH)
+
+            # address = self.reg[rs1]
+            # newvalue = self.reg[rs2]
+            # if (self.isReserved(address, 32//8)):
+            #    yield from self.virtualMemoryWrite(address, 32//8, newvalue)
+            #    self.reg[rd] = 0    
+            #    pr('[r{}] = r{}, r{}=0 -> [{}]={:016X}'.format(rs1, rs2, rd, self.addressFmt(address), newvalue))
+            # else:
+            #    self.reg[rd] = 1
+            #    pr('[r{}] = r{}, r{}=1 -> [{}] not reserved'.format(rs1, rs2, rd, self.addressFmt(address)))
+
         elif (op == 'AMOADD.D'):
             # B = r1 (address)
             yield from self.loadRegFromMem('B', 'r1')
@@ -1256,7 +1346,7 @@ class ControlUnit(py4hw.Logic):
 
             # [address] = R
             yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
-            yield from self.saveReg('R')
+            yield from self.saveReg('R', 0xF)
             
             # rd = A
             yield from self.saveRegToMem('A', 'rd')
@@ -1449,23 +1539,69 @@ class ControlUnit(py4hw.Logic):
         elif (op == 'AMOSWAP.W'):
             # [rs1] -> rd
             #    r2 -> [rs1]
-            address = self.reg[rs1]
             
-            oldvalue = yield from self.virtualMemoryLoad(address, 32//8)
-            oldvalue = signExtend(oldvalue, 32,64)                 
-            newvalue = self.reg[rs2] & 0xFFFFFFFF
-            self.reg[rd] = oldvalue            
-            yield from self.virtualMemoryWrite(address, 32//8, newvalue)
-            pr('r{} = [r{}], [r{}] = r{} -> {:016X} [{}]={:08X}'.format(rd, rs1, rs1, rs2, self.reg[rd], self.addressFmt(address), newvalue))
+            # B = r1 (address)
+            yield from self.loadRegFromMem('B', 'r1')
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            
+            # A = [address]
+            yield from self.loadReg('A')
+            yield from self.signExtend('A', 32, 64)
+            oldvalue = self.parent._wires['A'].get()
+            
+            # R = rd
+            yield from self.loadRegFromMem('R', 'r2')
+            yield from self.zeroExtend('R', 32, 64)
+            newvalue = self.parent._wires['R'].get()
+
+            # [address] = R
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            yield from self.saveReg('R')
+            
+            # rd = A
+            yield from self.saveRegToMem('A', 'rd')
+
+            
+            
+            #address = self.reg[rs1]
+            #  oldvalue = yield from self.virtualMemoryLoad(address, 32//8)
+            # oldvalue = signExtend(oldvalue, 32,64)                 
+            #newvalue = self.reg[rs2] & 0xFFFFFFFF
+            #self.reg[rd] = oldvalue            
+            #yield from self.virtualMemoryWrite(address, 32//8, newvalue)
+            pr('r{} = [r{}], [r{}] = r{} -> {:016X} [{}]={:08X}'.format(rd, rs1, rs1, rs2, oldvalue, self.parent.addressFmt(address), newvalue))
         elif (op == 'AMOSWAP.D'):
             # [rs1] -> rd
             #    r2 -> [rs1]
-            address = self.reg[rs1]
-            oldvalue = yield from self.virtualMemoryLoad(address, 64//8)
-            newvalue = self.reg[rs2]
-            self.reg[rd] = oldvalue
-            yield from self.virtualMemoryWrite(address, 64//8, newvalue)
-            pr('r{}:[r{}] X r{} -> {:016X} [{}]={:016X}'.format(rd, rs1, rs2, self.reg[rd], self.addressFmt(address), newvalue))
+
+            # B = r1 (address)
+            yield from self.loadRegFromMem('B', 'r1')
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            address = self.parent._wires['MAR'].get()
+            
+            # A = [address]
+            yield from self.loadReg('A') 
+            oldvalue = self.parent._wires['A'].get()
+            
+            # R = rd
+            yield from self.loadRegFromMem('R', 'r2')
+            newvalue = self.parent._wires['R'].get()
+
+            # [address] = R
+            yield from self.aluOp('bypass2', 'B', 'B', 'MAR')
+            yield from self.saveReg('R')
+            
+            # rd = A
+            yield from self.saveRegToMem('A', 'rd')
+
+
+            # address = self.reg[rs1]
+            # oldvalue = yield from self.virtualMemoryLoad(address, 64//8)
+            # newvalue = self.reg[rs2]
+            # self.reg[rd] = oldvalue
+            # yield from self.virtualMemoryWrite(address, 64//8, newvalue)
+            pr('r{}:[r{}] X r{} -> {:016X} [{}]={:016X}'.format(rd, rs1, rs2, oldvalue, self.parent.addressFmt(address), newvalue))
         elif (op == 'AMOMAX.W'):
             # B = r1 (address)
             yield from self.loadRegFromMem('B', 'r1')
@@ -3134,7 +3270,7 @@ class ALU(py4hw.Logic):
                          alu_2],
                         alu_r)
                         
-        
+       
 class MicroprogrammedRISCV(py4hw.Logic):
     
     def __init__(self, parent, name:str, 
