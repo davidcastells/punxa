@@ -2289,6 +2289,12 @@ class SingleCycleRISCV(py4hw.Logic):
     def getPc(self):
         return self.pc
     
+    def getReg(self, r):
+        return self.reg[r]
+    
+    def getFreg(self, r):
+        return self.freg[r]
+    
     def readCSR(self, idx):
         # Returns the value of the CSR, and if the access was allowed
         # Take into consideration that some accesses raise an exception, while others just do not return the value
