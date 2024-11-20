@@ -209,6 +209,7 @@ def prepareTest(test_file):
     #    os.system('/opt/riscv/bin/riscv64-unknown-elf-objdump -t {} > {}'.format(programFile, symbolFile))
     #loadSymbols(cpu,  symbolFile, 0) # 32*4 - 0x10054)
 
+test_clks = {'rv64ua-p-lrsc':180000}
 
 def runTest(test_file, verbose=False):
     prepareTest(test_file)
@@ -220,8 +221,13 @@ def runTest(test_file, verbose=False):
         print('tohost symbol not found in', cpu.funcs)
         return
 
+    maxclks=70000
+    
+    if (test_file in test_clks.keys()):
+        maxclks = test_clks[test_file]
+
     #run(passAdr, verbose=False)
-    run(write_tohost, maxclks=70000, verbose=verbose)
+    run(write_tohost, maxclks=maxclks, verbose=verbose)
     run(0, maxclks=200, verbose=False)
 
     # print('Test', test_file, end='')
