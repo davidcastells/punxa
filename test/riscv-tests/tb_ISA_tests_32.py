@@ -326,7 +326,7 @@ def runAllTests():
 
 #runAllTests()
 #test_file = 'rv64mi-p-ma_addr'
-runTest("rv32ua-v-lrsc")
+#runTest("rv32ua-v-lrsc")
 
 
 if __name__ == "__main__":
