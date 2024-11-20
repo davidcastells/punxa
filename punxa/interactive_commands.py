@@ -627,7 +627,128 @@ def get_va_parts(v):
     ret['offset'] = v & ((1<<12)-1)
     return ret
             
-def pageTables(root=None, vbase = 0, level=2, printPTE=True):
+def pageTables(root=None, vbase = 0, level=None, printPTE=True):
+    
+    if (_ci_cpu.isa == 64):
+        if (level is None):
+            level = 2
+        return pageTables64(root, vbase, level, printPTE)
+    elif (_ci_cpu.isa == 32):
+        if (level is None):
+            level = 1
+        return pageTables32(root, vbase, level, printPTE)
+    else:
+        raise Exception('unknown ISA')
+            
+def pageTables32(root=None, vbase = 0, level=1, printPTE=True):
+    """
+    Traverses the page tables from the provided root page table.
+    The R flag indicates that the PTE is a leaf.
+    
+    Parameters
+    ----------
+    root : TYPE, optional
+        DESCRIPTION. The default is None.
+    vbase : TYPE, optional
+        DESCRIPTION. The default is 0.
+    level : TYPE, optional
+        DESCRIPTION. The default is 2.
+    printPTE : TYPE, optional
+        DESCRIPTION. The default is True.
+
+    Returns
+    -------
+    The number of valid page tables .
+
+    """
+    cpu = _ci_cpu
+    memory = cpu.behavioural_memory
+    mem_base = 0x80000000 # @todo assuming mem_base = 0x80000000
+    
+    PAGE_SIZE = 1 << 12
+    
+    if (root is None):
+        v = cpu.csr[CSR_SATP] # satp
+        mode = (v >> 31) & 1
+        smode = ['Bare', 'Sv32'][mode]
+        asid = (v >> 22) & ((1<<9)-1)
+        print('Virtual Memory Mode: {} {} ASID: {:04X}'.format(mode, smode, asid))
+        root = (v & ((1<<22)-1)) * PAGE_SIZE
+        
+        if (root == 0):
+            return 0
+    
+    indent = ''
+    for i in range(2-level): indent += '   '
+    
+    if (level == 1):
+        tableName = 'Root'
+    else:
+        tableName = 'Table'
+    print('{}{}: {:08X} level: {}'.format(indent, tableName, root, level))
+    
+    totalTables = 1
+    vpn_pos = [12,22] # Sv32, 10 bits per vp
+    
+    for i in range(512):
+        add = root+i*8
+        v = memory.read_i32(add-mem_base)
+        
+        # Decoding PTE
+        ppn1 = (v >> 20) & ((1<<12)-1)
+        ppn0 = (v >> 10) & ((1<<10)-1)
+        rsw = (v >> 8) & ((1<<2)-1)
+        D = (v >> 7) & 1
+        A = (v >> 6) & 1
+        G = (v >> 5) & 1
+        U = (v >> 4) & 1
+        X = (v >> 3) & 1
+        W = (v >> 2) & 1
+        R = (v >> 1) & 1
+        valid = v & 1
+        leaf = R or X
+        
+        D = [' ','D'][D]
+        A = [' ','A'][A]
+        G = [' ','G'][G]
+        U = [' ','U'][U]
+        X = [' ','X'][X]
+        W = [' ','W'][W]
+        R = [' ','R'][R]
+        V = [' ','V'][valid]
+        
+        
+        va = vbase + (1 << vpn_pos[level]) * i
+                
+        phy =  ppn1 << 22 | ppn0 << 12
+
+        
+        ppn1 = (v >> 20) & ((1<<(12))-1)
+        ppn0 = (v >> 10) & ((1<<(12+10))-1)
+
+        pa = [ppn0, ppn1][level] << vpn_pos[level]
+        
+        if (valid):
+            if (printPTE):
+            #    if (level == 2):
+            #        print(f'{indent} {i:3d} ppn2:{ppn2:03X} ppn1:{ppn2:03X} ppn0:{ppn2:03X}  rsw:{rsw:0} {D}{A}{G}{U}{X}{W}{R} ')
+            #    else:
+            #        print('{} {:3d} ppn2:{:08X} ppn1:{:03X} ppn0:{:03X} rsw:{:0} '
+            #              '{}{}{}{}{}{}{} va: {:016X} pa: {:016X}'.format(
+            #                  indent,  i, ppn2, ppn2, ppn0, rsw, 
+            #                  D,A,G,U,X,W,R,
+            #                  va, phy))
+            
+                if (leaf):
+                    print(f'{indent} {i:3d} va: {va:016X} pa: {pa:016X} {D}{A}{G}{U}{X}{W}{R}')
+                else:
+                    print(f'{indent} {i:3d} --> va: {va:016X}')
+                    totalTables += pageTables(phy, va, level-1, printPTE)
+    
+    return totalTables
+
+
+def pageTables64(root=None, vbase = 0, level=1, printPTE=True):
     """
     Traverses the page tables from the provided root page table.
     The R flag indicates that the PTE is a leaf.
@@ -657,7 +778,7 @@ def pageTables(root=None, vbase = 0, level=2, printPTE=True):
     if (root is None):
         v = cpu.csr[0x180] # satp
         mode = (v >> 60) & ((1<<4)-1)
-        smode = ['Base', '','','','','','','','Sv39','Sv48','Sv57','Sv64'][mode]
+        smode = ['Bare', '','','','','','','','Sv39','Sv48','Sv57','Sv64'][mode]
         asid = (v >> 44) & ((1<<16)-1)
         print('Virtual Memory Mode: {} {} ASID: {:04X}'.format(mode, smode, asid))
         root = (v & ((1<<44)-1)) * PAGE_SIZE
@@ -675,7 +796,7 @@ def pageTables(root=None, vbase = 0, level=2, printPTE=True):
     print('{}{}: {:08X} level: {}'.format(indent, tableName, root, level))
     
     totalTables = 1
-    vpn_pos = [12,21,30]
+    vpn_pos = [12,21,30] # Sv39, 9 bits per vp
     
     for i in range(512):
         add = root+i*8
@@ -732,6 +853,7 @@ def pageTables(root=None, vbase = 0, level=2, printPTE=True):
                     totalTables += pageTables(phy, va, level-1, printPTE)
     
     return totalTables
+
 
 def translateVirtualAddress(va):
     cpu = _ci_cpu
