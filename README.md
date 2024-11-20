@@ -27,7 +27,7 @@ RV64 ISA tests progress:
   <td>Single Cycle </td><td>96.0 %   |████████████████████████████████████████████░|</td>
  </tr>
  <tr>
-  <td>Microprogrammed </td><td>24.1 %   |███████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|</td>  
+  <td>Microprogrammed </td><td>30.1 %   |██████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|</td>  
  </tr>
 </table>
 
