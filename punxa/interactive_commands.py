@@ -549,7 +549,6 @@ def run(upto, maxclks=100000, verbose=True, autoCheckpoint=False):
     import time
     global print
     global dummy_print
-
     
     if not(verbose):
         _ci_cpu.setVerbose(False)
