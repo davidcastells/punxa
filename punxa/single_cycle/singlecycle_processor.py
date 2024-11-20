@@ -136,6 +136,7 @@ class SingleCycleRISCV(py4hw.Logic):
         self.debug_vm = False
         self.debug_insret = False
         
+        self.isa = 64
         
         self.co = self.run()
         
