@@ -412,10 +412,53 @@ class ControlUnit(py4hw.Logic):
         yield from self.aluOp('or', intReg, auxReg, intReg)
         print(intReg, ' sign,exp,man =', hex(self.parent._wires[intReg].get()))
         self.vcontrol['control_imm'] = 0
+        
+    def fpuPackSP(self, intReg, auxReg, signMem, expMem, manMem):
+        # it stores in a register (intReg) the packed DP value stored in 
+        # 3 separate memory positions
+        yield from self.loadRegFromAux(intReg, signMem)
+        self.vcontrol['control_imm'] = 32-1
+        yield from self.aluOp('shift_left', intReg, 'control_imm', intReg)
+        print(intReg, ' sign =', hex(self.parent._wires[intReg].get()))
+        
+        yield from self.loadRegFromAux(auxReg, expMem)
+        self.vcontrol['control_imm'] = IEEE754_SP_PRECISION        
+        yield from self.aluOp('shift_left', auxReg, 'control_imm', auxReg)
+        yield from self.aluOp('or', intReg, auxReg, intReg)
+        print(intReg, ' sign,exp =', hex(self.parent._wires[intReg].get()))
+        
+        yield from self.loadRegFromAux(auxReg, manMem)
+        yield from self.zeroExtend(auxReg, IEEE754_SP_PRECISION, 64)
+        yield from self.aluOp('or', intReg, auxReg, intReg)
+        print(intReg, ' sign,exp,man =', hex(self.parent._wires[intReg].get()))
+        self.vcontrol['control_imm'] = 0
 
+    def fpuUnpackSP(self, intReg, auxReg, signMem, expMem, manMem):
+        self.vcontrol['control_imm'] = 32-1
+        yield from self.aluOp('shift_right', intReg, 'control_imm', auxReg)
+        print(auxReg, ' sign =', hex(self.parent._wires[auxReg].get()))
+        yield from self.saveRegToAux(auxReg, signMem)
+    
+        self.vcontrol['control_imm'] = IEEE754_SP_PRECISION        
+        yield from self.aluOp('shift_right', intReg, 'control_imm', auxReg)
+        yield from self.zeroExtend(auxReg, IEEE754_SP_EXPONENT_BITS, 64)
+        print(auxReg, ' exp =', hex(self.parent._wires[auxReg].get()))
+        yield from self.saveRegToAux(auxReg, expMem)
+    
+        
+        self.vcontrol['control_imm'] = 1        
+        yield from self.aluOp('bypass2', None, 'control_imm', auxReg)
+        self.vcontrol['control_imm'] = IEEE754_SP_PRECISION        
+        yield from self.aluOp('shift_left', auxReg, 'control_imm', auxReg)
+        self.vcontrol['control_imm'] = 0
+    
+        yield from self.zeroExtend(intReg, IEEE754_SP_PRECISION, 64)
+        yield from self.aluOp('or', intReg, auxReg, auxReg)
+        print(auxReg, ' mantisa =', hex(self.parent._wires[auxReg].get()))
+        yield from self.saveRegToAux(auxReg, manMem)
         
     def fpuUnpackDP(self, intReg, auxReg, signMem, expMem, manMem):
-        self.vcontrol['control_imm'] = 63
+        self.vcontrol['control_imm'] = 64-1
         yield from self.aluOp('shift_right', intReg, 'control_imm', auxReg)
         print(auxReg, ' sign =', hex(self.parent._wires[auxReg].get()))
         yield from self.saveRegToAux(auxReg, signMem)
@@ -446,7 +489,144 @@ class ControlUnit(py4hw.Logic):
         yield from self.loadRegFromAux(intReg, manMem)
         print(intReg, ' mantisa = {:016X}'.format(self.parent._wires[intReg].get()))
 
+    def fpuSPBox(self, intReg):
+        yield
+        
+    def fpuSPMul(self):
+        # multiply the elements in the auxiliary A and B registers and store in 
+        # auxiliary R
+        yield
    
+    def fpuDPEq(self, intReg):
+        yield from self.loadRegFromAux('A', REG_AUX_EXP_A)
+        yield from self.loadRegFromAux('B', REG_AUX_EXP_B)
+        
+        self.vcontrol['control_imm'] = IEEE754_DP_INFNAN_EXPONENT
+        yield from self.aluOp('cmp', 'A', 'control_imm', None)
+        infExpA = self.vstatus['iseq']
+        
+        self.vcontrol['control_imm'] = IEEE754_DP_INFNAN_EXPONENT
+        yield from self.aluOp('cmp', 'B', 'control_imm', None)
+        infExpB = self.vstatus['iseq']
+                    
+        yield from self.aluOp('cmp', 'A', 'B', None)
+        eqExps = self.vstatus['iseq']
+
+        yield from self.loadRegFromAux('A', REG_AUX_M_A)
+        self.vcontrol['control_imm'] = 0
+        yield from self.aluOp('cmp', 'A', 'control_imm', None)
+        manZeroA = self.vstatus['iseq']
+
+        yield from self.loadRegFromAux('B', REG_AUX_M_B)
+        self.vcontrol['control_imm'] = 0
+        yield from self.aluOp('cmp', 'B', 'control_imm', None)
+        manZeroB = self.vstatus['iseq']
+        
+        yield from self.aluOp('cmp', 'A', 'B', None)
+        eqMans = self.vstatus['iseq']
+
+        yield from self.loadRegFromAux('A', REG_AUX_SIGN_A)
+        self.vcontrol['control_imm'] = 0
+        yield from self.aluOp('cmp', 'A', 'control_imm', None)
+        signZeroA = self.vstatus['iseq']
+
+        yield from self.loadRegFromAux('B', REG_AUX_SIGN_B)
+        self.vcontrol['control_imm'] = 0
+        yield from self.aluOp('cmp', 'B', 'control_imm', None)
+        signZeroB = self.vstatus['iseq']
+        
+        yield from self.aluOp('cmp', 'A', 'B', None)
+
+        eqSigns = self.vstatus['iseq']
+
+        isNanA = infExpA and not(manZeroA)
+        isNanB = infExpB and not(manZeroB)
+        
+        print('infExpA:' , infExpA)
+        print('infExpB:' , infExpB)
+        print('manZeroA:' , manZeroA)
+        print('manZeroB:' , manZeroB)
+        print('isNanA:' , isNanA)
+        print('isNanB:' , isNanB)
+        
+        if (isNanA or isNanB):
+            self.vcontrol['control_imm'] = 0
+        elif (eqExps == 0):
+            self.vcontrol['control_imm'] = 0
+        elif (eqMans == 0):
+            self.vcontrol['control_imm'] = 0
+        elif (eqSigns == 0):
+            self.vcontrol['control_imm'] = 0
+        else:
+            self.vcontrol['control_imm'] = 1
+
+        yield from self.aluOp('bypass2', None, 'control_imm', intReg)
+        
+    def fpuSPEq(self, intReg):
+        yield from self.loadRegFromAux('A', REG_AUX_EXP_A)
+        yield from self.loadRegFromAux('B', REG_AUX_EXP_B)
+        
+        self.vcontrol['control_imm'] = IEEE754_SP_INFNAN_EXPONENT
+        yield from self.aluOp('cmp', 'A', 'control_imm', None)
+        infExpA = self.vstatus['iseq']
+        
+        self.vcontrol['control_imm'] = IEEE754_SP_INFNAN_EXPONENT
+        yield from self.aluOp('cmp', 'B', 'control_imm', None)
+        infExpB = self.vstatus['iseq']
+                    
+        yield from self.aluOp('cmp', 'A', 'B', None)
+        eqExps = self.vstatus['iseq']
+
+        yield from self.loadRegFromAux('A', REG_AUX_M_A)
+        self.vcontrol['control_imm'] = 0
+        yield from self.aluOp('cmp', 'A', 'control_imm', None)
+        manZeroA = self.vstatus['iseq']
+
+        yield from self.loadRegFromAux('B', REG_AUX_M_B)
+        self.vcontrol['control_imm'] = 0
+        yield from self.aluOp('cmp', 'B', 'control_imm', None)
+        manZeroB = self.vstatus['iseq']
+        
+        yield from self.aluOp('cmp', 'A', 'B', None)
+        eqMans = self.vstatus['iseq']
+
+        yield from self.loadRegFromAux('A', REG_AUX_SIGN_A)
+        self.vcontrol['control_imm'] = 0
+        yield from self.aluOp('cmp', 'A', 'control_imm', None)
+        signZeroA = self.vstatus['iseq']
+
+        yield from self.loadRegFromAux('B', REG_AUX_SIGN_B)
+        self.vcontrol['control_imm'] = 0
+        yield from self.aluOp('cmp', 'B', 'control_imm', None)
+        signZeroB = self.vstatus['iseq']
+        
+        yield from self.aluOp('cmp', 'A', 'B', None)
+
+        eqSigns = self.vstatus['iseq']
+
+        isNanA = infExpA and not(manZeroA)
+        isNanB = infExpB and not(manZeroB)
+        
+        print('infExpA:' , infExpA)
+        print('infExpB:' , infExpB)
+        print('manZeroA:' , manZeroA)
+        print('manZeroB:' , manZeroB)
+        print('isNanA:' , isNanA)
+        print('isNanB:' , isNanB)
+        
+        if (isNanA or isNanB):
+            self.vcontrol['control_imm'] = 0
+        elif (eqExps == 0):
+            self.vcontrol['control_imm'] = 0
+        elif (eqMans == 0):
+            self.vcontrol['control_imm'] = 0
+        elif (eqSigns == 0):
+            self.vcontrol['control_imm'] = 0
+        else:
+            self.vcontrol['control_imm'] = 1
+
+        yield from self.aluOp('bypass2', None, 'control_imm', intReg)
+        
     def fpuAdjustExp(self, intReg, lowReg, highReg, expMem, manMem):
         self.vcontrol['control_imm'] = 1        
         yield from self.aluOp('bypass2', None, 'control_imm', lowReg)
@@ -1883,7 +2063,7 @@ class ControlUnit(py4hw.Logic):
             pr('fr{} = fr{} + fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FADD.D'):
             # A = fr1
-            print('')
+            
             yield from self.loadRegFromMem('A', 'fr1')
             yield from self.fpuUnpackDP('A', 'R', REG_AUX_SIGN_A, REG_AUX_EXP_A, REG_AUX_M_A)
             
@@ -1957,8 +2137,16 @@ class ControlUnit(py4hw.Logic):
             self.freg[rd] = self.fpu.fmul_hp(self.freg[rs1] , self.freg[rs2])      
             pr('fr{} = fr{} * fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FMUL.S'):
-            self.freg[rd] = self.fpu.fmul_sp(self.freg[rs1], self.freg[rs2])
-            pr('fr{} = fr{} * fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
+            yield from self.loadRegFromMem('A', 'fr1')
+            yield from self.fpuUnpackSP('A', 'R', REG_AUX_SIGN_A, REG_AUX_EXP_A, REG_AUX_M_A)
+            yield from self.loadRegFromMem('B', 'fr2')
+            yield from self.fpuUnpackSP('B', 'R', REG_AUX_SIGN_B, REG_AUX_EXP_B, REG_AUX_M_B)
+            yield from self.fpuSPMul()
+            yield from self.fpuPackSP('R', 'A', REG_AUX_SIGN_R, REG_AUX_EXP_R, REG_AUX_M_R)
+            vfrd = self.parent._wires['R'].get()
+            yield from self.saveRegToMem('R', 'frd')
+            #self.freg[rd] = self.fpu.fmul_sp(self.freg[rs1], self.freg[rs2])
+            pr('fr{} = fr{} * fr{} -> {:016X}'.format(rd, rs1, rs2, vfrd))
         elif (op == 'FMUL.D'):
             self.freg[rd] = self.fpu.fmul_dp(self.freg[rs1] , self.freg[rs2])
             pr('fr{} = fr{} * fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))            
@@ -2026,69 +2214,8 @@ class ControlUnit(py4hw.Logic):
             yield from self.loadRegFromMem('B', 'fr2')
             yield from self.fpuUnpackDP('B', 'R', REG_AUX_SIGN_B, REG_AUX_EXP_B, REG_AUX_M_B)
             
-            yield from self.loadRegFromAux('A', REG_AUX_EXP_A)
-            yield from self.loadRegFromAux('B', REG_AUX_EXP_B)
+            yield from self.fpuDPEq('R')
             
-            self.vcontrol['control_imm'] = IEEE754_DP_INFNAN_EXPONENT
-            yield from self.aluOp('cmp', 'A', 'control_imm', None)
-            infExpA = self.vstatus['iseq']
-            
-            self.vcontrol['control_imm'] = IEEE754_DP_INFNAN_EXPONENT
-            yield from self.aluOp('cmp', 'B', 'control_imm', None)
-            infExpB = self.vstatus['iseq']
-                        
-            yield from self.aluOp('cmp', 'A', 'B', None)
-            eqExps = self.vstatus['iseq']
-
-            yield from self.loadRegFromAux('A', REG_AUX_M_A)
-            self.vcontrol['control_imm'] = 0
-            yield from self.aluOp('cmp', 'A', 'control_imm', None)
-            manZeroA = self.vstatus['iseq']
-
-            yield from self.loadRegFromAux('B', REG_AUX_M_B)
-            self.vcontrol['control_imm'] = 0
-            yield from self.aluOp('cmp', 'B', 'control_imm', None)
-            manZeroB = self.vstatus['iseq']
-            
-            yield from self.aluOp('cmp', 'A', 'B', None)
-            eqMans = self.vstatus['iseq']
-
-            yield from self.loadRegFromAux('A', REG_AUX_SIGN_A)
-            self.vcontrol['control_imm'] = 0
-            yield from self.aluOp('cmp', 'A', 'control_imm', None)
-            signZeroA = self.vstatus['iseq']
-
-            yield from self.loadRegFromAux('B', REG_AUX_SIGN_B)
-            self.vcontrol['control_imm'] = 0
-            yield from self.aluOp('cmp', 'B', 'control_imm', None)
-            signZeroB = self.vstatus['iseq']
-            
-            yield from self.aluOp('cmp', 'A', 'B', None)
-
-            eqSigns = self.vstatus['iseq']
-
-            isNanA = infExpA and not(manZeroA)
-            isNanB = infExpB and not(manZeroB)
-            
-            print('infExpA:' , infExpA)
-            print('infExpB:' , infExpB)
-            print('manZeroA:' , manZeroA)
-            print('manZeroB:' , manZeroB)
-            print('isNanA:' , isNanA)
-            print('isNanB:' , isNanB)
-            
-            if (isNanA or isNanB):
-                self.vcontrol['control_imm'] = 0
-            elif (eqExps == 0):
-                self.vcontrol['control_imm'] = 0
-            elif (eqMans == 0):
-                self.vcontrol['control_imm'] = 0
-            elif (eqSigns == 0):
-                self.vcontrol['control_imm'] = 0
-            else:
-                self.vcontrol['control_imm'] = 1
-
-            yield from self.aluOp('bypass2', None, 'control_imm', 'R')
             vrd = self.parent._wires['R'].get()
 
             # self.reg[rd] = self.fpu.cmp_dp('eq', self.freg[rs1], self.freg[rs2])
@@ -4120,11 +4247,18 @@ class ControlUnit(py4hw.Logic):
             #self.freg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
             pr('fr{} = [r2 + {}] -> {:016X}'.format(rd, off, vrd))
         elif (op == 'FLW'):
-            off = simm12 
-            address = self.reg[rs1] + off
-            v = yield from self.virtualMemoryLoad(address, 32//8)
-            self.freg[rd] = self.fpu.sp_box(v)
-            pr('fr{} = [r2 + {}] -> {:016X}'.format(rd, off, self.freg[rd]))
+            yield from self.loadRegFromMem('A', 'r1')
+            yield from self.aluOp('sum', 'A', 'simm12', 'MAR')            
+            address = self.parent._wires['MAR'].get()
+            #address = self.reg[rs1] + off
+            yield from self.loadReg('R')
+            yield from self.zeroExtend('R', 32, 64)
+            # v = yield from self.virtualMemoryLoad(address, 32//8)
+            yield from self.fpuSPBox('R')
+            vrd = self.parent._wires['R'].get()
+            yield from self.saveRegToMem('R', 'frd')
+            #self.freg[rd] = self.fpu.sp_box(v)
+            pr('fr{} = [r2 + {}] -> {:016X}'.format(rd, simm12, vrd))
         elif (op == 'ECALL'):
             yield from self.loadRegFromCsr('R', 0xFFF)
             #curpriv = self.csr[0xFFF] # current privilege
