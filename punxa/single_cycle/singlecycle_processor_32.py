@@ -338,7 +338,7 @@ class SingleCycleRISCV32(py4hw.Logic):
         vpn = [0, 0]
         vpn[1] = (address >> 22) & ((1 << 10) - 1)
         vpn[0] = (address >> 12) & ((1 << 10) - 1)
-        offset = address & ((1 << 12) - 1)
+        #offset = address & ((1 << 12) - 1)
 
         pteaddr = pageTable + vpn[level] * 4
 
@@ -347,7 +347,7 @@ class SingleCycleRISCV32(py4hw.Logic):
         pte = yield from self.memoryLoadIK32(pteaddr, 4)
 
         X = (pte >> 3) & 1
-        W = (pte >> 2) & 1
+        #W = (pte >> 2) & 1
         R = (pte >> 1) & 1
         valid = pte & 1
 
