@@ -392,15 +392,12 @@ class SingleCycleRISCV32(py4hw.Logic):
         if (D == 0) and (memory_op == MEMORY_OP_STORE):
             raise StoreAMOPageFault('Dirty bit not set', address)
 
-        if level == 1:
-            offset = address & ((1 << 22) - 1)
-            pmask = ~((1 << 22) - 1) & ((1 << 32) - 1)
-            base = (ppn1 << 22)
-        else:
-            offset = address & ((1 << 12) - 1)
-            pmask = ~((1 << 12) - 1) & ((1 << 32) - 1)
-            base = (ppn1 << 22) | (ppn0 << 12)
+        if (level == 1) and ((ppn1 != 0) or (ppn0 != 0)):
+            raise StoreAMOPageFault('Lower PPN bits not zero', address)
 
+        offset = address & ((1 << 12) - 1)
+        pmask = ~((1 << 12) - 1) & ((1 << 32) - 1)
+        base = (ppn1 << 22) | (ppn0 << 12)
 
         return base , pmask, offset
 
