@@ -362,12 +362,72 @@ class SingleCycleRISCV32(py4hw.Logic):
             return level, pte
 
     # OK
-    def getPhysicalAddressFromPTE(self,  address, level, pte, memory_op):
+    def getPhysicalAddressFromPTE(self, address, level, pte, memory_op):
         priv = self.csr[0xfff]
+
+        offmask = [0, 0]
+        off = [0, 0]
+
+        offmask[1] = ((1 << 22) - 1)
+        offmask[0] = ((1 << 12) - 1)
+
+        off[1] = (address) & offmask[1]
+        off[0] = (address) & offmask[0]
 
         ppn1 = (pte >> 20) & ((1 << 12) - 1)
         ppn0 = (pte >> 10) & ((1 << 10) - 1)
-        #rsw = (pte >> 8) & ((1<<2)-1)
+        rsw = (pte >> 8) & ((1 << 2) - 1)
+
+        D = (pte >> 7) & 1
+        A = (pte >> 6) & 1
+        G = (pte >> 5) & 1
+        U = (pte >> 4) & 1
+        X = (pte >> 3) & 1
+        W = (pte >> 2) & 1
+        R = (pte >> 1) & 1
+        valid = pte & 1
+
+        # pr('pte: {:016X} valid: {}'.format(pte, valid))
+
+        # Check PTE bits
+        if (valid == 0):
+            raise LoadPageFault('PTE @ level {} not valid trying to access va:{:016X}'.format(level, address), address)
+
+        if (priv == CSR_PRIVLEVEL_USER) and not (U):
+            raise InstructionPageFault('PTE not User accessible', address)
+
+        if (A == 0) and (memory_op != MEMORY_OP_STORE):
+            raise LoadPageFault('Access bit not set', address)
+
+        if (D == 0) and (memory_op == MEMORY_OP_STORE):
+            raise StoreAMOPageFault('Dirty bit not set', address)
+
+        if (level == 1) and  (ppn0 != 0):
+            raise StoreAMOPageFault('Lower PPN bits not zero', address)
+
+        phy = (ppn1 << 22 | ppn0 << 12)
+
+        # phy +=  off[level]
+        # pr('VMA: {:016X} PHY: {:016X}'.format(address, phy))
+        return phy, offmask[level], off[level]
+
+
+        '''
+         priv = self.csr[0xfff]
+
+        offmask = [0, 0]
+        off = [0, 0]
+
+        offmask[1] = ((1 << 22) - 1)    #TODO: Review
+        offmask[0] = ((1 << 12) - 1)    #TODO: Review
+
+        off[1] = (address) & offmask[1] #TODO: Review
+        off[0] = (address) & offmask[0] #TODO: Review
+
+        ppn1 = (pte >> 20) & ((1 << 12) - 1)
+        ppn0 = (pte >> 10) & ((1 << 10) - 1)
+        #rsw = (pte >> 8) & ((1 << 2) - 1)
+
         D = (pte >> 7) & 1
         A = (pte >> 6) & 1
         #G = (pte >> 5) & 1
@@ -377,13 +437,13 @@ class SingleCycleRISCV32(py4hw.Logic):
         #R = (pte >> 1) & 1
         valid = pte & 1
 
-        pr('pte: {:08X} valid: {}'.format(pte, valid))
+        # pr('pte: {:016X} valid: {}'.format(pte, valid))
 
         # Check PTE bits
         if (valid == 0):
             raise LoadPageFault('PTE @ level {} not valid trying to access va:{:08X}'.format(level, address), address)
 
-        if (priv == CSR_PRIVLEVEL_USER) and not(U):
+        if (priv == CSR_PRIVLEVEL_USER) and not (U):
             raise InstructionPageFault('PTE not User accessible', address)
 
         if (A == 0) and (memory_op != MEMORY_OP_STORE):
@@ -392,21 +452,23 @@ class SingleCycleRISCV32(py4hw.Logic):
         if (D == 0) and (memory_op == MEMORY_OP_STORE):
             raise StoreAMOPageFault('Dirty bit not set', address)
 
-        if (level == 1) and ((ppn1 != 0) or (ppn0 != 0)):
+        if (level == 1) and (ppn0 != 0):
             raise StoreAMOPageFault('Lower PPN bits not zero', address)
 
-        offset = address & ((1 << 12) - 1)
-        pmask = ~((1 << 12) - 1) & ((1 << 32) - 1)
-        base = (ppn1 << 22) | (ppn0 << 12)
+        phy = (ppn1 << 22 | ppn0 << 12)
 
-        return base , pmask, offset
+        # phy +=  off[level]
+        # pr('VMA: {:016X} PHY: {:016X}'.format(address, phy))
+        return phy, offmask[level], off[level]
+
+        '''
 
     # OK
     def getPhysicalAddressFromTLB(self, address, memory_op):
         # returns the base and mask
         offmask= [0,0] #[0,0,0]
        # offmask[2] = ((1<<30)-1)
-        offmask[1] = ((1<<21)-1)
+        offmask[1] = ((1<<22)-1)
         offmask[0] = ((1<<12)-1)
 
         for mask in offmask:
