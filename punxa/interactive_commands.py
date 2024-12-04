@@ -851,8 +851,10 @@ def pageTables32(root=None, vbase = 0, level=1, printPTE=True):
     totalTables = 1
     vpn_pos = [12,22] # Sv32, 10 bits per vp
     
-    for i in range(512):
-        add = root+i*8
+    #for i in range(512):
+    for i in range(1024):
+        #add = root+i*8
+        add = root+i*4
         v = memory.read_i32(add-mem_base)
         
         # Decoding PTE
@@ -1048,15 +1050,19 @@ def translateVirtualAddress32(va):
     #
     vpn[1] = (va >> 22) & ((1 << 10) - 1)
     vpn[0] = (va >> 12) & ((1 << 10) - 1)
+
     offmask[1] = ((1 << 22) - 1)
     offmask[0] = ((1 << 12) - 1)
+
     off[1] = (va) & offmask[1]
     off[0] = (va) & offmask[0]
     #
     print(f'vpn1: {vpn[1]} vpn0: {vpn[0]}')
     #
+
     pte_addr = root + vpn[level] * 4
     pte = memory.read_i32(pte_addr - mem_base)
+
     #
     ppn1 = (pte >> 20) & ((1 << 12) - 1)
     ppn0 = (pte >> 10) & ((1 << 10) - 1)
