@@ -202,7 +202,7 @@ def runTest(test_file, verbose=False):
         return
 
     #run(passAdr, verbose=False)
-    run(write_tohost, maxclks=70000, verbose=verbose) # OK
+    run(write_tohost, maxclks=130000, verbose=verbose) # OK
     run(0, maxclks=20, verbose=False)            # OK
 
     # print('Test', test_file, end='')
@@ -224,7 +224,7 @@ selected_prefixes_32 = ['rv32mi-p', 'rv32mzicbo-p', 'rv32si-p', 'rv32ssvnapot-p'
 selected_prefixes_virtual_32 = ['rv32ua-v', 'rv32uc-v', 'rv32ud-v', 'rv32uf-v', 'rv32ui-v', 'rv32um-v', 'rv32uzba-v', 'rv32uzbb-v',
                                 'rv32uzbc-v', 'rv32uzbs-v', 'rv32uzfh-v']
 
-selected_prefixes = selected_prefixes_32
+selected_prefixes = selected_prefixes_32 #['rv32uzbb-p', 'rv32uzbb-v']
 
 def computeAllTests():
     files = os.listdir(ex_dir)
@@ -252,10 +252,18 @@ def computeAllTests():
     return ret
 
 def asciiProgressBar(n, t):
-    p = n*100/t
     pl = 45
-    pok = math.ceil(pl*n/t)
-    pko = pl - pok
+
+    if t == 0:
+        p = 0
+        pok = 0
+        pko = pl
+    else:
+        p = n*100/t
+        pok = math.ceil(pl * n / t)
+        pko = pl - pok
+
+
     sok = '█' * pok
     sko = '░' * pko
     sp = '{:.1f} %'.format(p)
@@ -285,14 +293,17 @@ def runAllTests():
                  print('Test {:30} = {} - {}'.format(t, ret[t][0], ret[t][1]))
 
         groupResults[prefix]=(nOKGroup, nTotalGroup)
-        
+
     print('Total: {} Correct: {} ({:.1f} %)'.format(nTotal, nOK, nOK*100/nTotal))     
     print(asciiProgressBar(nOK, nTotal))
 
     for prefix in selected_prefixes:
         nOKGroup = groupResults[prefix][0]
         nTotalGroup = groupResults[prefix][1]
-        print('Group: {} Total: {} Correct: {} ({:.1f} %)'.format(prefix, nTotalGroup, nOKGroup, nOKGroup*100/nTotalGroup))     
+        if nTotalGroup == 0:
+            print('Group: {} Total: {} Correct: {} ({:.1f} %)'.format(prefix, nTotalGroup, nOKGroup, 0))
+        else:
+            print('Group: {} Total: {} Correct: {} ({:.1f} %)'.format(prefix, nTotalGroup, nOKGroup, nOKGroup*100/nTotalGroup))
 
     for prefix in selected_prefixes:
         nOKGroup = groupResults[prefix][0]
@@ -301,7 +312,7 @@ def runAllTests():
 
 #runAllTests()
 #test_file = 'rv64mi-p-ma_addr'
-#runTest("rv32ua-v-lrsc")
+#runTest("rv32uzbb-p-zext_h")
 
 
 if __name__ == "__main__":

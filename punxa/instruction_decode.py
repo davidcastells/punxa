@@ -68,6 +68,7 @@ rvc_instructions = ['C.ADDI4SPN', 'C.FLD', 'C.LQ', 'C.LW', 'C.FLW', 'C.LD', 'C.F
                     'C.FLWSP', 'C.LDSP', 'C.JR', 'C.MV', 'C.EBREAK', 'C.JALR', 'C.ADD', 'C.FSDSP',
                     'C.SQSP', 'C.SWSP', 'C.FSWSP', 'C.SDSP']
 
+
 rvzbb_instructions = ['CLZ','CTZ','PCNT','ANDN','ORC','XORC','MIN','MAX','MINU','MAXU','CLZW','CTZW']
 
 rvzfh_instructions = ['FLH', 'FADD.H', 'FCVT.S.H', 'FCVT.D.H','FSQRT.H', 'FMSUB.H', 'FNMSUB.H']
@@ -130,7 +131,7 @@ JTypeIns = ['JAL']
 CSRRIns   = ['CSRRW','CSRRS','CSRRC']
 CSRIIns   = ['CSRRWI','CSRRSI','CSRRCI']
 
-CRTypeIns = ['C.ADD', 'C.MV', 'C.EBREAK','C.JR','C.JALR']
+CRTypeIns = ['C.ADD', 'C.MV', 'C.EBREAK','C.JR','C.JALR', 'C.JAL']
 CITypeIns = ['C.NOP', 'C.LWSP', 'C.LDSP', 'C.SLLI',
              'C.LQSP', 'C.FLWSP', 'C.FLDSP', 'C.LI', 'C.LUI',
              'C.ADDI','C.ADDIW','C.ADDI16SP']

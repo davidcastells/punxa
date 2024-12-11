@@ -968,11 +968,8 @@ class SingleCycleRISCV32(py4hw.Logic):
             self.reg[rd] = (self.reg[rs1] >> sham) & 1
             pr('r{} = r{}[r{}] -> {:08X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'BINV'):
-            #if (self.isa == 32):
-            #    self.reg[rd] = self.reg[rs1] | (1 << shamt5)
-            #else:
             sham = self.reg[rs2] & ((1<<5)-1)
-            self.reg[rd] = self.reg[rs1] ^ sham
+            self.reg[rd] = self.reg[rs1] ^ (1 << sham)
             pr('r{} = r{} ^ (1<<r{}) -> {:08X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'BCLR'):
             #if (self.isa == 32):
@@ -998,8 +995,8 @@ class SingleCycleRISCV32(py4hw.Logic):
             self.reg[rd] = int(self.reg[rs1] < self.reg[rs2])
             pr('r{} = r{} < r{} -> {:08X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'ROR'):
-            shv = self.reg[rs2] & ((1<<6)-1)
-            self.reg[rd] = ((self.reg[rs1] >> shv ) | (self.reg[rs1] << (32 - shv) ) ) & ((1<<32) -1)
+            shv = self.reg[rs2] & 31
+            self.reg[rd] = ((self.reg[rs1] >> shv) | (self.reg[rs1] << (32 - shv))) & ((1<<32) -1)
             pr('r{} = r{} R>> r{} -> {:08X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'RORW'):
             shv = self.reg[rs2] & ((1<<5)-1)
@@ -1045,10 +1042,10 @@ class SingleCycleRISCV32(py4hw.Logic):
             pr('r{} = r{} << 3 + r{} -> {:08X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'FADD.H'):
             self.freg[rd] = self.fpu.fadd_hp(self.freg[rs1] , self.freg[rs2])
-            pr('fr{} = fr{} + fr{} -> {:08X}'.format(rd, rs1, rs2, self.freg[rd]))
+            pr('fr{} = fr{} + fr{} -> {:16X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FADD.S'):
             self.freg[rd] = self.fpu.fadd_sp(self.freg[rs1] , self.freg[rs2])
-            pr('fr{} = fr{} + fr{} -> {:08X}'.format(rd, rs1, rs2, self.freg[rd]))
+            pr('fr{} = fr{} + fr{} -> {:16X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FADD.D'):
             self.freg[rd] = self.fpu.fadd_dp(self.freg[rs1] , self.freg[rs2])
             pr('fr{} = fr{} + fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
@@ -1081,10 +1078,10 @@ class SingleCycleRISCV32(py4hw.Logic):
             pr('fr{} = fr{} / fr{} -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FMIN.H'):
             self.freg[rd] = self.fpu.min_hp(self.freg[rs1], self.freg[rs2])
-            pr('fr{} = min(fr{}, fr{}) -> {:08X}'.format(rd, rs1, rs2, self.freg[rd]))
+            pr('fr{} = min(fr{}, fr{}) -> {:16X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FMIN.S'):
             self.freg[rd] = self.fpu.min_sp(self.freg[rs1], self.freg[rs2])
-            pr('fr{} = min(fr{}, fr{}) -> {:08X}'.format(rd, rs1, rs2, self.freg[rd]))
+            pr('fr{} = min(fr{}, fr{}) -> {:16X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FMIN.D'):
             self.freg[rd] = self.fpu.min_dp(self.freg[rs1], self.freg[rs2])
             pr('fr{} = min(fr{}, fr{}) -> {:016X}'.format(rd, rs1, rs2, self.freg[rd]))
@@ -1142,67 +1139,67 @@ class SingleCycleRISCV32(py4hw.Logic):
         elif (op == 'FLT.D'):
             self.reg[rd] = self.fpu.cmp_dp('lt', self.freg[rs1], self.freg[rs2])
             pr('r{} = (fr{}<fr{}) -> {:016X}'.format(rd, rs1,rs2, self.reg[rd]))
-        elif (op == 'FCVT.D.H'):
+        elif (op == 'FCVT.D.H'): #TODO
             self.freg[rd] = self.fpu.convert_hp_to_dp(self.freg[rs1])
             pr('fr{} = r{} -> {:08X}'.format(rd, rs1, self.freg[rd]))
-        elif (op == 'FCVT.D.S'):
+        elif (op == 'FCVT.D.S'): #TODO
             self.freg[rd] = self.fpu.convert_sp_to_dp(self.freg[rs1])
             pr('fr{} = r{} -> {:08X}'.format(rd, rs1, self.freg[rd]))
-        elif (op == 'FCVT.D.W'):
+        elif (op == 'FCVT.D.W'): #TODO
             self.freg[rd] = fp.dp_to_ieee754(IntegerHelper.c2_to_signed(self.reg[rs1] & ((1<<32)-1), 32))
             pr('fr{} = r{} -> {:08X}'.format(rd, rs1, self.freg[rd]))
-        elif (op == 'FCVT.D.WU'):
+        elif (op == 'FCVT.D.WU'): #TODO
             self.freg[rd] = fp.dp_to_ieee754(self.reg[rs1] & ((1<<32)-1))
             pr('fr{} = r{} -> {:08X}'.format(rd, rs1, self.freg[rd]))
-        elif (op == 'FCVT.W.D'):
+        elif (op == 'FCVT.W.D'): #TODO
             self.reg[rd] = self.fpu.convert_dp_to_i32(self.freg[rs1])
             pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
-        elif (op == 'FCVT.W.H'):
+        elif (op == 'FCVT.W.H'): #TODO
             self.reg[rd] = self.fpu.convert_hp_to_i32(self.freg[rs1])
             pr('r{} = fr{} -> {:08X}'.format(rd, rs1, self.reg[rd]))
-        elif (op == 'FCVT.WU.H'):
+        elif (op == 'FCVT.WU.H'): #TODO
             self.reg[rd] = self.fpu.convert_hp_to_u32(self.freg[rs1])
             pr('r{} = fr{} -> {:08X}'.format(rd, rs1, self.reg[rd]))
-        elif (op == 'FCVT.WU.D'):
+        elif (op == 'FCVT.WU.D'): #TODO
             self.reg[rd] = self.fpu.convert_dp_to_u32(self.freg[rs1])
             pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
-        elif (op == 'FCVT.W.S'):
+        elif (op == 'FCVT.W.S'): #TODO
             self.reg[rd] = self.fpu.convert_sp_to_i32(self.freg[rs1])
             pr('r{} = fr{} -> {:08X}'.format(rd, rs1, self.reg[rd]))
-        elif (op == 'FCVT.WU.S'):
+        elif (op == 'FCVT.WU.S'): #TODO
             self.reg[rd] = self.fpu.convert_sp_to_u32(self.freg[rs1])
             pr('r{} = fr{} -> {:08X}'.format(rd, rs1, self.reg[rd]))
-        elif (op == 'FCVT.S.H'):
+        elif (op == 'FCVT.S.H'): #TODO
             self.freg[rd] = self.fpu.convert_hp_to_sp(self.freg[rs1])
             pr('fr{} = fr{} -> {:08X}'.format(rd, rs1, self.freg[rd]))
-        elif (op == 'FCVT.S.D'):
+        elif (op == 'FCVT.S.D'): #TODO
             self.freg[rd] = self.fpu.convert_dp_to_sp(self.freg[rs1])
             pr('fr{} = fr{} -> {:016X}'.format(rd, rs1, self.freg[rd]))
-        elif (op == 'FCVT.S.W'):
+        elif (op == 'FCVT.S.W'): #TODO
             self.freg[rd] = self.fpu.sp_box(fp.sp_to_ieee754(IntegerHelper.c2_to_signed(self.reg[rs1] & ((1<<32)-1), 32)))
             pr('fr{} = r{} -> {:08X}'.format(rd, rs1, self.freg[rd]))
-        elif (op == 'FCVT.H.S'):
+        elif (op == 'FCVT.H.S'): #TODO
             self.freg[rd] = self.fpu.convert_sp_to_hp(self.freg[rs1])
             pr('fr{} = fr{} -> {:08X}'.format(rd, rs1, self.freg[rd]))
-        elif (op == 'FCVT.H.D'):
+        elif (op == 'FCVT.H.D'): #TODO
             self.freg[rd] = self.fpu.convert_dp_to_hp(self.freg[rs1])
             pr('fr{} = fr{} -> {:016X}'.format(rd, rs1, self.freg[rd]))
-        elif (op == 'FCVT.H.W'):
+        elif (op == 'FCVT.H.W'): #TODO
             self.freg[rd] = self.fpu.convert_i32_to_hp(self.reg[rs1])
             pr('fr{} = r{} -> {:08X}'.format(rd, rs1, self.freg[rd]))
-        elif (op == 'FCVT.H.WU'):
+        elif (op == 'FCVT.H.WU'): #TODO
             self.freg[rd] = self.fpu.convert_u32_to_hp(self.reg[rs1])
             pr('fr{} = r{} -> {:08X}'.format(rd, rs1, self.freg[rd]))
-        elif (op == 'FCVT.H.L'):
+        elif (op == 'FCVT.H.L'): #TODO
             self.freg[rd] = self.fpu.convert_i64_to_hp(self.reg[rs1])
             pr('fr{} = r{} -> {:016X}'.format(rd, rs1, self.freg[rd]))
-        elif (op == 'FCVT.H.LU'):
+        elif (op == 'FCVT.H.LU'): #TODO
             self.freg[rd] = self.fpu.convert_u64_to_hp(self.reg[rs1])
             pr('fr{} = r{} -> {:016X}'.format(rd, rs1, self.freg[rd]))
-        elif (op == 'FCVT.S.WU'):
+        elif (op == 'FCVT.S.WU'): #TODO
             self.freg[rd] = fp.sp_to_ieee754(self.reg[rs1] & ((1<<32)-1))
             pr('fr{} = r{} -> {:08X}'.format(rd, rs1, self.freg[rd]))
-        elif (op == 'FCVT.S.LU'):
+        elif (op == 'FCVT.S.LU'): #TODO
             self.freg[rd] = fp.sp_to_ieee754(self.reg[rs1])
             pr('fr{} = r{} -> {:016X}'.format(rd, rs1, self.freg[rd]))
 
@@ -1264,7 +1261,7 @@ class SingleCycleRISCV32(py4hw.Logic):
             address = self.reg[rs1]
             v = yield from self.virtualMemoryLoad(address, 32//8)
             v = IntegerHelper.c2_to_signed(v, 32)
-            self.reg[rd] = v & ((1<<64)-1)
+            self.reg[rd] = v & ((1<<32)-1)
             newvalue= max(v , IntegerHelper.c2_to_signed(self.reg[rs2], 32)) & ((1<<32)-1)
             yield from self.virtualMemoryWrite(address, 32//8, newvalue)
             pr('[r{}] = max([r{}] , r{}) -> [{}]={:08X}'.format(rd, rs1, rs2, self.addressFmt(address), newvalue))
@@ -1345,7 +1342,7 @@ class SingleCycleRISCV32(py4hw.Logic):
         elif (op == 'FMSUB.D'):
             self.freg[rd] = self.fpu.fms_dp(self.freg[rs1] , self.freg[rs2], self.freg[rs3])
             pr('r{} = r{} * r{} - r{} -> {:16X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
-        elif (op == 'FNMSUB.H'): # TODO: Not found (Zfh extension)
+        elif (op == 'FNMSUB.H'):
             self.freg[rd] = self.fpu.fnms_hp(self.freg[rs1] , self.freg[rs2] , self.freg[rs3])
             pr('fr{} = fr{} * fr{} + fr{} -> {:04X}'.format(rd, rs1, rs2, rs3, self.freg[rd]))
         elif (op == 'FNMSUB.S'):
@@ -1392,7 +1389,7 @@ class SingleCycleRISCV32(py4hw.Logic):
             pr('fr{} = abs(fr{}) * (sign(fr{})^sign(fr{})) -> {:16X}'.format(rd, rs1, rs1, rs2, self.freg[rd]))
         elif (op == 'FSGNJ.S'):
             self.freg[rd] = self.fpu.sign_inject_sp(self.freg[rs1], self.freg[rs2])
-            pr('fr{} = abs(fr{}) * sign(fr{}) -> {:X08}'.format(rd, rs1, rs2, self.freg[rd]))
+            pr('fr{} = abs(fr{}) * sign(fr{}) -> {:08X}'.format(rd, rs1, rs2, self.freg[rd]))
         elif (op == 'FSGNJ.H'):
             self.freg[rd] = self.fpu.sign_inject_half(self.freg[rs1], self.freg[rs2])
             pr('fr{} = abs(fr{}) * sign(fr{}) -> {:04X}'.format(rd, rs1, rs2, self.freg[rd]))
@@ -1447,7 +1444,6 @@ class SingleCycleRISCV32(py4hw.Logic):
         elif (op == 'XORI'):
             self.reg[rd] = self.reg[rs1] ^ (simm12 & ((1<<32)-1))
             pr('r{} = r{} ^ {} -> {:08X}'.format(rd, rs1, simm12, self.reg[rd]))
-
         elif (op == 'GREVI'):
             self.reg[rd] = grev(self.reg[rs1] , shamt5)
             pr('r{} = r{} grev {} -> {:08X}'.format(rd, rs1, shamt5, self.reg[rd]))
@@ -1490,7 +1486,6 @@ class SingleCycleRISCV32(py4hw.Logic):
         elif (op == 'SEXT.H'):
             self.reg[rd] = signExtend(self.reg[rs1] & 0xFFFF, 16, 32)
             pr('r{} = sign extend 16 (r{}) -> {:08X}'.format(rd, rs1, self.reg[rd]))
-
         elif (op == 'LW'):
             address = self.reg[rs1] + simm12
             pr('r{} = [r{} + {}] '.format(rd, rs1, simm12), end = '')
@@ -1500,7 +1495,7 @@ class SingleCycleRISCV32(py4hw.Logic):
         elif (op == 'LH'):
             address = self.reg[rs1] + simm12
             v = yield from self.virtualMemoryLoad(address, 16//8)
-            self.reg[rd] = signExtend(v, 16, 64)
+            self.reg[rd] = signExtend(v, 16, 32)
             pr('r{} = [r{} + {}] -> [{}]={:016X}'.format(rd, rs1, simm12, self.addressFmt(address), self.reg[rd]))
         elif (op == 'LHU'):
             address = self.reg[rs1] + simm12
@@ -1515,7 +1510,6 @@ class SingleCycleRISCV32(py4hw.Logic):
             address = self.reg[rs1] + simm12
             self.reg[rd] = yield from self.virtualMemoryLoad(address, 8//8)
             pr('r{} = [r{} + {}] -> [{}]={:02X}'.format(rd, rs1, simm12, self.addressFmt(address), self.reg[rd]))
-
         elif (op == 'FLH'):
             address = self.reg[rs1] + simm12
             v = yield from self.virtualMemoryLoad(address, 16//8)
@@ -1524,7 +1518,6 @@ class SingleCycleRISCV32(py4hw.Logic):
             pr('r{} = [r{} + {}] -> [{}]={:04X}'.format(rd, rs1, simm12, self.addressFmt(address), self.freg[rd]))
         elif (op == 'CBO.ZERO'):
             pr('r{}'.format(rs1))
-
         elif (op == 'CSRRW'):
             v1 = self.reg[rs1]
             vcsr, allowed = self.readCSR(csr)
@@ -1589,11 +1582,9 @@ class SingleCycleRISCV32(py4hw.Logic):
             if (rd != 0) and allowed: self.reg[rd] = crsv
             csrname = self.implemented_csrs[csr]
             pr('r{} = {}, {} &= ~{} -> {:08X}'.format(rd, csrname, csrname, rs1, self.reg[rd]))
-
         elif (op == 'RORI'):
             self.reg[rd] = ((self.reg[rs1] >> shamt5) | (self.reg[rs1] << (32-shamt5))) & ((1<<32)-1)
             pr('r{} = r{} >> {} -> {:08X}'.format(rd, rs1, shamt5, self.reg[rd]))
-
         elif (op == 'SLLI'):
             self.reg[rd] = (self.reg[rs1] << shamt6) & ((1<<32)-1)
             pr('r{} = r{} << {} -> {:08X}'.format(rd, rs1, shamt6, self.reg[rd]))
@@ -1651,6 +1642,11 @@ class SingleCycleRISCV32(py4hw.Logic):
                 raise Exception('unknown privilege level {}'.format(curpriv))
         elif (op == 'EBREAK'):
             raise Breakpoint()
+        elif (op == 'FLD'):
+            off = simm12
+            address = self.reg[rs1] + off
+            self.freg[rd] = yield from self.virtualMemoryLoad(address, 64 // 8)
+            pr('fr{} = [r2 + {}] -> {:016X}'.format(rd, off, self.freg[rd]))
         else:
             raise Exception('{} I-Type instruction not supported!'.format(op))
             #self.parent.getSimulator().stop()
@@ -1799,7 +1795,7 @@ class SingleCycleRISCV32(py4hw.Logic):
         elif (op == 'SB'):
             address = self.reg[rs1]+soff12
             pr('[r{} + {}] = r{} -> [{}]={:02X}'.format(rs1, soff12, rs2, saddr, self.reg[rs2] & ((1<<8)-1)))
-            yield from self.virtualMemoryWrite(address, 8//8, self.reg[rs2])
+            yield from self.virtualMemoryWrite(address, 8//8, self.reg[rs2] & ((1<<8)-1))
         else:
             print(' - S-Type instruction not supported!')
             self.parent.getSimulator().stop()
@@ -1862,7 +1858,6 @@ class SingleCycleRISCV32(py4hw.Logic):
             self.reg[1] = self.pc + 2
             pr('r{}, r1 = pc+2 -> {},{}'.format(c_rs1, self.addressFmt(self.jmp_address), self.addressFmt(self.reg[1])))
             self.functionEnter(self.jmp_address, True)
-
         elif (op == 'C.EBREAK'):
             #
             pr('BUG?')
@@ -2076,11 +2071,18 @@ class SingleCycleRISCV32(py4hw.Logic):
         op = self.decoded_ins
         ins = self.ins
 
+        #off12 = compose_sign(ins, [[12, 1], [8, 1], [9, 2], [6, 1], [7, 1], [2, 1], [11, 1], [3, 3]]) << 1
+        off12 = compose_sign(ins, [[12, 1], [5, 1], [9, 2], [11, 1], [7, 1], [8, 1], [2, 3], [6, 1]]) << 1
+
         if (op == 'C.J'):
-            # TODO: Check
-            off12 = compose_sign(ins, [[12,1],[8,1],[9,2],[6,1],[7,1],[2,1],[11,1],[3,3]]) << 1
             self.should_jump = True
             self.jmp_address = self.pc + off12
+            pr('{} -> {:08X}'.format(off12, self.jmp_address))
+            self.functionEnter(self.jmp_address, True)
+        elif (op == 'C.JAL'):
+            self.should_jump = True
+            self.jmp_address = self.pc + off12
+            self.reg[1] = self.pc + 2
             pr('{} -> {:08X}'.format(off12, self.jmp_address))
             self.functionEnter(self.jmp_address, True)
         else:
