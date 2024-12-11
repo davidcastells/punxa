@@ -231,17 +231,6 @@ prefixes = ['rv32mi-p', 'rv32si-p', 'rv32ua-p',
             'rv64uc-v', 'rv64ud-p', 'rv64ud-v', 'rv64uf-p', 'rv64uf-v', 'rv64ui-p', 'rv64ui-v', 'rv64um-p', 'rv64um-v',
             'rv64uzba-p', 'rv64uzba-v', 'rv64uzbb-p', 'rv64uzbb-v', 'rv64uzbc-p', 'rv64uzbc-v', 'rv64uzbs-p', 'rv64uzbs-v',
             'rv64uzfh-p', 'rv64uzfh-v']
-
-#selected_prefixes = ['rv32mi-p', 'rv32si-p', 'rv32ua-p',
-#            'rv32uc-p', 'rv32ud-p', 'rv32uf-p', 
-#            'rv32ui-p', 'rv32um-p', 'rv32uzba-p', 'rv32uzbb-p', 
-#            'rv32uzbc-p', 'rv32uzbs-p', 'rv32uzfh-p', 
-#            'rv64mi-p', 'rv64mzicbo-p', 'rv64si-p', 'rv64ssvnapot-p', 
-#            'rv64ua-p', 'rv64uc-p', 
-#            'rv64ud-p', 'rv64uf-p', 'rv64ui-p', 'rv64um-p', 
-#            'rv64uzba-p', 'rv64uzbb-p', 'rv64uzbc-p', 'rv64uzbs-p', 
-#            'rv64uzfh-p']
-
             
 selected_prefixes = ['rv64mi-p', 'rv64mzicbo-p', 'rv64si-p', 'rv64ssvnapot-p', 'rv64ua-p', 'rv64ua-v', 'rv64uc-p', 
                      'rv64uc-v', 'rv64ud-p', 'rv64ud-v', 'rv64uf-p', 'rv64uf-v', 'rv64ui-p', 'rv64ui-v', 'rv64um-p', 'rv64um-v',
@@ -321,7 +310,7 @@ def runAllTests():
         nTotalGroup = groupResults[prefix][1]
         print(f'{prefix:15}', asciiProgressBar(nOKGroup, nTotalGroup))
         
-test_file = 'rv64mi-p-ma_addr'
+test_file = 'rv64ua-v-lrsc'
 runTest(test_file)
 
 

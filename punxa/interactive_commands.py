@@ -35,7 +35,6 @@ def list_commands():
     print('  pageTables  - displays the page tables ')
     print('  write_trace - exports function call traces')
 
-
 def regs():
     cpu = _ci_cpu
     print('pc: {:016X}'.format(cpu.getPc()))
@@ -52,7 +51,6 @@ def regs():
         ri16 = cpu.getFreg(i+16)
         ri24 = cpu.getFreg(i+24)
         print(f'fr{i:2}={ri:016X}  |  fr{i+8:2}={ri8:016X}  |  fr{i+16:2}={ri16:016X}  |  fr{i+24:2}={ri24:016X} ')
-
 
 def write_trace(filename='newtrace.json'):
     cpu.tracer.write_json(filename)
@@ -86,7 +84,6 @@ def isElf(filepath):
             return True
     except Exception as e:
         return False
-
 
 def loadElf(memory, filename, offset):
     from elftools.elf.elffile import ELFFile
@@ -124,7 +121,6 @@ def loadSymbolsFromElf(cpu,  filename, offset):
                         cpu.funcs[addr]= name
                     except Exception as e:
                         print('WARNING no symbol', e)
-
 
 def loadProgram(memory, filename, offset):
     """
@@ -178,7 +174,6 @@ def multi_split(s, l):
         ret = ret2
     return ret
 
-        
 def loadSymbols(cpu, filename, address_fix=0):
     file = open(filename, 'r')
     lines = file.readlines()
@@ -202,7 +197,6 @@ def loadSymbols(cpu, filename, address_fix=0):
             #print('{:016X} = {}'.format( address, func))
         except:
             print('Failed to parse', part)
-
 
 def step(steps = 1):
     import time
@@ -278,6 +272,175 @@ def go():
         
     print('clks: {} time: {} simulation freq: {}'.format(clkf-clk0, tf-t0, freq))
     tbreak_address = None
+
+def reportCSR32(csr):
+    cpu = _ci_cpu
+    if not isinstance(csr, str):
+        ncsr = csr
+        csr = cpu.implemented_csrs[ncsr]
+    else:
+        rlist = [k for k, v in cpu.implemented_csrs.items() if v == csr]
+        if len(rlist) == 0:
+            return
+        ncsr = rlist[0]
+
+    v = cpu.getCSR(ncsr)
+
+    table1_1 = ['User', 'Supervisor', 'Reserved', 'Machine']
+    table3_1 = ['', 32, 64, 128]
+    table3_3 = ['Off', 'Initial', 'Clean', 'Dirty']
+    table3_5 = ['Direct', 'Reserved']
+
+    if csr == 'mstatus':
+        print('mstatus ({:03X}): {:08X}'.format(ncsr, v))
+        print('  * SD - Dirty summary: {}'.format(get_bits(v, 31, 1)))
+        print('  * TSR - Trap SRET: {}'.format(get_bits(v, 22, 1)))
+        print('  * TW - Timeout Wait: {}'.format(get_bits(v, 21, 1)))
+        print('  * TVM - Trap Virtual Memory: {}'.format(get_bits(v, 20, 1)))
+        print('  * MXR - Make Executable Readable: {}'.format(get_bits(v, 19, 1)))
+        print('  * SUM - Permit Supervisor User Memory Access: {}'.format(get_bits(v, 18, 1)))
+        print('  * MPRV - Modify Privilege: {}'.format(get_bits(v, 17, 1)))
+        print('  * XS - Extensions status: {} = {}'.format(get_bits(v, 15, 2), table3_3[get_bits(v, 15, 2)]))
+        print('  * FS - Floating point status: {} = {}'.format(get_bits(v, 13, 2), table3_3[get_bits(v, 13, 2)]))
+        print('  * MPP - M-Mode Previous Privilege: {} = {}'.format(get_bits(v, 11, 2), table1_1[get_bits(v, 11, 2)]))
+        print('  * SPP - S-Mode Previous Privilege: {} = {}'.format(get_bits(v, 8, 1), table1_1[get_bits(v, 8, 1)]))
+
+        part = [[7, 1], [5, 1], [4, 1], [3, 1], [1, 1], [0, 1]]
+        pname = ['MPIE', 'SPIE', 'UPIE', 'MIE', 'SIE', 'UIE']
+
+        for i in range(len(pname)):
+            x = (v >> part[i][0]) & ((1 << part[i][1]) - 1)
+            print('  * {}: {}'.format(pname[i], x))
+
+    elif csr == 'sstatus':
+        print('sstatus ({:03X}): {:08X}'.format(ncsr, v))
+        print('  * SD - Dirty summary: {}'.format(get_bits(v, 31, 1)))
+        print('  * MXR - Make Executable Readable: {}'.format(get_bits(v, 19, 1)))
+        print('  * SUM - Permit Supervisor User Memory Access: {}'.format(get_bits(v, 18, 1)))
+        print('  * XS - Extensions status: {}'.format(get_bits(v, 15, 2)))
+        print('  * FS - Floating point status: {}'.format(get_bits(v, 13, 2)))
+        print('  * SPP - S-Mode Previous Privilege: {} = {}'.format(get_bits(v, 8, 1), table1_1[get_bits(v, 8, 1)]))
+        print('  * SPIE - Supervisor Prior Interrupt Enable: {}'.format(get_bits(v, 5, 1)))
+        print('  * UPIE - User Prior Interrupt Enable: {}'.format(get_bits(v, 4, 1)))
+        print('  * SIE - Supervisor Interrupt Enable: {}'.format(get_bits(v, 1, 1)))
+        print('  * UIE - User Interrupt Enable: {}'.format(get_bits(v, 0, 1)))
+
+    elif csr == 'mtvec':
+        print('mtvec ({:03X}): {:08X}'.format(ncsr, v))
+        print('  * Mode: {} = {}'.format(get_bits(v, 0, 2), table3_5[get_bits(v, 0, 2)]))
+        print('  * Address: {:08X} '.format(v & ~3))
+
+    elif csr == 'misa':
+        print('misa ({:03X}): {:08X}'.format(ncsr, v))
+        print('  * MXL - Machine XLEN: {} = {}'.format(get_bits(v, 30, 2), table3_1[get_bits(v, 30, 2)]))
+        extensions = ''
+        for i in range(26):
+            ext_chr = chr(65 + i) if get_bit(v, i) else ''
+            extensions = ext_chr + extensions
+        print('  * Extensions =', extensions)
+
+    elif csr == 'mnstatus':
+        print('mnstatus ({:03X}):  {:08X}'.format(ncsr, v))
+        print('  * MNPP - Priv. mode of Interrupt: {} = {}'.format(get_bits(v, 11, 2), '?'))
+        print('  * MNPV - Virt. mode of Interrupt: {} = {}'.format(get_bits(v, 7, 1), '?'))
+        print('  * NMIE - Non maskable Interrupts enabled: {}'.format(get_bits(v, 3, 1)))
+
+    elif csr == 'mepc':
+        print('mepc: {}'.format(cpu.addressFmt(v)))
+
+    elif csr == 'satp':
+        print('satp: {:08X}'.format(v))
+        n = (v >> 31) & 1  # Modo en bit 31
+        sn = ['Bare', 'Sv32'][n]
+        print('  * Mode: {} {}'.format(n, sn))
+        n = (v >> 22) & 0x1FF  # ASID en bits 30:22
+        print('  * ASID: {:03X}'.format(n))
+        n = v & 0x3FFFFF  # PPN en bits 21:0
+        n2 = n << 12
+        print('  * PPN: {:08X} -> {:08X}'.format(n, n2))
+
+    elif csr == 'privlevel':
+        print('privlevel: {}'.format(v), end=' ')
+        if v == 0:
+            print('USER')
+        elif v == 1:
+            print('SUPERVISOR')
+        elif v == 3:
+            print('MACHINE')
+
+    elif csr == 'mip':
+        print('mip: {:08X}'.format(v))
+        print('   MEIP: machine-mode external interrupt pending', get_bit(v, 11))
+        print('   SEIP: supervisor-mode external interrupt pending', get_bit(v, 9))
+        print('   UEIP: user-mode external interrupt pending', get_bit(v, 8))
+        print('   MTIP: machine-mode timer interrupt pending', get_bit(v, 7))
+        print('   STIP: supervisor-mode timer interrupt pending', get_bit(v, 5))
+        print('   UTIP: user-mode timer interrupt pending', get_bit(v, 4))
+        print('   MSIP: machine-mode software interrupt pending', get_bit(v, 3))
+        print('   SSIP: supervisor-mode software interrupt pending', get_bit(v, 1))
+        print('   USIP: user-mode software interrupt pending', get_bit(v, 0))
+
+    elif csr == 'mie':
+        print('mie: {:08X}'.format(v))
+        print('   MEIE: machine-mode external interrupt enable', get_bit(v, 11))
+        print('   SEIE: supervisor-mode external interrupt enable', get_bit(v, 9))
+        print('   UEIE: user-mode external interrupt enable', get_bit(v, 8))
+        print('   MTIE: machine-mode timer interrupt enable', get_bit(v, 7))
+        print('   STIE: supervisor-mode timer interrupt enable', get_bit(v, 5))
+        print('   UTIE: user-mode timer interrupt enable', get_bit(v, 4))
+        print('   MSIE: machine-mode software interrupt enable', get_bit(v, 3))
+        print('   SSIE: supervisor-mode software interrupt enable', get_bit(v, 1))
+        print('   USIE: user-mode software interrupt enable', get_bit(v, 0))
+
+    elif csr == 'fflags':
+        print('fflags: {:08X}'.format(v))
+        print('   NV: invalid operation', get_bit(v, 4))
+        print('   DZ: divide by zero', get_bit(v, 3))
+        print('   OF: overflow', get_bit(v, 2))
+        print('   UF: underflow', get_bit(v, 1))
+        print('   NX: inexact', get_bit(v, 0))
+
+    elif csr == 'medeleg':
+        print('medeleg ({:03X}):  {:08X}'.format(ncsr, v))
+        print(' Delegate exceptions to lower privilege modes.')
+        msg = ['Instruction address misaligned',
+               'Instruction access fault',
+               'Illegal instruction',
+               'Breakpoint',
+               'Load address misaligned',
+               'Load access fault',
+               'Store/AMO address misaligned',
+               'Store/AMO access fault',
+               'Environment call from U-mode',
+               'Environment call from S-mode',
+               'Reserved',
+               'Environment call from M-mode',
+               'Instruction page fault',
+               'Load page fault',
+               'Reserved',
+               'Store/AMO page fault']
+
+        for i in range(16):
+            if get_bit(v, i):
+                print('  * {}'.format(msg[i]))
+
+    elif csr == 'tdata1':
+        xlen = 32
+        tdata_type = get_bits(v, xlen - 4, 4)
+        tdata_types = ['No trigger', 'Reserved', 'Address/Data', 'Instruction count', 'Interrupt', 'Exception']
+        tdata_dmode = get_bit(v, xlen - 5)
+        dmodes = ['debug/m-mode', 'debug']
+        print('tdata1: {:08X}'.format(v))
+        print(' type: {} - {}'.format(tdata_type, tdata_types[tdata_type]))
+        print(' dmode: {} - {}'.format(tdata_dmode, dmodes[tdata_dmode]))
+        print(' data: {}'.format(get_bits(v, 0, xlen - 5)))
+
+    elif csr == 'instret':
+        print('instret ({:03X}): {:08X}'.format(ncsr, v))
+        print('  * retired instructions: {}'.format(v))
+
+    else:
+        print('{} ({}): {:08X}'.format(csr, ncsr, v))
 
 def reportCSR(csr):
     cpu = _ci_cpu
@@ -598,7 +761,6 @@ def run(upto, maxclks=100000, verbose=True, autoCheckpoint=False):
 
     print('clks: {} time: {} simulation freq: {}'.format(clkf-clk0, tf-t0, freq))
 
-
 def dump(address, size=0x100, mem_base=0):
     memory = _ci_cpu.behavioural_memory
     pos = address 
@@ -617,7 +779,6 @@ def dump(address, size=0x100, mem_base=0):
         print('| "{}"'.format(sline))
 #    memory.write(32*4+0x00, 0xfe010113) # addi    sp,sp,-32
 #    memory.write(32*4+0x04, 0x00112e23) # sw      ra,28(sp)
-
 
 def get_va_parts(v):
     ret = {}
@@ -690,8 +851,10 @@ def pageTables32(root=None, vbase = 0, level=1, printPTE=True):
     totalTables = 1
     vpn_pos = [12,22] # Sv32, 10 bits per vp
     
-    for i in range(512):
-        add = root+i*8
+    #for i in range(512):
+    for i in range(1024):
+        #add = root+i*8
+        add = root+i*4
         v = memory.read_i32(add-mem_base)
         
         # Decoding PTE
@@ -746,7 +909,6 @@ def pageTables32(root=None, vbase = 0, level=1, printPTE=True):
                     totalTables += pageTables(phy, va, level-1, printPTE)
     
     return totalTables
-
 
 def pageTables64(root=None, vbase = 0, level=1, printPTE=True):
     """
@@ -854,6 +1016,131 @@ def pageTables64(root=None, vbase = 0, level=1, printPTE=True):
     
     return totalTables
 
+def translateVirtualAddress32(va):
+    cpu = _ci_cpu
+    memory = cpu.behavioural_memory
+    mem_base = 0x80000000  # @todo assuming mem_base = 0x80000000
+
+    priv = cpu.csr[CSR_PRIVLEVEL]
+    mprv = cpu.csr[CSR_MSTATUS] & CSR_MSTATUS_MPRV_MASK
+    mpp = getCSRField(cpu, CSR_MSTATUS, CSR_MSTATUS_MPP_POS, 2)
+
+    useVM = (priv != CSR_PRIVLEVEL_MACHINE) or (priv == CSR_PRIVLEVEL_MACHINE and (mprv != 0) and (mpp < CSR_PRIVLEVEL_MACHINE))
+    print(f'priv: {priv} mpvr: {mprv} mpp: {mpp} using Virtual Memory: {useVM}')
+
+    v = cpu.csr[0x180]  # satp
+    mode = (v >> 31) & 1
+    smode = ['Base', 'Sv32'][mode]
+    asid = (v >> 22) & ((1 << 9) - 1)
+    print('Virtual Memory Mode: {} {} ASID: {:04X}'.format(mode, smode, asid))
+    root = (v & ((1 << 22) - 1)) << 12
+
+    print(f'Root:  {root:08X}')
+    level = 1
+
+    vpn = [0, 0]
+    off = [0, 0]
+    offmask = [0, 0]
+    #
+    vpn_bits = [10, 10]
+    vpn_pos = [12, 22]
+    #
+    ppn_bits = [12, 10]
+    ppn_pos = [12, 22]
+    #
+    vpn[1] = (va >> 22) & ((1 << 10) - 1)
+    vpn[0] = (va >> 12) & ((1 << 10) - 1)
+
+    offmask[1] = ((1 << 22) - 1)
+    offmask[0] = ((1 << 12) - 1)
+
+    off[1] = (va) & offmask[1]
+    off[0] = (va) & offmask[0]
+    #
+    print(f'vpn1: {vpn[1]} vpn0: {vpn[0]}')
+    #
+
+    pte_addr = root + vpn[level] * 4
+    pte = memory.read_i32(pte_addr - mem_base)
+
+    #
+    ppn1 = (pte >> 20) & ((1 << 12) - 1)
+    ppn0 = (pte >> 10) & ((1 << 10) - 1)
+    #
+    rsw = (pte >> 8) & ((1 << 2) - 1)
+    D = [' ', 'D'][(pte >> 7) & 1]
+    A = [' ', 'A'][(pte >> 6) & 1]
+    G = [' ', 'G'][(pte >> 5) & 1]
+    U = [' ', 'U'][(pte >> 4) & 1]
+    X = [' ', 'X'][(pte >> 3) & 1]
+    W = [' ', 'W'][(pte >> 2) & 1]
+    R = [' ', 'R'][(pte >> 1) & 1]
+    V = [' ', 'V'][(pte & 1)]
+    valid = pte & 1
+    #
+    pte_type = 'Invalid'
+    is_leaf = True
+    if (valid):
+        if (R == ' ') and (X == ' '):
+            pte_type = '--->'
+            is_leaf = False
+        else:
+            pte_type = 'leaf'
+            is_leaf = True
+
+    v_vof = off[level]
+    v_ppn = [ppn0, ppn1][level] << ppn_pos[level]
+    v_pa = v_ppn + v_vof
+
+    if (is_leaf):
+        print(f'Level 1 PTE index {vpn[1]} in {pte_addr:08X}. Type={pte_type} VA: {vpn[1]:03X} | {v_vof:08X} PA: {v_ppn:X} + {v_vof:X} = {v_pa:08X}', end='')
+        print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
+        return
+
+    phy = ppn1 << 22 | ppn0 << 12
+    print(f'Level 1 PTE index {vpn[1]} in {pte_addr:08X}. Type={pte_type} Table = {phy:08X}', end='')
+    print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
+
+    level = 0
+    pte_addr = phy + vpn[level] * 4
+    pte = memory.read_i32(pte_addr - mem_base)
+
+    ppn1 = (pte >> 20) & ((1 << 12) - 1)
+    ppn0 = (pte >> 10) & ((1 << 10) - 1)
+
+    rsw = (pte >> 8) & ((1 << 2) - 1)
+    D = [' ', 'D'][(pte >> 7) & 1]
+    A = [' ', 'A'][(pte >> 6) & 1]
+    G = [' ', 'G'][(pte >> 5) & 1]
+    U = [' ', 'U'][(pte >> 4) & 1]
+    X = [' ', 'X'][(pte >> 3) & 1]
+    W = [' ', 'W'][(pte >> 2) & 1]
+    R = [' ', 'R'][(pte >> 1) & 1]
+    V = [' ', 'V'][(pte & 1)]
+    valid = pte & 1
+    #
+    pte_type = 'Invalid'
+    is_leaf = True
+    if (valid):
+        if (R == ' ') and (X == ' '):
+            pte_type = '--->'
+            is_leaf = False
+        else:
+            pte_type = 'leaf'
+            is_leaf = True
+
+    v_vof = off[level]
+    v_ppn = [ppn0, ppn1][level] << ppn_pos[level]
+    v_pa = v_ppn + v_vof
+
+    if (is_leaf):
+        print(f'Level 0 PTE index {vpn[0]} in {pte_addr:09X}. Type={pte_type} VA: {vpn[1]:03X} | {vpn[0]:03X} | {v_vof:08X} PA: {v_ppn:X} + {v_vof:X} = {v_pa:08X}', end='')
+        print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
+        return
+
+    phy = ppn1 << 22 | ppn0 << 12
+    print(f'Level 0 PTE index {vpn[0]} in {pte_addr:08X}. Type={pte_type} Table = {phy:08X}', end='')
+    print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
 
 def translateVirtualAddress(va):
     cpu = _ci_cpu
@@ -1023,9 +1310,7 @@ def translateVirtualAddress(va):
     phy = ppn2 << 30 | ppn1 << 21 | ppn0 << 12
     print(f'Level 0 PTE index {vpn[0]} in {pte_addr:016X}. Type={pte_type} Table = {phy:016X}', end='')
     print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
-    
 
-    
 def memoryMap():
     bus = _ci_bus
     memory = _ci_cpu.behavioural_memory
