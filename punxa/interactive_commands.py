@@ -549,6 +549,7 @@ def reportCSR(csr):
         if (v == 0): print('USER')
         if (v == 1): print('SUPERVISOR')
         if (v == 3): print('MACHINE')
+        
     elif (csr == 'mip'):
         print('mip: {:016X}'.format(v))
         print('   MEIP: machine-mode external interrup pending', get_bit(v, 11))
@@ -603,16 +604,77 @@ def reportCSR(csr):
         
         for i in range(16):
             if (get_bit(v, i)): print('  * {}'.format(msg[i]))
+            
+    elif (csr == 'tselect'):
+        print('tselect: {:016X}'.format(v))
+        
     elif (csr == 'tdata1'):
         xlen = 64
         tdata_type = get_bits(v, xlen-4, 4)
-        tdata_types = ['No trigger','SiFive reserved', 'address/data', 'instruction count', 'interupt', 'exception']
+        tdata_types = ['No trigger','SiFive reserved', 'address/data match', 
+                       'instruction count', 'interupt', 'exception',
+                       'address/data match', 'external']
         tdata_dmode = get_bit(v, xlen-5)
         dmodes = ['debug/m-mode','debug']
         print('tdata1: {:016X}'.format(v))
         print(' type: {} - {}'.format(tdata_type, tdata_types[tdata_type]))
         print(' dmode: {} - {}'.format(tdata_dmode, dmodes[tdata_dmode]))
-        print(' data: {}'.format(get_bits(v, 0, xlen-5)))
+
+        if (tdata_type == 2):
+            maskmax = get_bits(v, xlen-11, 6)
+            sizehi = get_bits(v, 21, 2)
+            hit = get_bit(v, 20)
+            select = get_bit(v, 19)
+            timing = get_bit(v, 18)
+            sizelo = get_bits(v, 16, 2)
+            size = sizehi << 2 | sizelo
+            size_type = ['any', '8bit', '16bit', '32bit', '48bit', '64bit', '80bit', '96bit', '112bit', '128bit']
+            action = get_bits(v, 12, 4)
+            action_type = ['raise breakpoint exception', 'enter debug mode', 'trace on', 'trace off', 'trace notify', 'reserved', 'external trigger 0', 'external trigger 1']
+            chain = get_bit(v, 11)
+            match = get_bits(v, 7, 4)
+            match_type = ['equal', 'napo', 'greater or equal than', 'less than', 'mask low', 'mask high', '', '', 'not equal', 'not napot', '', '', 'not mask low', 'not mask high']
+            m = get_bit(v, 6)
+            s = get_bit(v, 4)
+            u = get_bit(v, 3)
+            execute = get_bit(v, 2)
+            store = get_bit(v, 1)
+            load = get_bit(v, 0)
+            print(f' maskmax: {maskmax}')
+            print(f' hit: {hit}')
+            print(f' select: {select}')
+            print(f' timing: {timing}')
+            print(f' size: {size} - {size_type[size]}')
+            print(f' action: {action} - {action_type[action]}')
+            print(f' chain: {chain}')
+            print(f' match: {match} - {match_type[match]}')
+            print(f' m: {m}')
+            print(f' s: {s}')
+            print(f' u: {u}')
+            print(f' execute: {execute}')
+            print(f' store: {store}')
+            print(f' load: {load}')
+
+            
+        else:
+            print(' data: {}'.format(get_bits(v, 0, xlen-5)))
+        
+            
+        
+    elif (csr == 'tinfo'):
+        version = get_bits(v, 24, 8)
+        info = get_bits(v, 0, 16)
+        print('tinfo: {:016X}'.format(v))
+        print(' version: {} '.format(version))
+        print(' info: {} '.format(info))
+        
+    elif (csr == 'tcontrol'):
+        mpte = get_bits(v, 7, 1)
+        mte = get_bits(v, 3, 1)
+        print('tcontrol: {:016X}'.format(v))
+        print(' mpte: {} '.format(mpte))
+        print(' mte: {} '.format(mte))        
+        
     elif (csr == 'instret'):
         print('instret ({:03X}): {:016X}'.format(ncsr, v))
         print('  * retired instructions: {}'.format(v))
