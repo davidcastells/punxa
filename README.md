@@ -19,16 +19,26 @@ When completed, next goal is Linux boot.
 
 ### RISC-V ISA Tests
 
-RV64 ISA tests progress: 
+***RV64*** ISA tests progress: 
 
 <table>
  <tr><td>Version</td><td>Progress</td></tr>
  <tr>
-  <td>Single Cycle </td><td>96.0 %   |████████████████████████████████████████████░|</td>
+  <td>Single Cycle </td><td>96.3 %   |████████████████████████████████████████████░|</td>
  </tr>
  <tr>
   <td>Microprogrammed </td><td>30.1 %   |██████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|</td>  
  </tr>
+</table>
+
+
+***RV32*** ISA tests progress:
+
+<table>
+<tr><td>Version</td><td>Progress</td></tr>
+<tr>
+ <td>Single Cycle </td><td>89.5 %   |█████████████████████████████████████████░░░░|</td>
+</tr>
 </table>
 
 check [riscv-tests](https://github.com/davidcastells/punxa/blob/main/test/riscv-tests/README.md) for a complete list
