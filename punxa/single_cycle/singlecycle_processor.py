@@ -3,6 +3,10 @@
 Created on Sat Nov 26 13:12:41 2022
 
 @author: dcr
+
+Latest Debug Specification Used: 1.0.0-rc4
+    https://github.com/riscv/riscv-debug-spec/releases/download/1.0.0-rc4/riscv-debug-specification.pdf
+    
 """
 import sys
 import py4hw
@@ -136,8 +140,10 @@ class SingleCycleRISCV(py4hw.Logic):
         self.debug_vm = False
         self.debug_insret = False
         
-        self.isa = 64
+        self.isa = 64 # @todo we should change this for XLEN
         
+        self.debugTrigger = False 
+
         self.co = self.run()
         
     def setVerbose(self, verbose):
@@ -306,6 +312,7 @@ class SingleCycleRISCV(py4hw.Logic):
                 
                 print('WARNING: Should handle interrupt mip={:016X}'.format(self.csr[CSR_MIP]))
             
+                
         # @todo->done->remove comment, we should not translate to physical address, since Linux symbols
         # are already given in virtual addresses
         # phypc = self.getPhysicalAddressQuick(self.pc)
@@ -479,6 +486,12 @@ class SingleCycleRISCV(py4hw.Logic):
     def virtualMemoryLoad(self, address, b, memory_op=MEMORY_OP_LOAD):
         self.checkReservedAddress(address, b)
         
+        if (self.debugTrigger):
+            #match = (self.csr[CSR_TDATA2] >= address) and (self.csr[CSR_TDATA2] <= (address+b))
+            match = (self.csr[CSR_TDATA2] == address) 
+            if (memory_op == MEMORY_OP_EXECUTE) and (self.csr[CSR_TDATA1] & CSR_TDATA1_EXECUTE_MASK) and (match): raise Breakpoint()
+            if (memory_op == MEMORY_OP_LOAD) and (self.csr[CSR_TDATA1] & CSR_TDATA1_LOAD_MASK) and (match): raise Breakpoint()
+
         address = yield from self.getPhysicalAddress(address, memory_op)    
         if (self.mem_width == 32):
             value = yield from self.memoryLoad32(address, b, memory_op)
@@ -491,6 +504,9 @@ class SingleCycleRISCV(py4hw.Logic):
     def virtualMemoryWrite(self, va, b, v):
         self.checkReservedAddress(va, b)
         
+        if (self.debugTrigger):
+            if (self.csr[CSR_TDATA1] & CSR_TDATA1_STORE_MASK) and (va == self.csr[CSR_TDATA2]): raise Breakpoint()
+            
         pa = yield from self.getPhysicalAddress(va, MEMORY_OP_STORE)
         #print('\nWR va: {:016X} -> pa: {:016X}'.format(va,pa)) 
         if (self.mem_width == 32):
@@ -2355,6 +2371,16 @@ class SingleCycleRISCV(py4hw.Logic):
         if (real_idx == CSR_FRM):
             self.csr[CSR_FCSR] = (self.csr[CSR_FCSR] & (((1<<64)-1) ^ CSR_FCSR_ROUNDING_MODE_MASK)) | (v << 5) 
         
+        if (real_idx == CSR_TSELECT):
+            # we only support 1 trigger context
+            if (v != 0):
+                return
+            
+        if (real_idx == CSR_TDATA1):
+            xlen = 64
+            tdata_type = get_bits(v, xlen-4, 4)
+            self.debugTrigger = (tdata_type != 0)
+
         #print('CSR WRITE {} = {:016X}'.format(csrname, v))
         self.csr[real_idx] = v
         
