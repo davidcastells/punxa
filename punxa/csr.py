@@ -14,6 +14,8 @@ https://drive.google.com/file/d/17GeetSnT5wW3xNuAHI95-SI1gPGd5sJ_/view?usp=drive
 and
 https://riscv.org/wp-content/uploads/2019/03/riscv-debug-release.pdf
 
+Latest Debug Specification Used: 1.0.0-rc4
+    https://github.com/riscv/riscv-debug-spec/releases/download/1.0.0-rc4/riscv-debug-specification.pdf
 
 """
 
@@ -75,8 +77,9 @@ CSR_MNSTATUS =  0x744
 CSR_TSELECT =   0x7A0
 CSR_TDATA1 =   0x7A1
 CSR_TDATA2 =   0x7A2
-CSR_TDATA3 =   0x7A2
-CSR_TCONTROL = 0x7A5
+CSR_TDATA3 =   0x7A3
+CSR_TINFO =     0x7A4
+CSR_TCONTROL =  0x7A5
 CSR_MCONTEXT =  0x7A8
 
 CSR_MCYCLE =    0xB00
@@ -232,6 +235,11 @@ CSR_MIP_UTIP_MASK = (1<<4)
 CSR_MIP_MSIP_MASK = (1<<3)
 CSR_MIP_SSIP_MASK = (1<<1)
 CSR_MIP_USIP_MASK = 1
+
+# 0x7A1 - TDATA1 
+CSR_TDATA1_EXECUTE_MASK = (1 << 2)   
+CSR_TDATA1_STORE_MASK = (1 << 1)
+CSR_TDATA1_LOAD_MASK = (1)
 
 # 0x7A5 - TCONTROL
 CSR_TCONTROL_MTE_MASK = (1 << 3)
