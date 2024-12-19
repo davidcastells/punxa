@@ -202,7 +202,12 @@ def prepareTest(test_file):
 def runTest(test_file, verbose=False):
     prepareTest(test_file)
     #passAdr = findFunction('pass')
-    write_tohost = findFunction('write_tohost')
+    triggerFunc = findFunction('write_tohost')
+    
+    if (triggerFunc is None):
+        # Try with terminate
+        triggerFunc = findFunction('terminate')
+        
     tohost_adr = findFunction('tohost')
 
     if (tohost_adr is None):
@@ -210,7 +215,7 @@ def runTest(test_file, verbose=False):
         return
 
     #run(passAdr, verbose=False)
-    run(write_tohost, maxclks=70000, verbose=verbose)
+    run(triggerFunc, maxclks=100000, verbose=verbose)
     run(0, maxclks=20, verbose=False)
 
     # print('Test', test_file, end='')
