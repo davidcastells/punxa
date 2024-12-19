@@ -770,13 +770,16 @@ def restore(filename= 'checkpoint.dat'):
             
     ser.close()
     
-def run(upto, maxclks=100000, verbose=True, autoCheckpoint=False):
+def run(upto, maxclks=100000, verbose=True, autoCheckpoint=False, matchPA=True, translateVA=True):
     import time
     global print
     global dummy_print
     
     if not(verbose):
         _ci_cpu.setVerbose(False)
+        
+    if (translateVA):
+        upto = _ci_cpu.getPhysicalAddressQuick(upto)
                         
     sim = _ci_hw.getSimulator()
 
@@ -790,7 +793,13 @@ def run(upto, maxclks=100000, verbose=True, autoCheckpoint=False):
     istart = _ci_cpu.getCSR(CSR_INSTRET)
     ilast = istart
     
-    while (_ci_cpu.getPc() != upto):
+    def get_pc():
+        if (translateVA):
+            return _ci_cpu.getPhysicalAddressQuick(_ci_cpu.getPc())
+        else:
+            return _ci_cpu.getPc()
+            
+    while (get_pc() != upto):
         sim.clk(1)
         count += 1
         icur = _ci_cpu.getCSR(CSR_INSTRET)
@@ -803,7 +812,7 @@ def run(upto, maxclks=100000, verbose=True, autoCheckpoint=False):
             print('ins: {:n}'.format(icur))
             ilast = icur
             
-    if (_ci_cpu.getPc() != upto):
+    if (get_pc() != upto):
         print('did not reach address')
 
         if (sim.do_run and autoCheckpoint):
