@@ -78,9 +78,15 @@ def clmul(a, b):
     x = 0
     for i in range(64):
         if (b >> i) & 1:
-            x += a << i
+            x = x ^ (a << i)
     return x
 
+def clmulr(a, b):
+    x = 0
+    for i in range(64):
+        if (b >> i) & 1:
+            x = x ^ (a >> (64-1-i))
+    return x
 
 
 class SingleCycleRISCV(py4hw.Logic):
@@ -401,14 +407,22 @@ class SingleCycleRISCV(py4hw.Logic):
         #pr('pte: {:016X} valid: {}'.format(pte, valid))
         
         # Check PTE bits
-        if (valid == 0):
-            raise LoadPageFault('PTE @ level {} not valid trying to access va:{:016X}'.format(level, address), address)
+        if (memory_op == MEMORY_OP_EXECUTE):
+            if (valid == 0):
+                raise InstructionPageFault('PTE @ level {} not valid trying to access va:{:016X}'.format(level, address), address)
+            if (A == 0):
+                raise InstructionPageFault('Access bit not set', address)    
+                
+        if (memory_op == MEMORY_OP_LOAD):
+            if (valid == 0):
+                raise LoadPageFault('PTE @ level {} not valid trying to access va:{:016X}'.format(level, address), address)
+            if (A == 0):
+                raise LoadPageFault('Access bit not set', address)
+        
             
         if (priv == CSR_PRIVLEVEL_USER) and not(U):
             raise InstructionPageFault('PTE not User accessible', address)
-
-        if (A == 0) and (memory_op != MEMORY_OP_STORE):
-            raise LoadPageFault('Access bit not set', address)
+        
             
         if (D == 0) and (memory_op == MEMORY_OP_STORE):
             raise StoreAMOPageFault('Dirty bit not set', address)
@@ -811,7 +825,7 @@ class SingleCycleRISCV(py4hw.Logic):
             self.reg[rd] = clmul(self.reg[rs1], self.reg[rs2]) >> 64       
             pr('r{} = r{} * r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'CLMULR'):
-            self.reg[rd] = (self.reg[rs1] * self.reg[rs2]) & ((1<<64)-1)      
+            self.reg[rd] = clmulr(self.reg[rs1], self.reg[rs2]) & ((1<<64)-1)      
             pr('r{} = r{} * r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'MULH'):
             v1 = IntegerHelper.c2_to_signed(self.reg[rs1], 64)
