@@ -34,23 +34,23 @@ rv64ua-v        100.0 %  |██████████████████
 rv64uc-p        100.0 %  |█████████████████████████████████████████████|
 rv64uc-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64ud-p        100.0 %  |█████████████████████████████████████████████|
-rv64ud-v        91.7 %   |██████████████████████████████████████████░░░|
+rv64ud-v        100.0 %  |█████████████████████████████████████████████|
 rv64uf-p        100.0 %  |█████████████████████████████████████████████|
-rv64uf-v        90.9 %   |█████████████████████████████████████████░░░░|
+rv64uf-v        100.0 %  |█████████████████████████████████████████████|
 rv64ui-p        100.0 %  |█████████████████████████████████████████████|
-rv64ui-v        98.1 %   |█████████████████████████████████████████████|
+rv64ui-v        100.0 %  |█████████████████████████████████████████████|
 rv64um-p        100.0 %  |█████████████████████████████████████████████|
 rv64um-v        100.0 %  |█████████████████████████████████████████████|
 rv64uzba-p      100.0 %  |█████████████████████████████████████████████|
 rv64uzba-v      100.0 %  |█████████████████████████████████████████████|
 rv64uzbb-p      100.0 %  |█████████████████████████████████████████████|
 rv64uzbb-v      100.0 %  |█████████████████████████████████████████████|
-rv64uzbc-p      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
-rv64uzbc-v      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv64uzbc-p      100.0 %  |█████████████████████████████████████████████|
+rv64uzbc-v      100.0 %  |█████████████████████████████████████████████|
 rv64uzbs-p      100.0 %  |█████████████████████████████████████████████|
 rv64uzbs-v      100.0 %  |█████████████████████████████████████████████|
 rv64uzfh-p      100.0 %  |█████████████████████████████████████████████|
-rv64uzfh-v      90.9 %   |█████████████████████████████████████████░░░░|
+rv64uzfh-v      100.0 %  |█████████████████████████████████████████████|
 </pre>
 
 The detailed current output is:
@@ -137,7 +137,7 @@ Test rv64ud-v-fadd                  = OK
 Test rv64ud-v-fclass                = OK
 Test rv64ud-v-fcmp                  = OK
 Test rv64ud-v-fcvt                  = OK
-Test rv64ud-v-fcvt_w                = FAILED - Test return value = 0
+Test rv64ud-v-fcvt_w                = OK
 Test rv64ud-v-fdiv                  = OK
 Test rv64ud-v-fmadd                 = OK
 Test rv64ud-v-fmin                  = OK
@@ -160,7 +160,7 @@ Test rv64uf-v-fadd                  = OK
 Test rv64uf-v-fclass                = OK
 Test rv64uf-v-fcmp                  = OK
 Test rv64uf-v-fcvt                  = OK
-Test rv64uf-v-fcvt_w                = FAILED - Test return value = 0
+Test rv64uf-v-fcvt_w                = OK
 Test rv64uf-v-fdiv                  = OK
 Test rv64uf-v-fmadd                 = OK
 Test rv64uf-v-fmin                  = OK
@@ -243,7 +243,7 @@ Test rv64ui-v-lhu                   = OK
 Test rv64ui-v-lui                   = OK
 Test rv64ui-v-lw                    = OK
 Test rv64ui-v-lwu                   = OK
-Test rv64ui-v-ma_data               = FAILED - Test return value = 0
+Test rv64ui-v-ma_data               = OK
 Test rv64ui-v-or                    = OK
 Test rv64ui-v-ori                   = OK
 Test rv64ui-v-sb                    = OK
@@ -361,12 +361,12 @@ Test rv64uzbb-v-sext_b              = OK
 Test rv64uzbb-v-sext_h              = OK
 Test rv64uzbb-v-xnor                = OK
 Test rv64uzbb-v-zext_h              = OK
-Test rv64uzbc-p-clmul               = FAILED - Test return value = 65
-Test rv64uzbc-p-clmulh              = FAILED - Test return value = 65
-Test rv64uzbc-p-clmulr              = FAILED - Test return value = 65
-Test rv64uzbc-v-clmul               = FAILED - Test return value = 65
-Test rv64uzbc-v-clmulh              = FAILED - Test return value = 65
-Test rv64uzbc-v-clmulr              = FAILED - Test return value = 65
+Test rv64uzbc-p-clmul               = OK
+Test rv64uzbc-p-clmulh              = OK
+Test rv64uzbc-p-clmulr              = OK
+Test rv64uzbc-v-clmul               = OK
+Test rv64uzbc-v-clmulh              = OK
+Test rv64uzbc-v-clmulr              = OK
 Test rv64uzbs-p-bclr                = OK
 Test rv64uzbs-p-bclri               = OK
 Test rv64uzbs-p-bext                = OK
@@ -398,14 +398,14 @@ Test rv64uzfh-v-fadd                = OK
 Test rv64uzfh-v-fclass              = OK
 Test rv64uzfh-v-fcmp                = OK
 Test rv64uzfh-v-fcvt                = OK
-Test rv64uzfh-v-fcvt_w              = FAILED - Test return value = 0
+Test rv64uzfh-v-fcvt_w              = OK
 Test rv64uzfh-v-fdiv                = OK
 Test rv64uzfh-v-fmadd               = OK
 Test rv64uzfh-v-fmin                = OK
 Test rv64uzfh-v-ldst                = OK
 Test rv64uzfh-v-move                = OK
 Test rv64uzfh-v-recoding            = OK
-Total: 349 Correct: 336 (96.3 %)
+Total: 349 Correct: 346 (99.1 %)
 ```
 
 ## RV32 Single Cycle Processor Version 
