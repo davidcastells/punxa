@@ -24,7 +24,7 @@ When completed, next goal is Linux boot.
 <table>
  <tr><td>Version</td><td>Progress</td></tr>
  <tr>
-  <td>Single Cycle </td><td>96.3 %   |████████████████████████████████████████████░|</td>
+  <td>Single Cycle </td><td>99.1 %   |█████████████████████████████████████████████|</td>
  </tr>
  <tr>
   <td>Microprogrammed </td><td>30.1 %   |██████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|</td>  
