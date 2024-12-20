@@ -58,38 +58,6 @@ def write_trace(filename=ex_dir + 'newtrace.json'):
 
                   
 
-def memoryMap():
-    for i in range(len(bus.start)):
-        size = bus.stop[i] - bus.start[i]
-        units = 'B'
-        if (size > 1024):
-            size = size/1024
-            units = 'KiB'
-        if (size > 1024):
-            size = size/1024
-            units = 'MiB'
-        if (size > 1024):
-            size = size/1024
-            units = 'GiB'
-        
-        print('* {:016X} - {:016X} {:.0f} {}'.format(bus.start[i], bus.stop[i], size, units))
-        
-        if (bus.start[i] == mem_base):
-            # details on memory
-            for block in memory.area:
-                size = block[1]
-                units = 'B'
-                if (size > 1024):
-                    size = size/1024
-                    units = 'KiB'
-                if (size > 1024):
-                    size = size/1024
-                    units = 'MiB'
-                if (size > 1024):
-                    size = size/1024
-                    units = 'GiB'
-                print('  {:016X} - {:016X} {:.0f} {}'.format(mem_base + block[0], mem_base + block[0] + block[1] - 1, size, units))
-                
 def reallocMem(add, size):
     memory.reallocArea(add - mem_base, size)
     
@@ -127,7 +95,7 @@ def buildHw():
     hw = HWSystem()
 
     port_c = MemoryInterface(hw, 'port_c', mem_width, 64)     # The whole address space
-    port_m = MemoryInterface(hw, 'port_m', mem_width, 20)     # 20	bits = 
+    port_m = MemoryInterface(hw, 'port_m', mem_width, 28)     # 20	bits = 
     port_u = MemoryInterface(hw, 'port_u', mem_width, 8)      # 8 bits = 256
     port_l = MemoryInterface(hw, 'port_l', mem_width, 16)      # 8 bits = 256
     port_p = MemoryInterface(hw, 'port_p', mem_width, 24)      # 8 bits = 256
@@ -180,6 +148,7 @@ def buildHw():
     import punxa.interactive_commands
     punxa.interactive_commands._ci_hw = hw
     punxa.interactive_commands._ci_cpu = cpu
+    punxa.interactive_commands._ci_bus = bus
     
     return hw
 
