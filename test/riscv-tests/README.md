@@ -26,9 +26,9 @@ To run the RV64 test do
 
 <pre>
 rv64mi-p        100.0 %  |█████████████████████████████████████████████|
-rv64mzicbo-p    0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv64mzicbo-p    100.0 %  |█████████████████████████████████████████████|
 rv64si-p        100.0 %  |█████████████████████████████████████████████|
-rv64ssvnapot-p  0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv64ssvnapot-p  100.0 %  |█████████████████████████████████████████████|
 rv64ua-p        100.0 %  |█████████████████████████████████████████████|
 rv64ua-v        100.0 %  |█████████████████████████████████████████████|
 rv64uc-p        100.0 %  |█████████████████████████████████████████████|
@@ -72,7 +72,7 @@ Test rv64mi-p-sd-misaligned         = OK
 Test rv64mi-p-sh-misaligned         = OK
 Test rv64mi-p-sw-misaligned         = OK
 Test rv64mi-p-zicntr                = OK
-Test rv64mzicbo-p-zero              = FAILED - Test return value = 3
+Test rv64mzicbo-p-zero              = OK
 Test rv64si-p-csr                   = OK
 Test rv64si-p-dirty                 = OK
 Test rv64si-p-icache-alias          = OK
@@ -80,7 +80,7 @@ Test rv64si-p-ma_fetch              = OK
 Test rv64si-p-sbreak                = OK
 Test rv64si-p-scall                 = OK
 Test rv64si-p-wfi                   = OK
-Test rv64ssvnapot-p-napot           = FAILED - bytearray index out of range
+Test rv64ssvnapot-p-napot           = OK
 Test rv64ua-p-amoadd_d              = OK
 Test rv64ua-p-amoadd_w              = OK
 Test rv64ua-p-amoand_d              = OK
@@ -405,7 +405,7 @@ Test rv64uzfh-v-fmin                = OK
 Test rv64uzfh-v-ldst                = OK
 Test rv64uzfh-v-move                = OK
 Test rv64uzfh-v-recoding            = OK
-Total: 349 Correct: 346 (99.1 %)
+Total: 349 Correct: 348 (99.7 %)
 ```
 
 ## RV32 Single Cycle Processor Version 
