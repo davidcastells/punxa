@@ -4,6 +4,9 @@ Created on Sat Nov 26 13:12:41 2022
 
 @author: dcr
 
+Latest Privileged Extention Used: 20241101
+    https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-db98c92-2024-12-20/riscv-privileged.pdf
+    
 Latest Debug Specification Used: 1.0.0-rc4
     https://github.com/riscv/riscv-debug-spec/releases/download/1.0.0-rc4/riscv-debug-specification.pdf
     
@@ -132,6 +135,10 @@ class SingleCycleRISCV(py4hw.Logic):
         self.stopOnExceptions = False   
         self.funcs = {}
         self.tlb = {}
+        
+        # Instruction and Data Caches (indexed by address)
+        self.icache = {}
+        self.dcache = {}
         
         self.fpu = FPU(self)
         
@@ -359,6 +366,11 @@ class SingleCycleRISCV(py4hw.Logic):
         #pr('load pte: {:016X} level:{} index:{}'.format(pageTable + vpn[level]*8, level, vpn[level]))
         pte = yield from self.memoryLoad64(pteaddr, 64//8)
 
+        N = (pte >> 63) & 1
+        ppn2 = (pte >> 28) & ((1<<26)-1)
+        ppn1 = (pte >> 19) & ((1<<9)-1)
+        ppn0 = (pte >> 10) & ((1<<9)-1)
+        ppn = [ppn0, ppn1, ppn2]
         X = (pte >> 3) & 1
         W = (pte >> 2) & 1
         R = (pte >> 1) & 1
@@ -368,15 +380,24 @@ class SingleCycleRISCV(py4hw.Logic):
 
         if (valid) and (X == 0 and R == 0):
             # this is a pointer to the next level, page walk
-            ppn2 = (pte >> 28) & ((1<<26)-1)
-            ppn1 = (pte >> 19) & ((1<<9)-1)
-            ppn0 = (pte >> 10) & ((1<<9)-1)
             phy = (ppn2 << 30 | ppn1 << 21 | ppn0 << 12) 
-
             level, pte = yield from self.getPTEFromPageTables(phy, address, level-1)
             return level, pte
             
         else:
+            if (N):
+                # NAPOT, we have to substitute the lower bits 
+                assert(ppn[level] & 0x8)
+                ppnmask2 = (((1<<26)-1) >> 4) << (4 + 28)
+                ppnmask1 = (((1<<9)-1) >> 4) << (4 + 19)
+                ppnmask0 = (((1<<9)-1) >> 4) << (4 + 10)
+                ppnmask = [ppnmask0, ppnmask1, ppnmask2]
+                ppnoff2 = 28
+                ppnoff1 = 19
+                ppnoff0 = 10
+                ppnoff = [ppnoff0, ppnoff1, ppnoff2]
+                return level, (pte & ppnmask[level]) | ((vpn[level] & ((1<<4)-1)) << ppnoff[level])
+                
             return level, pte
         
     def getPhysicalAddressFromPTE(self,  address, level, pte, memory_op):
@@ -391,6 +412,7 @@ class SingleCycleRISCV(py4hw.Logic):
         off[2] = (address) & offmask[2]
         off[1] = (address) & offmask[1] 
         off[0] = (address) & offmask[0]
+        N = (pte >> 63) & 1
         ppn2 = (pte >> 28) & ((1<<26)-1)
         ppn1 = (pte >> 19) & ((1<<9)-1)
         ppn0 = (pte >> 10) & ((1<<9)-1)
@@ -625,6 +647,12 @@ class SingleCycleRISCV(py4hw.Logic):
             raise StoreAMOPageFault('Failed to load physical memory', address)
             
     def memoryLoad64(self, address, b,  memory_op=MEMORY_OP_LOAD):
+        
+        if (memory_op == MEMORY_OP_LOAD):
+            if (address in self.dcache.keys()):
+                value = self.dcache[address]
+                return value & ((1 << (8*b))-1)
+        
         #if (address < 0x80000000 or address >= 0x80400000 ):
         #    print('Invalid read access to : {:016X}'.format(address))
         #    self.parent.getSimulator().stop()
@@ -663,7 +691,7 @@ class SingleCycleRISCV(py4hw.Logic):
         yield
     
         if (self.v_mem_resp == 1):
-            raise StoreAMOPageFault('Failed to load physical memory', address)
+            raise StoreAMOPageFault('Failed to store physical memory', address)
     
     def decode(self):
         ins = self.ins
@@ -1657,6 +1685,7 @@ class SingleCycleRISCV(py4hw.Logic):
             self.freg[rd] = self.fpu.hp_box(v)
             pr('r{} = [r{} + {}] -> [{}]={:016X}'.format(rd, rs1, simm12, self.addressFmt(address), self.freg[rd]))
         elif (op == 'CBO.ZERO'):
+            self.dcache[self.reg[rs1]] = 0
             pr('r{}'.format(rs1))
         elif (op == 'CSRRW'):
             v1 = self.reg[rs1]
