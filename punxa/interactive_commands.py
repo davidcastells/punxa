@@ -99,9 +99,12 @@ def loadElf(memory, filename, offset):
             print('ELF segment. address: {:016X} - {:016X}'.format(adr, size))
             memory.reallocArea(adr - offset, 1 << int(math.ceil(math.log2(size))))
             p = adr - offset
-            for x in data:
-                memory.writeByte(p, x)
-                p += 1
+            try:
+                for x in data:
+                    memory.writeByte(p, x)
+                    p += 1
+            except:
+                print('Failed to write to address {:016X}'.format(p + offset))
 
 def loadSymbolsFromElf(cpu,  filename, offset):
     from elftools.elf.elffile import ELFFile
@@ -1034,6 +1037,7 @@ def pageTables64(root=None, vbase = 0, level=1, printPTE=True):
     for i in range(512):
         add = root+i*8
         v = memory.read_i64(add-mem_base)
+        N = (v >> 63) & 1
         ppn2 = (v >> 28) & ((1<<26)-1)
         ppn1 = (v >> 19) & ((1<<9)-1)
         ppn0 = (v >> 10) & ((1<<9)-1)
@@ -1048,6 +1052,7 @@ def pageTables64(root=None, vbase = 0, level=1, printPTE=True):
         valid = v & 1
         leaf = R or X
         
+        N = [' ','N'][N]
         D = [' ','D'][D]
         A = [' ','A'][A]
         G = [' ','G'][G]
@@ -1080,9 +1085,9 @@ def pageTables64(root=None, vbase = 0, level=1, printPTE=True):
             #                  va, phy))
             
                 if (leaf):
-                    print(f'{indent} {i:3d} va: {va:016X} pa: {pa:016X} {D}{A}{G}{U}{X}{W}{R}')
+                    print(f'{indent} {i:3d} va: {va:016X} pa: {pa:016X} {N}{D}{A}{G}{U}{X}{W}{R}')
                 else:
-                    print(f'{indent} {i:3d} --> va: {va:016X}')
+                    print(f'{indent} {i:3d} --> va: {va:016X} {N}')
                     totalTables += pageTables(phy, va, level-1, printPTE)
     
     return totalTables
@@ -1417,5 +1422,9 @@ def memoryMap():
                 if (size > 1024):
                     size = size/1024
                     units = 'GiB'
-                print('  {:016X} - {:016X} {:.0f} {}'.format(mem_base + block[0], mem_base + block[0] + block[1] - 1, size, units))
+                extra = ''
+                if ((mem_base + block[0]) < bus.start[i]) or ((mem_base + block[0] + block[1] - 1) > bus.stop[i]):
+                    extra = 'ERROR! segments out of bus range'
+                    
+                print('  {:016X} - {:016X} {:.0f} {}'.format(mem_base + block[0], mem_base + block[0] + block[1] - 1, size, units), extra)
                 #print('??', hex(block[0]), hex(block[1]))
