@@ -161,7 +161,7 @@ class SparseMemory(Logic):
             data = area[2]
             #print('mem write byte address:{} - range: [{},{}]'.format(address, offset, size) )
 
-            if (address >= offset and address <= (offset+size)):
+            if (address >= offset and address < (offset+size)):
                 data[address-offset] = value
                 return
 
