@@ -224,7 +224,7 @@ selected_prefixes_32 = ['rv32mi-p', 'rv32mzicbo-p', 'rv32si-p', 'rv32ssvnapot-p'
 selected_prefixes_virtual_32 = ['rv32ua-v', 'rv32uc-v', 'rv32ud-v', 'rv32uf-v', 'rv32ui-v', 'rv32um-v', 'rv32uzba-v', 'rv32uzbb-v',
                                 'rv32uzbc-v', 'rv32uzbs-v', 'rv32uzfh-v']
 
-selected_prefixes = selected_prefixes_32 #['rv32uzbb-p', 'rv32uzbb-v']
+selected_prefixes = selected_prefixes_32 #['rv32mi-p-breakpoint']
 
 def computeAllTests():
     files = os.listdir(ex_dir)
@@ -312,7 +312,7 @@ def runAllTests():
 
 #runAllTests()
 #test_file = 'rv64mi-p-ma_addr'
-#runTest("rv32uzbb-p-zext_h")
+#runTest("rv32uc-p-rvc")
 
 
 if __name__ == "__main__":
