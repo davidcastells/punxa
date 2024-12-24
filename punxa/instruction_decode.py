@@ -445,6 +445,7 @@ def ins_to_str(ins, isa=32):
             if (func7 == 0x10): return 'SH1ADD.UW'
         if (func3 == 0x04):
             if (func7 == 0x01): return 'DIVW'
+            if (func7 == 0x04): return 'ZEXT.H'
             if (func7 == 0x10): return 'SH2ADD.UW'
         if (func3 == 0x05):
             if (func7 == 0x00): return 'SRLW'
