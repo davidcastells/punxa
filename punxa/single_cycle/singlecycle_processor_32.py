@@ -1888,7 +1888,6 @@ class SingleCycleRISCV32(py4hw.Logic):
 
         c_rd = get_bits(ins, 7, 5)
 
-        # imm6 = compose(ins, [[12,1],[2,5]])
         if (op == 'C.LI'):
             simm6 = compose_sign(ins, [[12,1],[2,5]])
             self.reg[c_rd] = simm6 & ((1<<32)-1)
