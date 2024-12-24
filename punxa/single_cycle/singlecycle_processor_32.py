@@ -1169,19 +1169,19 @@ class SingleCycleRISCV32(py4hw.Logic):
             self.reg[rd] = self.fpu.convert_dp_to_i32(self.freg[rs1])
             pr('r{} = fr{} -> {:08X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.W.H'): #TODO
-            self.reg[rd] = self.fpu.convert_hp_to_i32(self.freg[rs1])
+            self.reg[rd] = self.fpu.convert_hp_to_i32_32b(self.freg[rs1])
             pr('r{} = fr{} -> {:08X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.WU.H'): #TODO
-            self.reg[rd] = self.fpu.convert_hp_to_u32(self.freg[rs1])
+            self.reg[rd] = self.fpu.convert_hp_to_u32_32b(self.freg[rs1])
             pr('r{} = fr{} -> {:08X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.WU.D'): #TODO
             self.reg[rd] = self.fpu.convert_dp_to_u32(self.freg[rs1])
             pr('r{} = fr{} -> {:08X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.W.S'): #TODO
-            self.reg[rd] = self.fpu.convert_sp_to_i32(self.freg[rs1])
+            self.reg[rd] = self.fpu.convert_sp_to_i32_32b(self.freg[rs1])
             pr('r{} = fr{} -> {:08X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.WU.S'): #TODO
-            self.reg[rd] = self.fpu.convert_sp_to_u32(self.freg[rs1])
+            self.reg[rd] = self.fpu.convert_sp_to_u32_32b(self.freg[rs1])
             pr('r{} = fr{} -> {:08X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.S.H'):
             self.freg[rd] = self.fpu.convert_hp_to_sp(self.freg[rs1])
