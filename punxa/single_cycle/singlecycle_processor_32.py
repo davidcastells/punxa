@@ -856,7 +856,6 @@ class SingleCycleRISCV32(py4hw.Logic):
 
         self.csr[0xc02] += 1
 
-    # OK
     def executeRIns(self):
         op = self.decoded_ins
         ins = self.ins
