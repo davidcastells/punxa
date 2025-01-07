@@ -2,7 +2,7 @@
 """
 Created on Sat May 25 15:41:27 2024
 
-@author: dcastel1
+@author: dcr
 """
 import math
 import os
@@ -85,7 +85,7 @@ def isElf(filepath):
     except Exception as e:
         return False
 
-def loadElf(memory, filename, offset):
+def loadElf(memory, filename, offset, verbose=False):
     from elftools.elf.elffile import ELFFile
 
     f = open(filename,'rb')
@@ -96,8 +96,9 @@ def loadElf(memory, filename, offset):
             adr = seg['p_paddr']
             data = seg.data()
             size = len(data)
-            print('ELF segment. address: {:016X} - {:016X}'.format(adr, size))
-            memory.reallocArea(adr - offset, 1 << int(math.ceil(math.log2(size))))
+            if (verbose):
+                print('ELF segment. address: {:016X} - {:016X}'.format(adr, size))
+            memory.reallocArea(adr - offset, 1 << int(math.ceil(math.log2(size))), verbose=verbose)
             p = adr - offset
             try:
                 for x in data:
@@ -125,7 +126,7 @@ def loadSymbolsFromElf(cpu,  filename, offset):
                     except Exception as e:
                         print('WARNING no symbol', e)
 
-def loadProgram(memory, filename, offset):
+def loadProgram(memory, filename, offset, verbose=False):
     """
     
 
@@ -155,7 +156,7 @@ def loadProgram(memory, filename, offset):
         print('Code size:   {:10d}'.format(size))
         print('Memory size: {:10d}'.format(memory.getMaxSize()))
     
-    memory.reallocArea(off, 1 << int(math.ceil(math.log2(size))))
+    memory.reallocArea(off, 1 << int(math.ceil(math.log2(size))), verbose=verbose)
     
     for x in code:
         memory.writeByte(off, x)
@@ -206,22 +207,18 @@ def step(steps = 1):
     sim = _ci_hw.getSimulator()
     sim.do_run = True
     count = 0
+    inst_to_stop = _ci_cpu.getCSR(CSR_INSTRET) + steps
     
     if (steps >= 100):
         sim = _ci_hw.getSimulator()
 
         t0 = time.time()
-        clk0 = sim.total_clks
+        clk0 = sim.total_clks        
         
         
-        
-    while (count < steps and sim.do_run == True ):
-        inipc = _ci_cpu.getPc()
-        while (_ci_cpu.getPc() == inipc and sim.do_run == True ):
-            sim.clk(1)
-            
-        count += 1
-        
+    while (_ci_cpu.getCSR(CSR_INSTRET) < inst_to_stop and sim.do_run == True ):
+        sim.clk(1)
+                    
     if (steps >= 100):
         tf = time.time()
         clkf = sim.total_clks
