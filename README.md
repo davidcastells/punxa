@@ -19,6 +19,7 @@ We also support one 32-bit model:
 ## Testing
 
 We started focussing on RV64 and Baremetal applications (compiled with risc64-unknown-elf-gcc).
+Then, we moved to RV32.
 When completed, next goal is Linux boot.
 
 ### RISC-V ISA Tests
@@ -41,7 +42,7 @@ When completed, next goal is Linux boot.
 <table>
 <tr><td>Version</td><td>Progress</td></tr>
 <tr>
- <td>Single Cycle </td><td>89.5 %   |█████████████████████████████████████████░░░░|</td>
+ <td>Single Cycle </td><td>99.6 %   |█████████████████████████████████████████████|</td>
 </tr>
 </table>
 
@@ -49,7 +50,7 @@ check [riscv-tests](https://github.com/davidcastells/punxa/blob/main/test/riscv-
 
 ### Proxy-kernel Apps
 
-- Hello World
+- [Hello World](https://github.com/davidcastells/punxa/blob/main/test/proxykernel_software/hello/README.md)
 - [Mandelbrot](https://github.com/davidcastells/punxa/blob/main/test/proxykernel_software/mandelbrot/README.md)
 - [File sort](https://github.com/davidcastells/punxa/tree/main/test/proxykernel_software/sort/README.md)
 - [Paranoia](https://github.com/davidcastells/punxa/tree/main/test/proxykernel_software/paranoia/README.md)
