@@ -2,7 +2,7 @@
 """
 Created on Mon May 27 05:49:18 2024
 
-@author: dcastel1
+@author: dcr
 """
 
 from punxa.single_cycle.singlecycle_processor import SingleCycleRISCV
@@ -24,6 +24,8 @@ SYSCALL_OPEN = 1024
 O_WRONLY = 0x001
 O_CREAT =  0x100
 
+
+
 class SingleCycleRISCVProxyKernel(SingleCycleRISCV):
     
     def __init__(self, parent, name:str, memory, 
@@ -35,6 +37,8 @@ class SingleCycleRISCVProxyKernel(SingleCycleRISCV):
         self.behavioural_memory = None
         self.console = [''] 
         self.open_files = {}
+        
+        
 
     def readMemoryStringz(self, add):
         ret = ''
