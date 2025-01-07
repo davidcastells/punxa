@@ -1169,19 +1169,19 @@ class SingleCycleRISCV32(py4hw.Logic):
             self.reg[rd] = self.fpu.convert_dp_to_i32(self.freg[rs1])
             pr('r{} = fr{} -> {:08X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.W.H'): #TODO
-            self.reg[rd] = self.fpu.convert_hp_to_i32_32b(self.freg[rs1])
+            self.reg[rd] = self.fpu.convert_hp_to_i32(self.freg[rs1])
             pr('r{} = fr{} -> {:08X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.WU.H'): #TODO
-            self.reg[rd] = self.fpu.convert_hp_to_u32_32b(self.freg[rs1])
+            self.reg[rd] = self.fpu.convert_hp_to_u32(self.freg[rs1])
             pr('r{} = fr{} -> {:08X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.WU.D'): #TODO
             self.reg[rd] = self.fpu.convert_dp_to_u32(self.freg[rs1])
             pr('r{} = fr{} -> {:08X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.W.S'): #TODO
-            self.reg[rd] = self.fpu.convert_sp_to_i32_32b(self.freg[rs1])
+            self.reg[rd] = self.fpu.convert_sp_to_i32(self.freg[rs1])
             pr('r{} = fr{} -> {:08X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.WU.S'): #TODO
-            self.reg[rd] = self.fpu.convert_sp_to_u32_32b(self.freg[rs1])
+            self.reg[rd] = self.fpu.convert_sp_to_u32(self.freg[rs1])
             pr('r{} = fr{} -> {:08X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.S.H'):
             self.freg[rd] = self.fpu.convert_hp_to_sp(self.freg[rs1])
@@ -1591,14 +1591,18 @@ class SingleCycleRISCV32(py4hw.Logic):
             self.reg[rd] = ((self.reg[rs1] >> shamt5) | (self.reg[rs1] << (32-shamt5))) & ((1<<32)-1)
             pr('r{} = r{} >> {} -> {:08X}'.format(rd, rs1, shamt5, self.reg[rd]))
         elif (op == 'SLLI'):
+            if (shamt6 & (1 << 5)):
+                # active bit 5 should raise a IllegalInstruction exception
+                raise IllegalInstruction('invalid shamt', 0)
+                
             self.reg[rd] = (self.reg[rs1] << shamt5) & ((1<<32)-1)
             pr('r{} = r{} << {} -> {:08X}'.format(rd, rs1, shamt5, self.reg[rd]))
         elif (op == 'SRLI'):
             self.reg[rd] = self.reg[rs1] >> shamt5
-            pr('r{} = r{} >> {} -> {:08X}'.format(rd, rs1, shamt6, self.reg[rd]))
+            pr('r{} = r{} >> {} -> {:08X}'.format(rd, rs1, shamt5, self.reg[rd]))
         elif (op == 'SRAI'):
             self.reg[rd] = (IntegerHelper.c2_to_signed(self.reg[rs1], 32) >> shamt5) & ((1<<32)-1)
-            pr('r{} = r{} >> {} -> {:08X}'.format(rd, rs1, shamt6, self.reg[rd]))
+            pr('r{} = r{} >> {} -> {:08X}'.format(rd, rs1, shamt5, self.reg[rd]))
         elif (op == 'WFI'):
             pr('ignored')
         elif (op == 'MRET'):
@@ -2249,15 +2253,18 @@ class SingleCycleRISCV32(py4hw.Logic):
 
         self.csr[CSR_PRIVLEVEL] = CSR_PRIVLEVEL_MACHINE # (Machine =3, Supervisor = 1, User = 0)
 
-    # OK
     def getCSR(self, idx):
         return self.csr[idx]
 
-    # OK
     def getPc(self):
         return self.pc
+    
+    def getReg(self, r):
+        return self.reg[r]
+    
+    def getFreg(self, r):
+        return self.freg[r]
 
-    # OK
     def readCSR(self, idx):
         # Returns the value of the CSR, and if the access was allowed
         # Take into consideration that some accesses raise an exception, while others just do not return the value
