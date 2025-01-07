@@ -14,7 +14,7 @@ import py4hw.debug
 
 class MultiplexedBus(Logic):
     
-    def __init__(self, parent:Logic, name:str, master, slaves):
+    def __init__(self, parent:Logic, name:str, master, slaves, verbose=False):
         super().__init__(parent, name);
 
         self.master = self.addInterfaceSink('master', master)
@@ -45,7 +45,8 @@ class MultiplexedBus(Logic):
             
             self.addInterfaceSource('slave_{}'.format(idx), port)
             
-            print('Slave {} = [{:016X}]-[{:016X}]'.format(idx, start, stop))
+            if (verbose):
+                print('Slave {} = [{:016X}]-[{:016X}]'.format(idx, start, stop))
             
     def propagate(self):
         addr = self.master.address.get()
