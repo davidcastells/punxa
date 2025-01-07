@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Jun 15 20:41:52 2024
+
+@author: dcr
+"""
+
 import math
 from py4hw.helper import *
 
