@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Jun 15 20:41:52 2024
+
+@author: dcr
+"""
 import sys
 import py4hw
 from py4hw.helper import *
@@ -1292,42 +1298,10 @@ class FPU:
 
             if (a.compare(b) != 0):
                 self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INEXACT_MASK
+                
+        return zeroExtend(r, 32)
+        #return signExtend(r, 32, 64)
 
-        return signExtend(r, 32, 64)
-
-    def convert_hp_to_i32_32b(self, v):
-        self.cpu.writeCSR(CSR_FFLAGS, 0)
-        a = FPNum(v, 'hp')
-
-        MIN_I32 = -(1 << 31)
-        MAX_I32 = (1 << 31) - 1
-
-        if (a.nan):
-            r = MAX_I32
-        elif (a.infinity):
-            if (a.s == 1):
-                r = MAX_I32
-            elif (a.s == -1):
-                r = MIN_I32
-            else:
-                raise Exception()
-        else:
-            iv = int(a.to_float())
-            b = FPNum(iv)
-
-            if (iv < MIN_I32):
-                r = MIN_I32
-                self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
-            elif (iv > MAX_I32):
-                r = MAX_I32
-                self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
-            else:
-                r = iv & ((1 << 32) - 1)
-
-            if (a.compare(b) != 0):
-                self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INEXACT_MASK
-
-        return r
 
     def convert_hp_to_u32(self, v):
         self.cpu.writeCSR(CSR_FFLAGS, 0)
@@ -1361,41 +1335,9 @@ class FPU:
             if (a.compare(b) != 0):
                 self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INEXACT_MASK
 
-        return signExtend(r, 32, 64)
-
-    def convert_hp_to_u32_32b(self, v):
-        self.cpu.writeCSR(CSR_FFLAGS, 0)
-        a = FPNum(v, 'hp')
-
-        MIN_U32 = 0
-        MAX_U32 = (1 << 32) - 1
-
-        if (a.nan):
-            r = MAX_U32
-        elif (a.infinity):
-            if (a.s == 1):
-                r = MAX_U32
-            elif (a.s == -1):
-                r = MIN_U32
-            else:
-                raise Exception()
-        else:
-            iv = int(a.to_float())
-            b = FPNum(iv)
-
-            if (iv < MIN_U32):
-                r = MIN_U32
-                self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
-            elif (iv > MAX_U32):
-                r = MAX_U32
-                self.cpu.setCSR(CSR_FFLAGS, CSR_FFLAGS_INVALID_OPERATION_MASK)
-            else:
-                r = iv & ((1 << 32) - 1)
-
-            if (a.compare(b) != 0):
-                self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INEXACT_MASK
-
         return r
+        #return signExtend(r, 32, 64)
+
 
     def convert_hp_to_i64(self, v):
         self.cpu.writeCSR(CSR_FFLAGS, 0)
@@ -1547,37 +1489,6 @@ class FPU:
             iv = int(sp)
 
         if (iv < MIN_I32):
-            ret = MIN_I32 & ((1 << 64) - 1)
-            self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INVALID_OPERATION_MASK
-        elif (iv > MAX_I32):
-            ret = MAX_I32
-            self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INVALID_OPERATION_MASK
-        else:
-            ret = iv & ((1 << 64) - 1)
-
-            if (iv != sp):
-                self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INEXACT_MASK
-        return ret
-
-    def convert_sp_to_i32_32b(self, v):
-        fp = FloatingPointHelper()
-        MIN_I32 = -(1 << 31)
-        MAX_I32 = (1 << 31) - 1
-
-        self.cpu.csr[CSR_FFLAGS] = 0
-        sp = fp.ieee754_to_sp(v)
-
-        if (math.isnan(sp)):
-            iv = MAX_I32
-        elif (math.isinf(sp)):
-            if (sp < 0):
-                iv = MIN_I32
-            else:
-                iv = MAX_I32
-        else:
-            iv = int(sp)
-
-        if (iv < MIN_I32):
             ret = MIN_I32 & ((1 << 32) - 1)
             # ret = MIN_I32 & ((1<<32)-1)
             self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INVALID_OPERATION_MASK
@@ -1592,38 +1503,6 @@ class FPU:
         return ret
 
     def convert_sp_to_u32(self, v):
-        fp = FloatingPointHelper()
-        MIN_U32 = 0
-        MAX_U32 = (1 << 32) - 1
-
-        self.cpu.csr[CSR_FFLAGS] = 0
-        sp = fp.ieee754_to_sp(v)
-        if (math.isnan(sp)):
-            iv = MAX_U32
-        elif (math.isinf(sp)):
-            if (sp < 0):
-                iv = MIN_U32
-            else:
-                iv = MAX_U32
-        else:
-            iv = int(sp)
-
-        if (iv < MIN_U32):
-            ret = MIN_U32
-            self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INVALID_OPERATION_MASK
-        elif (iv > MAX_U32):
-            ret = MAX_U32
-            self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INVALID_OPERATION_MASK
-        else:
-            ret = iv & ((1 << 64) - 1)
-
-            ret = signExtend(ret, 32, 64)
-
-            if (iv != sp):
-                self.cpu.csr[CSR_FFLAGS] = CSR_FFLAGS_INEXACT_MASK
-        return ret
-
-    def convert_sp_to_u32_32b(self, v):
         fp = FloatingPointHelper()
         MIN_U32 = 0
         MAX_U32 = (1 << 32) - 1
