@@ -55,11 +55,6 @@ from elftools.elf.elffile import ELFFile
 def write_trace(filename=ex_dir + 'newtrace.json'):
     cpu.tracer.write_json(filename)
 
-
-                  
-
-def reallocMem(add, size):
-    memory.reallocArea(add - mem_base, size)
     
 def findFunction(name):
     for a in cpu.funcs.keys():
@@ -104,7 +99,7 @@ def buildHw():
 
     memory = SparseMemory(hw, 'main_memory', mem_width, 32, port_m, mem_base=mem_base)
 
-    memory.reallocArea(0, 1 << 20)
+    memory.reallocArea(0, 1 << 20, verbose=False)
 
     #test = ISATestCommunication(hw, 'test', mem_width, 8, port_t)
 
@@ -232,7 +227,8 @@ def computeAllTests():
                 print('FAILED')
                 ret[f] = ('FAILED', e)
         else:
-            print(f'{f} not ELF')
+            #print(f'{f} not ELF')
+            pass
 
     return ret
 
@@ -284,9 +280,6 @@ def runAllTests():
         nTotalGroup = groupResults[prefix][1]
         print(f'{prefix:15}', asciiProgressBar(nOKGroup, nTotalGroup))
         
-test_file = 'rv64ua-v-lrsc'
-runTest(test_file)
-
 
 if __name__ == "__main__":
     print(sys.argv)
