@@ -194,7 +194,16 @@ def buildHw():
     
     return hw
 
-
+def addWaveform():
+    global wvf
+    global cpu
+    watch = py4hw.debug.getPorts(cpu)
+    CU = cpu.children['CU']
+    watch.append(FieldInspector(CU, 'decoded_ins'))
+    watch.append(FieldInspector(CU, 'microins'))
+    watch.append(FieldInspector(CU, 'state'))
+    wvf = py4hw.Waveform(hw, 'wvf', watch)
+    
 def prepareTest(test_file):
     global hw
     hw = buildHw()
