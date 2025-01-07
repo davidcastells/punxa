@@ -4,6 +4,9 @@ Created on Sat Nov 26 13:12:41 2022
 
 @author: dcr
 
+Latest Unprivileged:
+    https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-db98c92-2024-12-20/riscv-unprivileged.pdf
+    
 Latest Privileged Extention Used: 20241101
     https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-db98c92-2024-12-20/riscv-privileged.pdf
     
@@ -1229,19 +1232,23 @@ class SingleCycleRISCV(py4hw.Logic):
             self.reg[rd] = self.fpu.convert_dp_to_i32(self.freg[rs1])
             pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.W.H'):
-            self.reg[rd] = self.fpu.convert_hp_to_i32(self.freg[rs1])
+            v = self.fpu.convert_hp_to_i32(self.freg[rs1])
+            self.reg[rd] = signExtend(v, 32, 64)
             pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.WU.H'):
-            self.reg[rd] = self.fpu.convert_hp_to_u32(self.freg[rs1])
+            v = self.fpu.convert_hp_to_u32(self.freg[rs1])
+            self.reg[rd] = signExtend(v, 32, 64)
             pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.WU.D'):
             self.reg[rd] = self.fpu.convert_dp_to_u32(self.freg[rs1])
             pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.W.S'):
-            self.reg[rd] = self.fpu.convert_sp_to_i32(self.freg[rs1])
+            v = self.fpu.convert_sp_to_i32(self.freg[rs1])
+            self.reg[rd] = signExtend(v, 32, 64)
             pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.WU.S'):
-            self.reg[rd] = self.fpu.convert_sp_to_u32(self.freg[rs1])
+            v = self.fpu.convert_sp_to_u32(self.freg[rs1])
+            self.reg[rd] = signExtend(v, 32, 64)
             pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.S.H'):
             self.freg[rd] = self.fpu.convert_hp_to_sp(self.freg[rs1])
