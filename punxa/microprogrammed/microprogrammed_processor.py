@@ -20,16 +20,18 @@ from ..tracing import *
 from ..processor_exceptions import *
 from ..temp_helper import *
 
-REG_AUX_ABS_A = 19
-REG_AUX_ABS_B = 20
-REG_AUX_SIGN_A = 21
-REG_AUX_SIGN_B = 22
-REG_AUX_SIGN_R = 23
-REG_AUX_EXP_A = 24
-REG_AUX_EXP_B = 25
-REG_AUX_EXP_R = 26
-REG_AUX_M_A = 27
-REG_AUX_M_B = 28
+REG_AUX_ABS_A = 17
+REG_AUX_ABS_B = 18
+REG_AUX_SIGN_A = 19
+REG_AUX_SIGN_B = 20
+REG_AUX_SIGN_R = 21
+REG_AUX_EXP_A = 22
+REG_AUX_EXP_B = 23
+REG_AUX_EXP_R = 24
+REG_AUX_M_A = 25
+REG_AUX_M_B = 26
+REG_AUX_M_C = 27
+REG_AUX_M_D = 28
 REG_AUX_M_R = 29
 REG_AUX_RESERVED_ADDRESS_LOW = 30
 REG_AUX_RESERVED_ADDRESS_HIGH = 31
@@ -79,6 +81,7 @@ class ControlUnit(py4hw.Logic):
             
 
         self.state = 'init'
+        self.microins = ''
         self.decoded_ins = ''
         
         self.verbose = False
@@ -106,6 +109,10 @@ class ControlUnit(py4hw.Logic):
         self.vcontrol['ena_IR'] = 0
         yield
         
+        if (self.vstatus['mem_resp']):
+            address = self.parent.getPc()
+            raise InstructionAccessFault('Failed to load physical memory', address)
+            
         ins = self.vstatus['IR']
         self.decoded_ins = ins_to_str(ins, 64)
         
@@ -120,6 +127,8 @@ class ControlUnit(py4hw.Logic):
             ins = (ins & 0xFFFFFFFF)
             self.ins = ins
             pr('{:08X}: {:08X}     {} '.format(self.parent.getPc() , ins, self.decoded_ins), end='' )
+
+        return 0
         
     def nextPC(self):
         # PC = PC + 4
@@ -160,7 +169,7 @@ class ControlUnit(py4hw.Logic):
         
     def loadRegFromImm(self, intReg, imm, auxReg):
         # @todo make sure imm is a  constant
-        self.state = f'{intReg} = 0x{imm:X}'
+        self.microins = f'{intReg} = 0x{imm:X}'
         yield
           
         if (imm >= (1 << 48)):
@@ -235,7 +244,7 @@ class ControlUnit(py4hw.Logic):
         yield
         
     def loadRegFromAux(self, intReg, aux):
-        self.state = f'{intReg} = AUX{aux}'
+        self.microins = f'{intReg} = AUX{aux}'
         self.vcontrol['control_imm'] = self.parent.register_aux_offset + aux * 8 
         yield from self.aluOp('sum', 'reg_base', 'control_imm', 'MAR')
         yield from self.loadReg(intReg)
@@ -246,7 +255,7 @@ class ControlUnit(py4hw.Logic):
             pr(f'[CU] loadRegFromAux {intReg} = AUX{aux} -> {vr}')
         
     def loadRegFromCsr(self, intReg, csr):
-        self.state = f'{intReg} = CSR[0x{csr:X}]'
+        self.microins = f'{intReg} = CSR[0x{csr:X}]'
         self.vcontrol['control_imm'] = self.parent.register_csr_offset + csr * 8 
         
         yield from self.aluOp('sum', 'reg_base', 'control_imm', 'MAR')
@@ -260,7 +269,7 @@ class ControlUnit(py4hw.Logic):
     def loadRegFromMemImm(self, intReg, nreg):
         # loads an integer register into an internal register
         # the index of the integer register is taken from an immediate value
-        self.state = f'{intReg} = r{nreg}'   
+        self.microins = f'{intReg} = r{nreg}'   
         self.vcontrol['control_imm'] = nreg * 8
         yield from self.aluOp('sum', 'reg_base', 'control_imm', 'MAR')
         yield from self.loadReg(intReg)
@@ -458,6 +467,11 @@ class ControlUnit(py4hw.Logic):
         yield from self.saveRegToAux(auxReg, manMem)
         
     def fpuUnpackDP(self, intReg, auxReg, signMem, expMem, manMem):
+        # Unpacks a Dual Precision Floating Point number into sign, exponent and mantisa
+        # The values are raw values (exponent is biased and mantisa is the fractional 
+        # part for normal numbers )
+        # To adjust the values call fpuFixMantisaDP, fpuFixExponentDP in this order 
+
         self.vcontrol['control_imm'] = 64-1
         yield from self.aluOp('shift_right', intReg, 'control_imm', auxReg)
         print(auxReg, ' sign =', hex(self.parent._wires[auxReg].get()))
@@ -469,17 +483,30 @@ class ControlUnit(py4hw.Logic):
         print(auxReg, ' exp =', hex(self.parent._wires[auxReg].get()))
         yield from self.saveRegToAux(auxReg, expMem)
 
-        
+        yield from self.zeroExtend(intReg, IEEE754_DP_PRECISION, 64)
+        print(intReg, ' mantisa =', hex(self.parent._wires[intReg].get()))
+        yield from self.saveRegToAux(intReg, manMem)
+
+    def fpuFixMantisaDP(self, intReg, auxReg, expMem, manMem):
+        # Adds the leading 1 to the mantisa for normal numbers
         self.vcontrol['control_imm'] = 1        
         yield from self.aluOp('bypass2', None, 'control_imm', auxReg)
         self.vcontrol['control_imm'] = IEEE754_DP_PRECISION        
         yield from self.aluOp('shift_left', auxReg, 'control_imm', auxReg)
         self.vcontrol['control_imm'] = 0
 
-        yield from self.zeroExtend(intReg, IEEE754_DP_PRECISION, 64)
+        yield from self.loadRegFromAux(intReg, manMem)
         yield from self.aluOp('or', intReg, auxReg, auxReg)
-        print(auxReg, ' mantisa =', hex(self.parent._wires[auxReg].get()))
+        print(intReg, ' fixed mantisa =', hex(self.parent._wires[auxReg].get()))
         yield from self.saveRegToAux(auxReg, manMem)
+
+    def fpuFixExponentDP(self, intReg, auxReg, expMem):
+        # subtract the bias from the exponent
+        yield from self.loadRegFromAux(intReg, expMem)
+        self.vcontrol['control_imm'] = IEEE754_DP_EXPONENT_BIAS
+        yield from self.aluOp('sub', intReg, 'control_imm', auxReg)
+        yield from self.saveRegToAux(auxReg, expMem)
+        print(intReg, ' fixed exp =', hex(self.parent._wires[auxReg].get()))
 
     def fpuDebugDP(self, intReg,  signMem, expMem, manMem):
         yield from self.loadRegFromAux(intReg, signMem)
@@ -628,12 +655,13 @@ class ControlUnit(py4hw.Logic):
         yield from self.aluOp('bypass2', None, 'control_imm', intReg)
         
     def fpuAdjustExp(self, intReg, lowReg, highReg, expMem, manMem):
+        # Adjust exponent to make mantissa go into the expected range
         self.vcontrol['control_imm'] = 1        
         yield from self.aluOp('bypass2', None, 'control_imm', lowReg)
         self.vcontrol['control_imm'] = IEEE754_DP_PRECISION        
-        yield from self.aluOp('shift_left', lowReg, 'control_imm', lowReg)
+        yield from self.aluOp('shift_left', lowReg, 'control_imm', lowReg) # 1 <<  dp prec
         self.vcontrol['control_imm'] = 1
-        yield from self.aluOp('shift_left', lowReg, 'control_imm', highReg)
+        yield from self.aluOp('shift_left', lowReg, 'control_imm', highReg) # 1 < (dp prec + 1)
         self.vcontrol['control_imm'] = 0
 
         doRun = True
@@ -681,7 +709,381 @@ class ControlUnit(py4hw.Logic):
                     print(intReg, ' exp =', hex(self.parent._wires[intReg].get()))
                 else:
                     doRun = False
+
+    def fpu_dp_to_i64(self, intReg, lowReg, highReg, signMem, expMem, manMem):
+        # Adjust mantisa to make exponent go into the desired range (for integer conversion)
+        # Exponent should go to zero
+
+        # save original mantisa to C
+        yield from self.loadRegFromAux(intReg, manMem)
+        yield from self.saveRegToAux(intReg, REG_AUX_M_C)
+
+        # #todo (remove) Not necessary to do a loop, we 
+        # can precompute the whole shift and addition by
+        # using exp 
+        #doRun = True
+        #while (doRun):
+
+        yield from self.loadRegFromAux(intReg, expMem)
+        self.vcontrol['control_imm'] = 0
+        yield from self.aluOp('cmp', intReg, 'control_imm', None)
+        
+        if (self.vstatus['iseq']):
+            # exponent is zero, we have to shift right by 
+            # precision to destination register
+            yield from self.loadRegFromAux(intReg, manMem)
+            self.vcontrol['control_imm'] = IEEE754_DP_PRECISION        
+            yield from self.aluOp('shift_right', intReg, 'control_imm', intReg) # 1 <<  dp prec
+            self.vcontrol['control_imm'] = IEEE754_DP_PRECISION        
+            yield from self.aluOp('shift_left', intReg, 'control_imm', lowReg) # 1 <<  dp prec
+            yield from self.saveRegToAux(lowReg, REG_AUX_M_D)
+            
+        elif (self.vstatus['islt']):
+            # exponent is too small, increase exponent to be zero 
+            # and divide the mantisa by 2^exp (so, shift right by the exponent)
+            # then an additional precision, so at the end will be exp+DP prec
+            self.vcontrol['control_imm'] = 0 
+            yield from self.aluOp('sub', 'control_imm', intReg, lowReg)
+            self.vcontrol['control_imm'] = IEEE754_DP_PRECISION        
+            yield from self.aluOp('sum', lowReg, 'control_imm', lowReg)
+            yield from self.loadRegFromAux(intReg, manMem)
+            yield from self.aluOp('shift_right', intReg, lowReg, intReg)
+            yield from self.saveRegToAux(intReg, manMem)
+            print('reducing mantisa')
+            print(intReg, ' mantisa ={0:16X}'.format(self.parent._wires[intReg].get()))
+
+            self.vcontrol['control_imm'] = IEEE754_DP_PRECISION        
+            yield from self.aluOp('shift_left', intReg, 'control_imm', lowReg) # 1 <<  dp prec
+            yield from self.saveRegToAux(lowReg, REG_AUX_M_D)
+    
+        elif (self.vstatus['isgt']):
+            # exponent is too big, decrease exponent to be zero and multiply 
+            # mantisa by 2^exp and then divide by precision
+            # so, the final shift right will be DP prec - exp
+            self.vcontrol['control_imm'] = IEEE754_DP_PRECISION
+            yield from self.aluOp('cmp', intReg, 'control_imm', None)
+            
+            if (self.vstatus['isgt']):
+                self.vcontrol['control_imm'] = IEEE754_DP_PRECISION        
+                yield from self.aluOp('sub', intReg, 'control_imm', lowReg)
+                yield from self.loadRegFromAux(intReg, manMem)
+                yield from self.aluOp('shift_left', intReg, lowReg, intReg)
+                yield from self.saveRegToAux(intReg, manMem)
+                print('increasing mantisa')
+                print(intReg, ' mantisa = {:016X}'.format(self.parent._wires[intReg].get()))
+    
+                yield from self.aluOp('shift_right', intReg, lowReg, lowReg) # 1 <<  dp prec
+                yield from self.saveRegToAux(lowReg, REG_AUX_M_D)
+            else:
+                self.vcontrol['control_imm'] = IEEE754_DP_PRECISION        
+                yield from self.aluOp('sub', 'control_imm', intReg, lowReg)
+                yield from self.loadRegFromAux(intReg, manMem)
+                yield from self.aluOp('shift_right', intReg, lowReg, intReg)
+                yield from self.saveRegToAux(intReg, manMem)
+                print('increasing mantisa')
+                print(intReg, ' mantisa = {:016X}'.format(self.parent._wires[intReg].get()))
+    
+                yield from self.aluOp('shift_left', intReg, lowReg, lowReg) # 1 <<  dp prec
+                yield from self.saveRegToAux(lowReg, REG_AUX_M_D)
+        else:
+            raise Exception('not valid')
+            
+        
+        # and apply the sign
+        yield from self.loadRegFromAux(lowReg, signMem)
+        self.vcontrol['control_imm'] = 1
+        yield from self.aluOp('cmp', lowReg, 'control_imm', None)
+
+        if (self.vstatus['iseq']):
+            self.vcontrol['control_imm'] = 0
+            yield from self.aluOp('sub', 'control_imm', intReg, intReg)
+
+        # Compare valid ranges
+        yield from self.loadRegFromAux(lowReg, expMem)
+        self.vcontrol['control_imm'] = 63
+        yield from self.aluOp('cmp', lowReg, 'control_imm', None)
+
+        MIN_I64 = -(1 << 63) & ((1 << 64) -1 )
+        MAX_I64 = (1 << 63) - 1
+
+        #yield from self.loadRegFromImm(lowReg, MIN_I64, highReg)
+        #yield from self.aluOp('cmp', intReg, lowReg, None)
+
+        if (self.vstatus['isgt'] or self.vstatus['iseq']):
+            yield from self.loadRegFromAux(lowReg, signMem)
+            self.vcontrol['control_imm'] = 1
+            yield from self.aluOp('cmp', lowReg, 'control_imm', None)
+    
+            if (self.vstatus['iseq']):
+                yield from self.loadRegFromImm(intReg, MIN_I64, highReg)
+                #yield from self.signExtend(intReg, 32, 64)
                 
+                self.vcontrol['control_imm'] = CSR_FFLAGS_INVALID_OPERATION_MASK
+                yield from self.aluOp('bypass2', None, 'control_imm', lowReg)
+                yield from self.saveRegToCsr(lowReg, CSR_FFLAGS)
+                return
+            else:
+                yield from self.loadRegFromImm(intReg, MAX_I64, highReg)
+                #yield from self.signExtend(intReg, 32, 64)
+                
+                self.vcontrol['control_imm'] = CSR_FFLAGS_INVALID_OPERATION_MASK
+                yield from self.aluOp('bypass2', None, 'control_imm', lowReg)
+                yield from self.saveRegToCsr(lowReg, CSR_FFLAGS)
+                return
+
+
+        # Compare C and D mantisas for inexact flag
+        yield from self.loadRegFromAux(lowReg, REG_AUX_M_C)
+        yield from self.loadRegFromAux(highReg, REG_AUX_M_D)
+        
+        print(intReg, ' C mantisa =', hex(self.parent._wires[lowReg].get()))
+        print(intReg, ' D mantisa =', hex(self.parent._wires[highReg].get()))
+
+        yield from self.aluOp('cmp', lowReg, highReg, None)
+
+        if not(self.vstatus['iseq']):
+            self.vcontrol['control_imm'] = CSR_FFLAGS_INEXACT_MASK
+            yield from self.aluOp('bypass2', None, 'control_imm', lowReg)
+            yield from self.saveRegToCsr(lowReg, CSR_FFLAGS)
+                
+    def fpu_dp_to_i32(self, intReg, lowReg, highReg, signMem, expMem, manMem):
+        # Adjust mantisa to make exponent go into the desired range (for integer conversion)
+        # Exponent should go to zero
+
+        # save original mantisa to C
+        yield from self.loadRegFromAux(intReg, manMem)
+        yield from self.saveRegToAux(intReg, REG_AUX_M_C)
+
+        # #todo (remove) Not necessary to do a loop, we 
+        # can precompute the whole shift and addition by
+        # using exp 
+        #doRun = True
+        #while (doRun):
+
+        yield from self.loadRegFromAux(intReg, expMem)
+        self.vcontrol['control_imm'] = 0
+        yield from self.aluOp('cmp', intReg, 'control_imm', None)
+        
+        if (self.vstatus['iseq']):
+            # exponent is zero, we have to shift right by 
+            # precision to destination register
+            yield from self.loadRegFromAux(intReg, manMem)
+            self.vcontrol['control_imm'] = IEEE754_DP_PRECISION        
+            yield from self.aluOp('shift_right', intReg, 'control_imm', intReg) # 1 <<  dp prec
+            self.vcontrol['control_imm'] = IEEE754_DP_PRECISION        
+            yield from self.aluOp('shift_left', intReg, 'control_imm', lowReg) # 1 <<  dp prec
+            yield from self.saveRegToAux(lowReg, REG_AUX_M_D)
+            
+        elif (self.vstatus['islt']):
+            # exponent is too small, increase exponent to be zero 
+            # and divide the mantisa by 2^exp (so, shift right by the exponent)
+            # then an additional precision, so at the end will be exp+DP prec
+            self.vcontrol['control_imm'] = 0 
+            yield from self.aluOp('sub', 'control_imm', intReg, lowReg)
+            self.vcontrol['control_imm'] = IEEE754_DP_PRECISION        
+            yield from self.aluOp('sum', lowReg, 'control_imm', lowReg)
+            yield from self.loadRegFromAux(intReg, manMem)
+            yield from self.aluOp('shift_right', intReg, lowReg, intReg)
+            yield from self.saveRegToAux(intReg, manMem)
+            print('reducing mantisa')
+            print(intReg, ' mantisa ={0:16X}'.format(self.parent._wires[intReg].get()))
+
+            self.vcontrol['control_imm'] = IEEE754_DP_PRECISION        
+            yield from self.aluOp('shift_left', intReg, 'control_imm', lowReg) # 1 <<  dp prec
+            yield from self.saveRegToAux(lowReg, REG_AUX_M_D)
+    
+        elif (self.vstatus['isgt']):
+            # exponent is too big, decrease exponent to be zero and multiply 
+            # mantisa by 2^exp and then divide by precision
+            # so, the final shift right will be DP prec - exp
+            self.vcontrol['control_imm'] = IEEE754_DP_PRECISION        
+            yield from self.aluOp('sub', 'control_imm', intReg, lowReg)
+            yield from self.loadRegFromAux(intReg, manMem)
+            yield from self.aluOp('shift_right', intReg, lowReg, intReg)
+            yield from self.saveRegToAux(intReg, manMem)
+            print('increasing mantisa')
+            print(intReg, ' mantisa = {:016X}'.format(self.parent._wires[intReg].get()))
+
+            self.vcontrol['control_imm'] = IEEE754_DP_PRECISION        
+            yield from self.aluOp('shift_left', intReg, 'control_imm', lowReg) # 1 <<  dp prec
+            yield from self.saveRegToAux(lowReg, REG_AUX_M_D)
+        else:
+            raise Exception('not valid')
+            
+        
+        # and apply the sign
+        yield from self.loadRegFromAux(lowReg, signMem)
+        self.vcontrol['control_imm'] = 1
+        yield from self.aluOp('cmp', lowReg, 'control_imm', None)
+
+        if (self.vstatus['iseq']):
+            self.vcontrol['control_imm'] = 0
+            yield from self.aluOp('sub', 'control_imm', intReg, intReg)
+
+        # Compare valid ranges
+        MIN_I32 = -(1 << 31) & ((1 << 64) -1 )
+        MAX_I32 = (1 << 31) - 1
+
+        yield from self.loadRegFromImm(lowReg, MIN_I32, highReg)
+        yield from self.aluOp('cmp', intReg, lowReg, None)
+
+        if (self.vstatus['islt']):
+            yield from self.loadRegFromImm(intReg, MIN_I32, highReg)
+            yield from self.signExtend(intReg, 32, 64)
+            
+            self.vcontrol['control_imm'] = CSR_FFLAGS_INVALID_OPERATION_MASK
+            yield from self.aluOp('bypass2', None, 'control_imm', lowReg)
+            yield from self.saveRegToCsr(lowReg, CSR_FFLAGS)
+            return
+
+        yield from self.loadRegFromImm(lowReg, MAX_I32, highReg)
+        yield from self.aluOp('cmp', intReg, lowReg, None)
+
+        if (self.vstatus['isgt']):
+            yield from self.loadRegFromImm(intReg, MAX_I32, highReg)
+            #yield from self.signExtend(intReg, 32, 64)
+            
+            self.vcontrol['control_imm'] = CSR_FFLAGS_INVALID_OPERATION_MASK
+            yield from self.aluOp('bypass2', None, 'control_imm', lowReg)
+            yield from self.saveRegToCsr(lowReg, CSR_FFLAGS)
+            return
+
+
+        # Compare C and D mantisas for inexact flag
+        yield from self.loadRegFromAux(lowReg, REG_AUX_M_C)
+        yield from self.loadRegFromAux(highReg, REG_AUX_M_D)
+        
+        print(intReg, ' C mantisa =', hex(self.parent._wires[lowReg].get()))
+        print(intReg, ' D mantisa =', hex(self.parent._wires[highReg].get()))
+
+        yield from self.aluOp('cmp', lowReg, highReg, None)
+
+        if not(self.vstatus['iseq']):
+            self.vcontrol['control_imm'] = CSR_FFLAGS_INEXACT_MASK
+            yield from self.aluOp('bypass2', None, 'control_imm', lowReg)
+            yield from self.saveRegToCsr(lowReg, CSR_FFLAGS)
+
+    def fpu_dp_to_u32(self, intReg, lowReg, highReg, signMem, expMem, manMem):
+        # Adjust mantisa to make exponent go into the desired range (for integer conversion)
+        # Exponent should go to zero
+
+        # save original mantisa to C
+        yield from self.loadRegFromAux(intReg, manMem)
+        yield from self.saveRegToAux(intReg, REG_AUX_M_C)
+
+        # #todo (remove) Not necessary to do a loop, we 
+        # can precompute the whole shift and addition by
+        # using exp 
+        #doRun = True
+        #while (doRun):
+
+        yield from self.loadRegFromAux(intReg, expMem)
+        self.vcontrol['control_imm'] = 0
+        yield from self.aluOp('cmp', intReg, 'control_imm', None)
+        
+        if (self.vstatus['iseq']):
+            # exponent is zero, we have to shift right by 
+            # precision to destination register
+            yield from self.loadRegFromAux(intReg, manMem)
+            self.vcontrol['control_imm'] = IEEE754_DP_PRECISION        
+            yield from self.aluOp('shift_right', intReg, 'control_imm', intReg) # 1 <<  dp prec
+            self.vcontrol['control_imm'] = IEEE754_DP_PRECISION        
+            yield from self.aluOp('shift_left', intReg, 'control_imm', lowReg) # 1 <<  dp prec
+            yield from self.saveRegToAux(lowReg, REG_AUX_M_D)
+            
+        elif (self.vstatus['islt']):
+            # exponent is too small, increase exponent to be zero 
+            # and divide the mantisa by 2^exp (so, shift right by the exponent)
+            # then an additional precision, so at the end will be exp+DP prec
+            self.vcontrol['control_imm'] = 0 
+            yield from self.aluOp('sub', 'control_imm', intReg, lowReg)
+            self.vcontrol['control_imm'] = IEEE754_DP_PRECISION        
+            yield from self.aluOp('sum', lowReg, 'control_imm', lowReg)
+            yield from self.loadRegFromAux(intReg, manMem)
+            yield from self.aluOp('shift_right', intReg, lowReg, intReg)
+            yield from self.saveRegToAux(intReg, manMem)
+            print('reducing mantisa')
+            print(intReg, ' mantisa ={0:16X}'.format(self.parent._wires[intReg].get()))
+
+            self.vcontrol['control_imm'] = IEEE754_DP_PRECISION        
+            yield from self.aluOp('shift_left', intReg, 'control_imm', lowReg) # 1 <<  dp prec
+            yield from self.saveRegToAux(lowReg, REG_AUX_M_D)
+    
+        elif (self.vstatus['isgt']):
+            # exponent is too big, decrease exponent to be zero and multiply 
+            # mantisa by 2^exp and then divide by precision
+            # so, the final shift right will be DP prec - exp
+            self.vcontrol['control_imm'] = IEEE754_DP_PRECISION        
+            yield from self.aluOp('sub', 'control_imm', intReg, lowReg)
+            yield from self.loadRegFromAux(intReg, manMem)
+            yield from self.aluOp('shift_right', intReg, lowReg, intReg)
+            yield from self.saveRegToAux(intReg, manMem)
+            print('increasing mantisa')
+            print(intReg, ' mantisa = {:016X}'.format(self.parent._wires[intReg].get()))
+
+            #self.vcontrol['control_imm'] = IEEE754_DP_PRECISION        
+            yield from self.aluOp('shift_left', intReg, lowReg, lowReg) # 1 <<  dp prec
+            yield from self.saveRegToAux(lowReg, REG_AUX_M_D)
+        else:
+            raise Exception('not valid')
+            
+        
+        # and apply the sign
+        yield from self.loadRegFromAux(lowReg, signMem)
+        self.vcontrol['control_imm'] = 1
+        yield from self.aluOp('cmp', lowReg, 'control_imm', None)
+
+        if (self.vstatus['iseq']):
+            self.vcontrol['control_imm'] = 0
+            yield from self.aluOp('sub', 'control_imm', intReg, intReg)
+
+        # Compare valid ranges
+        MIN_U32 = 0
+        MAX_U32 = (1 << 32) - 1
+
+        yield from self.loadRegFromImm(lowReg, MIN_U32, highReg)
+        yield from self.aluOp('cmp', intReg, lowReg, None)
+
+        if (self.vstatus['islt']):
+            yield from self.loadRegFromImm(intReg, MIN_U32, highReg)
+            yield from self.signExtend(intReg, 32, 64)
+            
+            self.vcontrol['control_imm'] = CSR_FFLAGS_INVALID_OPERATION_MASK
+            yield from self.aluOp('bypass2', None, 'control_imm', lowReg)
+            yield from self.saveRegToCsr(lowReg, CSR_FFLAGS)
+            return
+
+        yield from self.loadRegFromImm(lowReg, MAX_U32, highReg)
+        yield from self.aluOp('cmp', intReg, lowReg, None)
+
+        if (self.vstatus['isgt']):
+            yield from self.loadRegFromImm(intReg, MAX_U32, highReg)
+            #yield from self.signExtend(intReg, 32, 64)
+            
+            self.vcontrol['control_imm'] = CSR_FFLAGS_INVALID_OPERATION_MASK
+            yield from self.aluOp('bypass2', None, 'control_imm', lowReg)
+            yield from self.saveRegToCsr(lowReg, CSR_FFLAGS)
+            return
+
+        # if it's in the valid range sign extend
+        yield from self.signExtend(intReg, 32, 64)
+        print(intReg, ' sign extend = {:016X}'.format(self.parent._wires[intReg].get()))
+
+        # Compare C and D mantisas for inexact flag
+        yield from self.loadRegFromAux(lowReg, REG_AUX_M_C)
+        yield from self.loadRegFromAux(highReg, REG_AUX_M_D)
+        
+        print(intReg, ' C mantisa =', hex(self.parent._wires[lowReg].get()))
+        print(intReg, ' D mantisa =', hex(self.parent._wires[highReg].get()))
+
+        yield from self.aluOp('cmp', lowReg, highReg, None)
+
+        if not(self.vstatus['iseq']):
+            self.vcontrol['control_imm'] = CSR_FFLAGS_INEXACT_MASK
+            yield from self.aluOp('bypass2', None, 'control_imm', lowReg)
+            yield from self.saveRegToCsr(lowReg, CSR_FFLAGS)
+            
+
     def executeCLIns(self):
         op = self.decoded_ins
         ins = self.ins
@@ -2066,17 +2468,17 @@ class ControlUnit(py4hw.Logic):
             
             yield from self.loadRegFromMem('A', 'fr1')
             yield from self.fpuUnpackDP('A', 'R', REG_AUX_SIGN_A, REG_AUX_EXP_A, REG_AUX_M_A)
-            
+            yield from self.fpuFixMantisaDP('A', 'R', REG_AUX_EXP_A, REG_AUX_M_A)
             # B = fr2
             yield from self.loadRegFromMem('B', 'fr2')
             yield from self.fpuUnpackDP('B', 'R', REG_AUX_SIGN_B, REG_AUX_EXP_B, REG_AUX_M_B)
+            yield from self.fpuFixMantisaDP('B', 'R', REG_AUX_EXP_B, REG_AUX_M_B)
             
             yield from self.loadRegFromAux('A', REG_AUX_EXP_A)
             yield from self.loadRegFromAux('B', REG_AUX_EXP_B)
             
             yield from self.aluOp('cmp', 'A', 'B', None)
-            
-            
+                        
             if (self.vstatus['isgt']):
                 #  A > B
                 # R = A - B (diff)
@@ -2210,10 +2612,11 @@ class ControlUnit(py4hw.Logic):
             # @todo complete
             yield from self.loadRegFromMem('A', 'fr1')
             yield from self.fpuUnpackDP('A', 'R', REG_AUX_SIGN_A, REG_AUX_EXP_A, REG_AUX_M_A)
+            yield from self.fpuFixMantisaDP('A', 'R', REG_AUX_EXP_A, REG_AUX_M_A)
 
             yield from self.loadRegFromMem('B', 'fr2')
             yield from self.fpuUnpackDP('B', 'R', REG_AUX_SIGN_B, REG_AUX_EXP_B, REG_AUX_M_B)
-            
+            yield from self.fpuFixMantisaDP('B', 'R', REG_AUX_EXP_B, REG_AUX_M_B)            
             yield from self.fpuDPEq('R')
             
             vrd = self.parent._wires['R'].get()
@@ -2339,8 +2742,20 @@ class ControlUnit(py4hw.Logic):
             self.reg[rd] = self.fpu.convert_sp_to_i64(self.freg[rs1])
             pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.L.D'):
-            self.reg[rd] = self.fpu.convert_dp_to_i64(self.freg[rs1])
-            pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
+            # convert dp to i64
+            yield from self.loadRegFromMem('A', 'fr1')
+            yield from self.fpuUnpackDP('A', 'R', REG_AUX_SIGN_A, REG_AUX_EXP_A, REG_AUX_M_A)
+            yield from self.fpuFixMantisaDP('A', 'B', REG_AUX_EXP_A, REG_AUX_M_A)
+            yield from self.fpuFixExponentDP('A', 'B', REG_AUX_EXP_A)
+            #yield from self.loadRegFromAux('A', REG_AUX_EXP_A)
+            
+            yield from self.fpu_dp_to_i64('A', 'B', 'R', REG_AUX_SIGN_A, REG_AUX_EXP_A, REG_AUX_M_A)
+
+            vrd = self.parent._wires['A'].get()
+            yield from self.saveRegToMem('A', 'rd')
+
+            pr('r{} = fr{} -> {:016X}'.format(rd, rs1, vrd))
+
         elif (op == 'FCVT.LU.H'):
             self.reg[rd] = self.fpu.convert_hp_to_u64(self.freg[rs1])
             pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
@@ -2351,8 +2766,19 @@ class ControlUnit(py4hw.Logic):
             self.reg[rd] = self.fpu.convert_dp_to_u64(self.freg[rs1])
             pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.W.D'):
-            self.reg[rd] = self.fpu.convert_dp_to_i32(self.freg[rs1])
-            pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
+            # convert dp to i32
+            yield from self.loadRegFromMem('A', 'fr1')
+            yield from self.fpuUnpackDP('A', 'R', REG_AUX_SIGN_A, REG_AUX_EXP_A, REG_AUX_M_A)
+            yield from self.fpuFixMantisaDP('A', 'B', REG_AUX_EXP_A, REG_AUX_M_A)
+            yield from self.fpuFixExponentDP('A', 'B', REG_AUX_EXP_A)
+            #yield from self.loadRegFromAux('A', REG_AUX_EXP_A)
+            
+            yield from self.fpu_dp_to_i32('A', 'B', 'R', REG_AUX_SIGN_A, REG_AUX_EXP_A, REG_AUX_M_A)
+
+            vrd = self.parent._wires['A'].get()
+            yield from self.saveRegToMem('A', 'rd')
+
+            pr('r{} = fr{} -> {:016X}'.format(rd, rs1, vrd))
         elif (op == 'FCVT.W.H'):
             self.reg[rd] = self.fpu.convert_hp_to_i32(self.freg[rs1])
             pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
@@ -2360,8 +2786,19 @@ class ControlUnit(py4hw.Logic):
             self.reg[rd] = self.fpu.convert_hp_to_u32(self.freg[rs1])
             pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'FCVT.WU.D'):
-            self.reg[rd] = self.fpu.convert_dp_to_u32(self.freg[rs1])
-            pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
+            # convert dp to u32
+            yield from self.loadRegFromMem('A', 'fr1')
+            yield from self.fpuUnpackDP('A', 'R', REG_AUX_SIGN_A, REG_AUX_EXP_A, REG_AUX_M_A)
+            yield from self.fpuFixMantisaDP('A', 'B', REG_AUX_EXP_A, REG_AUX_M_A)
+            yield from self.fpuFixExponentDP('A', 'B', REG_AUX_EXP_A)
+            #yield from self.loadRegFromAux('A', REG_AUX_EXP_A)
+            
+            yield from self.fpu_dp_to_u32('A', 'B', 'R', REG_AUX_SIGN_A, REG_AUX_EXP_A, REG_AUX_M_A)
+
+            vrd = self.parent._wires['A'].get()
+            yield from self.saveRegToMem('A', 'rd')
+
+            pr('r{} = fr{} -> {:016X}'.format(rd, rs1, vrd))
         elif (op == 'FCVT.W.S'):
             self.reg[rd] = self.fpu.convert_sp_to_i32(self.freg[rs1])
             pr('r{} = fr{} -> {:016X}'.format(rd, rs1, self.reg[rd]))
@@ -3410,9 +3847,9 @@ class ControlUnit(py4hw.Logic):
         # R = r1 - r2
         yield from self.aluOp('cmp', 'A', 'B', None)
 
-        pr('')
-        pr('A = {:016X}'.format(self.parent._wires['A'].get()))
-        pr('B = {:016X}'.format(self.parent._wires['B'].get()))
+        #pr('')
+        #pr('A = {:016X}'.format(self.parent._wires['A'].get()))
+        #pr('B = {:016X}'.format(self.parent._wires['B'].get()))
         
         iseq = self.vstatus['iseq']
         isltu = self.vstatus['isltu']
@@ -3511,7 +3948,7 @@ class ControlUnit(py4hw.Logic):
                'shift_left':'<<', 'shift_right':'>>', 'shift_righta':'>>a',
                'bypass2':'*0 + '}
         
-        self.state = f'{prr} = {p1} {sop[op]} {p2}'
+        self.microins = f'{prr} = {p1} {sop[op]} {p2}'
 
         if (self.verbose):
             pr(f'[CU] {prr} = {p1} {sop[op]} {p2}')
@@ -4354,6 +4791,13 @@ class ControlUnit(py4hw.Logic):
         else:
             raise Exception('{} - Not supported!'.format(op))
     
+    def retire(self):
+        self.state = 'retire'
+        yield from self.loadRegFromCsr('A', CSR_INSTRET)
+        self.vcontrol['control_imm'] = 1
+        yield from self.aluOp('sum', 'A', 'control_imm', 'A')
+        yield from self.saveRegToCsr('A', CSR_INSTRET)
+        
     def encodeFeatures(self, str):
         r = 0
         for c in str:
@@ -4384,6 +4828,7 @@ class ControlUnit(py4hw.Logic):
                 self.should_jump = False
                 yield from self.fetchIns()
                 yield from self.execute()
+                yield from self.retire()
 
             except ProcessorException as e:
                 pr('\n\tException:', e.msg, 'code:', e.code, f'tval: 0x{e.tval:X}',  end=' ' )
@@ -4937,7 +5382,7 @@ class MicroprogrammedRISCV(py4hw.Logic):
         control['alu_op_bypass2'] = self.wire('alu_op_bypass2')
 
         status['IR'] = q_i
-        status['write_resp'] = memory.resp
+        status['mem_resp'] = memory.resp
         status['iseq'] = self.wire('iseq')
         status['isltu'] = self.wire('isltu')
         status['islt'] = self.wire('islt')
@@ -4962,24 +5407,25 @@ class MicroprogrammedRISCV(py4hw.Logic):
         self.pr = pr
 
     def getReg(self, idx):
-        regbase = self.registerBase - self.behavioural_memory.mem_base
+        regbase = self.registerBase - self.behavioural_memory.mem_base + self.register_integer_offset 
         return self.behavioural_memory.read_i64(regbase + idx * 8)
+    
+    def setReg(self, idx, v):
+        regbase = self.registerBase - self.behavioural_memory.mem_base + self.register_integer_offset 
+        self.behavioural_memory.write_i64(regbase + idx * 8, v)
 
     def getFreg(self, idx):
-        regbase = self.registerBase - self.behavioural_memory.mem_base
-        fregbase = regbase + 32*8
+        fregbase = self.registerBase - self.behavioural_memory.mem_base + self.register_floating_point_offset
         return self.behavioural_memory.read_i64(fregbase + idx * 8)
         
     def getCSR(self, idx):
-        regbase = self.registerBase - self.behavioural_memory.mem_base
-        fregbase = regbase + 32*8
-        csrBase = fregbase + 32*8 
+        csrBase = self.registerBase - self.behavioural_memory.mem_base + self.register_csr_offset 
+        #print('reading from base {:016X}'.format(csrBase))
         return self.behavioural_memory.read_i64(csrBase+ idx * 8)
     
     def getPc(self):
         return self.q_pc.get()
-    
-    
+        
     def functionEnter(self, f, jmp=False):
         # jmp is True if the enter to the function was done with a jump, which
         # should provoke to pop the parent from the stack when exiting
