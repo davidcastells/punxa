@@ -420,54 +420,54 @@ To run the RV32 test do
 ***Summary***
 
 <pre>
-rv32mi-p        50.0 %   |███████████████████████░░░░░░░░░░░░░░░░░░░░░░|
+rv32mi-p        100.0 %  |█████████████████████████████████████████████|
 rv32mzicbo-p    0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
-rv32si-p        83.3 %   |██████████████████████████████████████░░░░░░░|
+rv32si-p        100.0 %  |█████████████████████████████████████████████|
 rv32ssvnapot-p  0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv32ua-p        100.0 %  |█████████████████████████████████████████████|
 rv32ua-v        100.0 %  |█████████████████████████████████████████████|
-rv32uc-p        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv32uc-p        100.0 %  |█████████████████████████████████████████████|
 rv32uc-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
-rv32ud-p        90.0 %   |█████████████████████████████████████████░░░░|
-rv32ud-v        90.0 %   |█████████████████████████████████████████░░░░|
-rv32uf-p        90.9 %   |█████████████████████████████████████████░░░░|
-rv32uf-v        90.9 %   |█████████████████████████████████████████░░░░|
-rv32ui-p        97.5 %   |████████████████████████████████████████████░|
-rv32ui-v        97.5 %   |████████████████████████████████████████████░|
+rv32ud-p        100.0 %  |█████████████████████████████████████████████|
+rv32ud-v        100.0 %  |█████████████████████████████████████████████|
+rv32uf-p        100.0 %  |█████████████████████████████████████████████|
+rv32uf-v        100.0 %  |█████████████████████████████████████████████|
+rv32ui-p        100.0 %  |█████████████████████████████████████████████|
+rv32ui-v        100.0 %  |█████████████████████████████████████████████|
 rv32um-p        100.0 %  |█████████████████████████████████████████████|
 rv32um-v        100.0 %  |█████████████████████████████████████████████|
 rv32uzba-p      100.0 %  |█████████████████████████████████████████████|
 rv32uzba-v      100.0 %  |█████████████████████████████████████████████|
-rv32uzbb-p      94.4 %   |███████████████████████████████████████████░░|
-rv32uzbb-v      94.4 %   |███████████████████████████████████████████░░|
-rv32uzbc-p      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
-rv32uzbc-v      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv32uzbb-p      100.0 %  |█████████████████████████████████████████████|
+rv32uzbb-v      100.0 %  |█████████████████████████████████████████████|
+rv32uzbc-p      100.0 %  |█████████████████████████████████████████████|
+rv32uzbc-v      100.0 %  |█████████████████████████████████████████████|
 rv32uzbs-p      100.0 %  |█████████████████████████████████████████████|
 rv32uzbs-v      100.0 %  |█████████████████████████████████████████████|
-rv32uzfh-p      81.8 %   |█████████████████████████████████████░░░░░░░░|
-rv32uzfh-v      81.8 %   |█████████████████████████████████████░░░░░░░░|
+rv32uzfh-p      100.0 %  |█████████████████████████████████████████████|
+rv32uzfh-v      100.0 %  |█████████████████████████████████████████████|
 </pre>
 
 The detailed current output is:
 
 ```
-Test rv32mi-p-breakpoint            = FAILED - Test return value = 5
+Test rv32mi-p-breakpoint            = OK
 Test rv32mi-p-csr                   = OK
 Test rv32mi-p-illegal               = OK
 Test rv32mi-p-lh-misaligned         = OK
 Test rv32mi-p-lw-misaligned         = OK
-Test rv32mi-p-ma_addr               = FAILED - Test return value = 47
-Test rv32mi-p-ma_fetch              = FAILED - Test return value = 5
-Test rv32mi-p-mcsr                  = FAILED - Test return value = 5
+Test rv32mi-p-ma_addr               = OK
+Test rv32mi-p-ma_fetch              = OK
+Test rv32mi-p-mcsr                  = OK
 Test rv32mi-p-sbreak                = OK
 Test rv32mi-p-scall                 = OK
 Test rv32mi-p-sh-misaligned         = OK
-Test rv32mi-p-shamt                 = FAILED - Test return value = 7
-Test rv32mi-p-sw-misaligned         = FAILED - Test return value = 7
-Test rv32mi-p-zicntr                = FAILED - Test return value = 25
+Test rv32mi-p-shamt                 = OK
+Test rv32mi-p-sw-misaligned         = OK
+Test rv32mi-p-zicntr                = OK
 Test rv32si-p-csr                   = OK
 Test rv32si-p-dirty                 = OK
-Test rv32si-p-ma_fetch              = FAILED - Test return value = 5
+Test rv32si-p-ma_fetch              = OK
 Test rv32si-p-sbreak                = OK
 Test rv32si-p-scall                 = OK
 Test rv32si-p-wfi                   = OK
@@ -491,13 +491,13 @@ Test rv32ua-v-amoor_w               = OK
 Test rv32ua-v-amoswap_w             = OK
 Test rv32ua-v-amoxor_w              = OK
 Test rv32ua-v-lrsc                  = OK
-Test rv32uc-p-rvc                   = FAILED - Test return value = 0
+Test rv32uc-p-rvc                   = OK
 Test rv32uc-v-rvc                   = FAILED - Test return value = 5
 Test rv32ud-p-fadd                  = OK
 Test rv32ud-p-fclass                = OK
 Test rv32ud-p-fcmp                  = OK
 Test rv32ud-p-fcvt                  = OK
-Test rv32ud-p-fcvt_w                = FAILED - Test return value = 5
+Test rv32ud-p-fcvt_w                = OK
 Test rv32ud-p-fdiv                  = OK
 Test rv32ud-p-fmadd                 = OK
 Test rv32ud-p-fmin                  = OK
@@ -507,7 +507,7 @@ Test rv32ud-v-fadd                  = OK
 Test rv32ud-v-fclass                = OK
 Test rv32ud-v-fcmp                  = OK
 Test rv32ud-v-fcvt                  = OK
-Test rv32ud-v-fcvt_w                = FAILED - Test return value = 5
+Test rv32ud-v-fcvt_w                = OK
 Test rv32ud-v-fdiv                  = OK
 Test rv32ud-v-fmadd                 = OK
 Test rv32ud-v-fmin                  = OK
@@ -517,7 +517,7 @@ Test rv32uf-p-fadd                  = OK
 Test rv32uf-p-fclass                = OK
 Test rv32uf-p-fcmp                  = OK
 Test rv32uf-p-fcvt                  = OK
-Test rv32uf-p-fcvt_w                = FAILED - Test return value = 5
+Test rv32uf-p-fcvt_w                = OK
 Test rv32uf-p-fdiv                  = OK
 Test rv32uf-p-fmadd                 = OK
 Test rv32uf-p-fmin                  = OK
@@ -528,7 +528,7 @@ Test rv32uf-v-fadd                  = OK
 Test rv32uf-v-fclass                = OK
 Test rv32uf-v-fcmp                  = OK
 Test rv32uf-v-fcvt                  = OK
-Test rv32uf-v-fcvt_w                = FAILED - Test return value = 5
+Test rv32uf-v-fcvt_w                = OK
 Test rv32uf-v-fdiv                  = OK
 Test rv32uf-v-fmadd                 = OK
 Test rv32uf-v-fmin                  = OK
@@ -555,7 +555,7 @@ Test rv32ui-p-lh                    = OK
 Test rv32ui-p-lhu                   = OK
 Test rv32ui-p-lui                   = OK
 Test rv32ui-p-lw                    = OK
-Test rv32ui-p-ma_data               = FAILED - Test return value = 97
+Test rv32ui-p-ma_data               = OK
 Test rv32ui-p-or                    = OK
 Test rv32ui-p-ori                   = OK
 Test rv32ui-p-sb                    = OK
@@ -595,7 +595,7 @@ Test rv32ui-v-lh                    = OK
 Test rv32ui-v-lhu                   = OK
 Test rv32ui-v-lui                   = OK
 Test rv32ui-v-lw                    = OK
-Test rv32ui-v-ma_data               = FAILED - Test return value = 97
+Test rv32ui-v-ma_data               = OK
 Test rv32ui-v-or                    = OK
 Test rv32ui-v-ori                   = OK
 Test rv32ui-v-sb                    = OK
@@ -654,7 +654,7 @@ Test rv32uzbb-p-rori                = OK
 Test rv32uzbb-p-sext_b              = OK
 Test rv32uzbb-p-sext_h              = OK
 Test rv32uzbb-p-xnor                = OK
-Test rv32uzbb-p-zext_h              = FAILED - Unknown opcode 0110011 func3 100 func7 0000100 rs2 0000 full 0800c733
+Test rv32uzbb-p-zext_h              = OK
 Test rv32uzbb-v-andn                = OK
 Test rv32uzbb-v-clz                 = OK
 Test rv32uzbb-v-cpop                = OK
@@ -672,13 +672,13 @@ Test rv32uzbb-v-rori                = OK
 Test rv32uzbb-v-sext_b              = OK
 Test rv32uzbb-v-sext_h              = OK
 Test rv32uzbb-v-xnor                = OK
-Test rv32uzbb-v-zext_h              = FAILED - Unknown opcode 0110011 func3 100 func7 0000100 rs2 0000 full 0800c733
-Test rv32uzbc-p-clmul               = FAILED - Test return value = 65
-Test rv32uzbc-p-clmulh              = FAILED - Test return value = 65
-Test rv32uzbc-p-clmulr              = FAILED - Test return value = 65
-Test rv32uzbc-v-clmul               = FAILED - Test return value = 65
-Test rv32uzbc-v-clmulh              = FAILED - Test return value = 65
-Test rv32uzbc-v-clmulr              = FAILED - Test return value = 65
+Test rv32uzbb-v-zext_h              = OK
+Test rv32uzbc-p-clmul               = OK
+Test rv32uzbc-p-clmulh              = OK
+Test rv32uzbc-p-clmulr              = OK
+Test rv32uzbc-v-clmul               = OK
+Test rv32uzbc-v-clmulh              = OK
+Test rv32uzbc-v-clmulr              = OK
 Test rv32uzbs-p-bclr                = OK
 Test rv32uzbs-p-bclri               = OK
 Test rv32uzbs-p-bext                = OK
@@ -699,25 +699,25 @@ Test rv32uzfh-p-fadd                = OK
 Test rv32uzfh-p-fclass              = OK
 Test rv32uzfh-p-fcmp                = OK
 Test rv32uzfh-p-fcvt                = OK
-Test rv32uzfh-p-fcvt_w              = FAILED - Test return value = 5
+Test rv32uzfh-p-fcvt_w              = OK
 Test rv32uzfh-p-fdiv                = OK
 Test rv32uzfh-p-fmadd               = OK
 Test rv32uzfh-p-fmin                = OK
-Test rv32uzfh-p-ldst                = FAILED - Test return value = 0
+Test rv32uzfh-p-ldst                = OK
 Test rv32uzfh-p-move                = OK
 Test rv32uzfh-p-recoding            = OK
 Test rv32uzfh-v-fadd                = OK
 Test rv32uzfh-v-fclass              = OK
 Test rv32uzfh-v-fcmp                = OK
 Test rv32uzfh-v-fcvt                = OK
-Test rv32uzfh-v-fcvt_w              = FAILED - Test return value = 5
+Test rv32uzfh-v-fcvt_w              = OK
 Test rv32uzfh-v-fdiv                = OK
 Test rv32uzfh-v-fmadd               = OK
 Test rv32uzfh-v-fmin                = OK
-Test rv32uzfh-v-ldst                = FAILED - Test return value = 0
+Test rv32uzfh-v-ldst                = OK
 Test rv32uzfh-v-move                = OK
 Test rv32uzfh-v-recoding            = OK
-Total: 266 Correct: 238 (89.5 %)
+Total: 266 Correct: 265 (99.6 %)
 ```
 ## RV64 Microprogrammed Version
 
@@ -762,15 +762,15 @@ rv64uzfh-v      0.0 %    |░░░░░░░░░░░░░░░░░░
 The detailed current output is:
 
 ```
-Test rv64mi-p-access                = FAILED - Test return value = 5
+Test rv64mi-p-access                = FAILED - Test return value = 7
 Test rv64mi-p-breakpoint            = FAILED - Test return value = 5
-Test rv64mi-p-csr                   = FAILED - Test return value = 37
+Test rv64mi-p-csr                   = FAILED - Test return value = 25
 Test rv64mi-p-illegal               = FAILED - Test return value = 0
 Test rv64mi-p-ld-misaligned         = OK
 Test rv64mi-p-lh-misaligned         = OK
 Test rv64mi-p-lw-misaligned         = OK
 Test rv64mi-p-ma_addr               = OK
-Test rv64mi-p-ma_fetch              = FAILED - Test return value = 17
+Test rv64mi-p-ma_fetch              = FAILED - Test return value = 11
 Test rv64mi-p-mcsr                  = OK
 Test rv64mi-p-sbreak                = OK
 Test rv64mi-p-scall                 = OK
@@ -786,7 +786,7 @@ Test rv64si-p-ma_fetch              = FAILED - Test return value = 3
 Test rv64si-p-sbreak                = OK
 Test rv64si-p-scall                 = OK
 Test rv64si-p-wfi                   = OK
-Test rv64ssvnapot-p-napot           = FAILED - bytearray index out of range
+Test rv64ssvnapot-p-napot           = FAILED - Test return value = 3
 Test rv64ua-p-amoadd_d              = OK
 Test rv64ua-p-amoadd_w              = OK
 Test rv64ua-p-amoand_d              = OK
@@ -831,7 +831,7 @@ Test rv64ud-p-fadd                  = FAILED - Test return value = 7
 Test rv64ud-p-fclass                = FAILED - Test return value = 5
 Test rv64ud-p-fcmp                  = FAILED - Test return value = 5
 Test rv64ud-p-fcvt                  = FAILED - Test return value = 19
-Test rv64ud-p-fcvt_w                = FAILED - 'ControlUnit' object has no attribute 'fpu'
+Test rv64ud-p-fcvt_w                = FAILED - Test return value = 7
 Test rv64ud-p-fdiv                  = FAILED - 'ControlUnit' object has no attribute 'fpu'
 Test rv64ud-p-fmadd                 = FAILED - 'ControlUnit' object has no attribute 'fpu'
 Test rv64ud-p-fmin                  = FAILED - 'ControlUnit' object has no attribute 'fpu'
