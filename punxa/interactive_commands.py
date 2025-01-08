@@ -53,6 +53,7 @@ def regs():
         print(f'fr{i:2}={ri:016X}  |  fr{i+8:2}={ri8:016X}  |  fr{i+16:2}={ri16:016X}  |  fr{i+24:2}={ri24:016X} ')
 
 def write_trace(filename='newtrace.json'):
+    cpu = _ci_cpu
     cpu.tracer.write_json(filename)
 
 def console():
@@ -107,6 +108,20 @@ def loadElf(memory, filename, offset, verbose=False):
             except:
                 print('Failed to write to address {:016X}'.format(p + offset))
 
+def getElfEntryPoint(filename):
+    from elftools.elf.elffile import ELFFile
+    with open(filename, 'rb') as f:
+        elf = ELFFile(f)
+        try:
+            shstrtab = elf.get_section_by_name('.shstrtab')
+        except:
+            raise ValueError("ELF file does not have a section header string table")
+
+        if elf.header.e_entry == 0:
+            return None  # No entry point specified
+
+        return elf.header.e_entry
+        
 def loadSymbolsFromElf(cpu,  filename, offset):
     from elftools.elf.elffile import ELFFile
     

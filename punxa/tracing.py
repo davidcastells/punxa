@@ -44,15 +44,19 @@ class Tracer:
         for event in self.events:
             name = event[0]
             try:
-                name = str(demangle(name))                
+                demangled = demangle(name)
+                if (demangled is None):
+                    pass
+                else:
+                    name = str(demangled)                
             except Exception as e:
                 print('could not demangle', event[0], name, str(e))
                 
             newevents.append((name, event[1], event[2]))
             
-        self.events = newevents
+        return newevents
             
-            
+           
     def write_json(self, filename):
         import datetime
         
@@ -62,13 +66,13 @@ class Tracer:
             
         events = []
         
-        self.demangleEvents()
+        demangled = self.demangleEvents()
         
         events.append(self.processInfo(1, 'punxa RISC-V ISS'))
         events.append(self.threadInfo(1, 1, 'HART-0'))
 
-        if (len(self.events) > 0):
-            events.append(self.processUptime(1, self.events[-1][2] / self.clk_freq))
+        if (len(demangled) > 0):
+            events.append(self.processUptime(1, demangled[-1][2] / self.clk_freq))
 
         for event in self.pending.values():
             if (isinstance(event[0], int)):
@@ -76,7 +80,7 @@ class Tracer:
                 continue
             events.append(self.formatPendingEvent(1, 1, event))
             
-        for event in self.events:
+        for event in demangled:
             events.append(self.formatEvent(1, 1, event))
             
         for event in self.instants:
