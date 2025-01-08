@@ -36,6 +36,8 @@ import zlib
 mem_base = 0x80000000
 
     
+def reallocMem(add, size):
+    memory.reallocArea(add - mem_base, size)
 
 
     
@@ -105,10 +107,6 @@ def loadSymbols(cpu, filename, address_fix=0):
         
         #print('{:016X} = {}'.format( address, func))
 
-def write_trace(filename=ex_dir + 'newtrace.json'):
-    cpu.tracer.write_json(filename)
-
-
 
 
 def run(upto, maxclks=100000, verbose=True, autoCheckpoint=False):
@@ -163,10 +161,6 @@ def run(upto, maxclks=100000, verbose=True, autoCheckpoint=False):
         
 
                   
-def console():
-    for line in uart.console:
-        print(line)
-        
 def dump(address, size=0x100):
     pos = address 
     for i in range((size+15)//16):
@@ -187,46 +181,7 @@ def dump(address, size=0x100):
 
 
 
-def memoryMap():
-    for i in range(len(bus.start)):
-        size = bus.stop[i] - bus.start[i]
-        units = 'B'
-        if (size > 1024):
-            size = size/1024
-            units = 'KiB'
-        if (size > 1024):
-            size = size/1024
-            units = 'MiB'
-        if (size > 1024):
-            size = size/1024
-            units = 'GiB'
-        
-        print('* {:016X} - {:016X} {:.0f} {}'.format(bus.start[i], bus.stop[i], size, units))
-        
-        if (bus.start[i] == mem_base):
-            # details on memory
-            for block in memory.area:
-                size = block[1]
-                units = 'B'
-                if (size > 1024):
-                    size = size/1024
-                    units = 'KiB'
-                if (size > 1024):
-                    size = size/1024
-                    units = 'MiB'
-                if (size > 1024):
-                    size = size/1024
-                    units = 'GiB'
-                print('  {:016X} - {:016X} {:.0f} {}'.format(mem_base + block[0], mem_base + block[0] + block[1] - 1, size, units))
-                
-def reallocMem(add, size):
-    memory.reallocArea(add - mem_base, size)
     
-def findFunction(name):
-    for a in cpu.funcs.keys():
-        if (cpu.funcs[a] == name):
-            return hex(a)
-    return 'not found'
 
 #  +-----+    +-----+     +-----+
 #  | CPU |--C-| bus |--M--| mem |
@@ -312,6 +267,7 @@ cpu.min_clks_for_trace_event = 1000
 import punxa.interactive_commands
 punxa.interactive_commands._ci_hw = hw
 punxa.interactive_commands._ci_cpu = cpu
+punxa.interactive_commands._ci_bus = bus
 punxa.interactive_commands._ci_uart = uart 
 
 #hw.getSimulator().clk(150000)
