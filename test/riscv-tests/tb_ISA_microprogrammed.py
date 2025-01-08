@@ -57,42 +57,6 @@ def write_trace(filename=ex_dir + 'newtrace.json'):
     cpu.tracer.write_json(filename)
 
 
-                  
-
-def memoryMap():
-    for i in range(len(bus.start)):
-        size = bus.stop[i] - bus.start[i]
-        units = 'B'
-        if (size > 1024):
-            size = size/1024
-            units = 'KiB'
-        if (size > 1024):
-            size = size/1024
-            units = 'MiB'
-        if (size > 1024):
-            size = size/1024
-            units = 'GiB'
-        
-        print('* {:016X} - {:016X} {:.0f} {}'.format(bus.start[i], bus.stop[i], size, units))
-        
-        if (bus.start[i] == mem_base):
-            # details on memory
-            for block in memory.area:
-                size = block[1]
-                units = 'B'
-                if (size > 1024):
-                    size = size/1024
-                    units = 'KiB'
-                if (size > 1024):
-                    size = size/1024
-                    units = 'MiB'
-                if (size > 1024):
-                    size = size/1024
-                    units = 'GiB'
-                print('  {:016X} - {:016X} {:.0f} {}'.format(mem_base + block[0], mem_base + block[0] + block[1] - 1, size, units))
-                
-def reallocMem(add, size):
-    memory.reallocArea(add - mem_base, size)
     
 def findFunction(name):
     for a in cpu.funcs.keys():
@@ -191,6 +155,7 @@ def buildHw():
     import punxa.interactive_commands
     punxa.interactive_commands._ci_hw = hw
     punxa.interactive_commands._ci_cpu = cpu
+    punxa.interactive_commands._ci_bus = bus
     
     return hw
 
@@ -236,8 +201,8 @@ def runTest(test_file, verbose=False):
         maxclks = test_clks[test_file]
 
     #run(passAdr, verbose=False)
-    run(write_tohost, maxclks=maxclks, verbose=verbose)
-    run(0, maxclks=200, verbose=False)
+    run(write_tohost, maxclks=maxclks, verbose=verbose, translateVA=False) # @todo we still do not support virtual memory
+    run(0, maxclks=200, verbose=False, translateVA=False)                  # @todo we still do not support virtual memory
 
     # print('Test', test_file, end='')
     #if (cpu.pc != passAdr):
