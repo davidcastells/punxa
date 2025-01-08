@@ -735,9 +735,9 @@ rv64mi-p        68.8 %   |██████████████████
 rv64mzicbo-p    0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64si-p        57.1 %   |██████████████████████████░░░░░░░░░░░░░░░░░░░|
 rv64ssvnapot-p  0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
-rv64ua-p        100.0 %  |█████████████████████████████████████████████|
+rv64ua-p        94.7 %   |███████████████████████████████████████████░░|
 rv64ua-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
-rv64uc-p        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv64uc-p        100.0 %  |█████████████████████████████████████████████|
 rv64uc-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64ud-p        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
 rv64ud-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
@@ -764,13 +764,13 @@ The detailed current output is:
 ```
 Test rv64mi-p-access                = FAILED - Test return value = 7
 Test rv64mi-p-breakpoint            = FAILED - Test return value = 5
-Test rv64mi-p-csr                   = FAILED - Test return value = 25
+Test rv64mi-p-csr                   = FAILED - Test return value = 37
 Test rv64mi-p-illegal               = FAILED - Test return value = 0
 Test rv64mi-p-ld-misaligned         = OK
 Test rv64mi-p-lh-misaligned         = OK
 Test rv64mi-p-lw-misaligned         = OK
 Test rv64mi-p-ma_addr               = OK
-Test rv64mi-p-ma_fetch              = FAILED - Test return value = 11
+Test rv64mi-p-ma_fetch              = FAILED - Test return value = 17
 Test rv64mi-p-mcsr                  = OK
 Test rv64mi-p-sbreak                = OK
 Test rv64mi-p-scall                 = OK
@@ -805,7 +805,7 @@ Test rv64ua-p-amoswap_d             = OK
 Test rv64ua-p-amoswap_w             = OK
 Test rv64ua-p-amoxor_d              = OK
 Test rv64ua-p-amoxor_w              = OK
-Test rv64ua-p-lrsc                  = OK
+Test rv64ua-p-lrsc                  = FAILED - Test return value = 0
 Test rv64ua-v-amoadd_d              = FAILED - Test return value = 73
 Test rv64ua-v-amoadd_w              = FAILED - Test return value = 73
 Test rv64ua-v-amoand_d              = FAILED - Test return value = 73
@@ -831,7 +831,7 @@ Test rv64ud-p-fadd                  = FAILED - Test return value = 7
 Test rv64ud-p-fclass                = FAILED - Test return value = 5
 Test rv64ud-p-fcmp                  = FAILED - Test return value = 5
 Test rv64ud-p-fcvt                  = FAILED - Test return value = 19
-Test rv64ud-p-fcvt_w                = FAILED - Test return value = 7
+Test rv64ud-p-fcvt_w                = FAILED - 'ControlUnit' object has no attribute 'fpu'
 Test rv64ud-p-fdiv                  = FAILED - 'ControlUnit' object has no attribute 'fpu'
 Test rv64ud-p-fmadd                 = FAILED - 'ControlUnit' object has no attribute 'fpu'
 Test rv64ud-p-fmin                  = FAILED - 'ControlUnit' object has no attribute 'fpu'
@@ -851,17 +851,17 @@ Test rv64ud-v-ldst                  = FAILED - Test return value = 73
 Test rv64ud-v-move                  = FAILED - Test return value = 73
 Test rv64ud-v-recoding              = FAILED - Test return value = 73
 Test rv64ud-v-structural            = FAILED - Test return value = 73
-Test rv64uf-p-fadd                  = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64uf-p-fadd                  = FAILED - 'ControlUnit' object has no attribute 'fpu'
 Test rv64uf-p-fclass                = FAILED - 'ControlUnit' object has no attribute 'fpu'
-Test rv64uf-p-fcmp                  = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64uf-p-fcmp                  = FAILED - 'ControlUnit' object has no attribute 'fpu'
 Test rv64uf-p-fcvt                  = FAILED - 'ControlUnit' object has no attribute 'fpu'
-Test rv64uf-p-fcvt_w                = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64uf-p-fdiv                  = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64uf-p-fmadd                 = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64uf-p-fmin                  = FAILED - 'ControlUnit' object has no attribute 'reg'
-Test rv64uf-p-ldst                  = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64uf-p-fcvt_w                = FAILED - 'ControlUnit' object has no attribute 'fpu'
+Test rv64uf-p-fdiv                  = FAILED - 'ControlUnit' object has no attribute 'fpu'
+Test rv64uf-p-fmadd                 = FAILED - 'ControlUnit' object has no attribute 'fpu'
+Test rv64uf-p-fmin                  = FAILED - 'ControlUnit' object has no attribute 'fpu'
+Test rv64uf-p-ldst                  = FAILED - 'ControlUnit' object has no attribute 'freg'
 Test rv64uf-p-move                  = FAILED - Test return value = 5
-Test rv64uf-p-recoding              = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64uf-p-recoding              = FAILED - 'ControlUnit' object has no attribute 'fpu'
 Test rv64uf-v-fadd                  = FAILED - Test return value = 73
 Test rv64uf-v-fclass                = FAILED - Test return value = 73
 Test rv64uf-v-fcmp                  = FAILED - Test return value = 73
@@ -1099,7 +1099,7 @@ Test rv64uzfh-p-fmadd               = FAILED - 'ControlUnit' object has no attri
 Test rv64uzfh-p-fmin                = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64uzfh-p-ldst                = FAILED - 'ControlUnit' object has no attribute 'reg'
 Test rv64uzfh-p-move                = FAILED - Test return value = 5
-Test rv64uzfh-p-recoding            = FAILED - 'ControlUnit' object has no attribute 'reg'
+Test rv64uzfh-p-recoding            = FAILED - 'ControlUnit' object has no attribute 'fpu'
 Test rv64uzfh-v-fadd                = FAILED - Test return value = 73
 Test rv64uzfh-v-fclass              = FAILED - Test return value = 73
 Test rv64uzfh-v-fcmp                = FAILED - Test return value = 73
@@ -1111,6 +1111,6 @@ Test rv64uzfh-v-fmin                = FAILED - Test return value = 73
 Test rv64uzfh-v-ldst                = FAILED - Test return value = 73
 Test rv64uzfh-v-move                = FAILED - Test return value = 73
 Test rv64uzfh-v-recoding            = FAILED - Test return value = 73
-Total: 349 Correct: 105 (30.1 %)
+Total: 349 Correct: 104 (29.8 %)
 ```
 
