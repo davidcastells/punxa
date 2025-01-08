@@ -50,6 +50,15 @@ static inline uint64_t read_a7() {
 __attribute__((aligned(8))) 
 __attribute__((naked)) 
 void trap_handler() {
+
+    asm volatile (
+        "addi sp, sp, -32\n"       // Adjust stack pointer (32 bytes for 4 registers)
+        "sd ra, 24(sp)\n"          // Save return address (ra) at offset 24
+        "sd s0, 16(sp)\n"          // Save frame pointer (s0) at offset 16
+        "sd s1, 8(sp)\n"           // Save callee-saved register (s1) at offset 8
+        "sd s2, 0(sp)\n"           // Save callee-saved register (s2) at offset 0
+    );
+    
     register uint64_t mcause asm("t0");
     read_csr_mcause();
     
@@ -100,6 +109,18 @@ void trap_handler() {
     {
         register uint64_t mepc = read_csr_mepc();
         write_csr_mepc(mepc+4);
+        
+        asm volatile 
+        (
+        // Restore callee-saved registers and return address from the stack
+        "ld ra, 24(sp)\n"         // Load return address (ra) from offset 24
+        "ld s0, 16(sp)\n"         // Load frame pointer (s0) from offset 16
+        "ld s1, 8(sp)\n"          // Load callee-saved register (s1) from offset 8
+        "ld s2, 0(sp)\n"          // Load callee-saved register (s2) from offset 0
+        // Adjust the stack pointer back to its original value
+        "addi sp, sp, 32\n"       // Restore stack pointer (undo allocation)
+        );
+    
         asm volatile("mret"); 
     }
 }
