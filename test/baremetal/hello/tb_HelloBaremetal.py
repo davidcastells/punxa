@@ -151,6 +151,7 @@ def buildHw(cpu_model='sc'):
     punxa.interactive_commands._ci_hw = hw
     punxa.interactive_commands._ci_cpu = cpu
     punxa.interactive_commands._ci_bus = bus
+    punxa.interactive_commands._ci_uart = uart
     
     return hw
 
@@ -209,7 +210,7 @@ def runTest(test_file):
 
 def runHello(cpu_model='sc'):
     prepare(cpu_model)
-    step(10000)
+    step(2070)
     print()
     print('Console Output')
     print('-'*80)
