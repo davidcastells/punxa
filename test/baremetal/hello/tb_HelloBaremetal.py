@@ -26,6 +26,7 @@ from punxa.uart import *
 from punxa.clint import *
 from punxa.plic import *
 from punxa.single_cycle.singlecycle_processor import *
+from punxa.single_cycle.singlecycle_processor_proxy_kernel import *
 from punxa.instruction_decode import *
 from punxa.interactive_commands import *
     
@@ -125,6 +126,8 @@ def buildHw(cpu_model='sc'):
 
     if (cpu_model == 'sc'):
         cpu = SingleCycleRISCV(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
+    elif (cpu_model == 'scpk'):
+        cpu = SingleCycleRISCVProxyKernel(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
 
     elif (cpu_model == 'up'):
         registerBase = mem_base +  (1 << 20) - 0x10000 # (8 * 8192)
@@ -174,7 +177,7 @@ def prepare(cpu_model='sc'):
     stack_base = 0x90000
     stack_size = 0x10000
     
-    if (cpu_model == 'sc'):
+    if (cpu_model == 'sc' or cpu_model == 'scpk'):
         cpu.pc = start_adr
         cpu.reg[2] = mem_base + stack_base + stack_size - 8
     elif (cpu_model == 'up'):
