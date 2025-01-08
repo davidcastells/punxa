@@ -16,6 +16,7 @@ tbreak_address = None
 _ci_hw = None
 _ci_cpu = None
 _ci_bus = None
+_ci_uart = None
 
 def list_commands():
     print('punxa interactive commands:')
@@ -57,8 +58,16 @@ def write_trace(filename='newtrace.json'):
     cpu.tracer.write_json(filename)
 
 def console():
-    for line in _ci_cpu.console:
-        print(line)
+    if hasattr(_ci_cpu, 'console'):
+        # @todo we should remove console from the CPU object, leave it in the UART 
+        for line in _ci_cpu.console:
+            print(line)
+    
+    if hasattr(_ci_uart, 'console'):
+        # @todo we should remove console from the CPU object, leave it in the UART 
+        for line in _ci_uart.console:
+            print(line)
+    
 
 def stack():
     indent = 0
