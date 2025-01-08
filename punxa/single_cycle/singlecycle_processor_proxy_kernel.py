@@ -167,7 +167,7 @@ class SingleCycleRISCVProxyKernel(SingleCycleRISCV):
     def syscall_stat(self, fd, stat_ptr):
         if not(fd in self.open_files.keys()):
             print(f'WARNING! syscall stat on unknown file number: {fd}')
-            return -1
+            return -1 & ((1<<64)-1)
         
         file_stat = os.stat(fd)
         
