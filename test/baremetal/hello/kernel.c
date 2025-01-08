@@ -99,7 +99,7 @@ void trap_handler() {
     
     {
         register uint64_t mepc = read_csr_mepc();
-        write_csr_mepc(mepc+8);
+        write_csr_mepc(mepc+4);
         asm volatile("mret"); 
     }
 }
