@@ -184,6 +184,7 @@ class SingleCycleRISCVProxyKernel(SingleCycleRISCV):
         self.parent.getSimulator().stop()
 
     def addConsoleChar(self, c):
+        # @todo this probably should go to the UART
         if (c == '\n'):
             clen = len(self.console)
             if (clen > 80):
