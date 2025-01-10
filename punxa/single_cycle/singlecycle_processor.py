@@ -1835,12 +1835,13 @@ class SingleCycleRISCV(py4hw.Logic):
             pr('fr{} = [r2 + {}] -> {:016X}'.format(rd, off, self.freg[rd]))
         elif (op == 'ECALL'):
             curpriv = self.csr[0xFFF] # current privilege
+            syscall = self.reg[17] # current privilege
             if (curpriv == 3): 
-                raise EnvCallMMode()
+                raise EnvCallMMode(syscall)
             elif (curpriv == 1):
-                raise EnvCallSMode()
+                raise EnvCallSMode(syscall)
             elif (curpriv == 0):
-                raise EnvCallUMode()
+                raise EnvCallUMode(syscall)
             else:
                 raise Exception('unknown privilege level {}'.format(curpriv))
         elif (op == 'EBREAK'):
