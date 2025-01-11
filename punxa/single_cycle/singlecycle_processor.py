@@ -195,6 +195,7 @@ class SingleCycleRISCV(py4hw.Logic):
             
             except ProcessorException as e:
                 emsg = f'Exception: {e.msg} code: {e.code} tval: 0x{e.tval:X}'
+                epc = self.pc
                 pr('\n\t', emsg, end=' ' )
                 
                 priv = self.csr[CSR_PRIVLEVEL]
@@ -245,7 +246,7 @@ class SingleCycleRISCV(py4hw.Logic):
                     raise Exception('unhandled exception cause')                    
                 
                 if (self.enable_tracing):
-                    self.tracer.instant((emsg, e.code, self.csr[CSR_CYCLE]))
+                    self.tracer.instant((emsg, epc, self.csr[CSR_CYCLE]))
                     
                 self.functionEnter(self.pc)
 
