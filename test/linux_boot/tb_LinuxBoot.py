@@ -253,6 +253,7 @@ bus = MultiplexedBus(hw, 'bus', port_c, [(port_m, mem_base, 0x013ff00000),
 
 cpu = SingleCycleRISCV(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
 
+cpu.stopOnExceptions = True
 cpu.behavioural_memory = memory
 
 loadSymbols(cpu, ex_dir + 'fw_payload.sym', 0) # 32*4 - 0x10054)
@@ -325,3 +326,11 @@ if __name__ == "__main__":
                  run(0, maxclks=50000*60*2, verbose=False) # run simulation for 2 minutesº
                  write_trace() 
                  checkpoint()
+         elif (sys.argv[1] == '-sprint'):
+             cpu.min_clks_for_trace_event=500
+             run(0, maxclks=50000*60*100, verbose=False) # run simulation for 2 minutesº
+             write_trace() 
+             checkpoint()
+        
+
+	
