@@ -47,14 +47,20 @@ class CLINT(Logic):
         self.int_soft = self.addOut('int_soft', int_soft)
         self.int_timer = self.addOut('int_timer', int_timer)
         
-        self.mtimecmp = (1<<63)
+        self.mtimecmp = (1<<64)-1
         self.mtime = 0
+        self.msip = 0
 
     def clock(self):
-        self.int_soft.prepare(0)
+        if (self.msip & 1):
+            self.int_soft.prepare(1)
+            print('WARNING: CLINT Software interrupt {:016X} < {:016X}'.format(self.mtimecmp, self.mtime))
+        else:
+            self.int_soft.prepare(0)
         
         if (self.mtimecmp < self.mtime):            
             self.int_timer.prepare(1)
+            print('WARNING: CLINT Timer interrupt {:016X} < {:016X}'.format(self.mtimecmp, self.mtime))
         else:
             self.int_timer.prepare(0)
 
@@ -101,8 +107,10 @@ class CLINT(Logic):
             
         if (self.port.write.get() == 1):
             
-            if (field == 'mtimecmp'):
-                self.mtimecmp = signExtend(write_data , 64)
+            if (field == 'msip'):
+                self.msip = write_data & 1
+            elif (field == 'mtimecmp'):
+                self.mtimecmp = write_data # signExtend(write_data , 64)
                 
             #    self.mtimecmp = (self.mtimecmp & (((1<<32)-1) << 32)) | (write_data & ((1<<32)-1))
             # elif (field == 'mtimecmph'):
