@@ -14,7 +14,7 @@ class Tracer:
                 # 1 -   '>' for function entry
                 #       '<' for function exit
                 # 2 - function name
-    instants = []
+    instants = [] 
     
     pending = {}
                 
@@ -121,7 +121,7 @@ class Tracer:
         return { "args": {}, "cat": "toplevel", "dur": tf-t0, "name": str(f), "ph": "X", "pid": pid, "tdur": tf-t0, "tid": tid, "ts": t0, "tts": tf}
     
     def formatInstant(self, pid, tid, event):
-        f = '{}-{}'.format(event[0], event[1])
+        f = '{} - {:016X}'.format(event[0], event[1])
         us_inv = 1/1e-6
         t0 = event[2] * us_inv / self.clk_freq
         
