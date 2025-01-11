@@ -27,6 +27,8 @@ from punxa.clint import *
 from punxa.plic import *
 from punxa.single_cycle.singlecycle_processor import *
 from punxa.single_cycle.singlecycle_processor_proxy_kernel import *
+from punxa.microprogrammed.microprogrammed_processor import *
+from punxa.microprogrammed.microprogrammed_processor_proxy_kernel import *
 from punxa.instruction_decode import *
 from punxa.interactive_commands import *
     
@@ -128,7 +130,6 @@ def buildHw(cpu_model='sc'):
         cpu = SingleCycleRISCV(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
     elif (cpu_model == 'scpk'):
         cpu = SingleCycleRISCVProxyKernel(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
-
     elif (cpu_model == 'up'):
         registerBase = mem_base +  (1 << 20) - 0x10000 # (8 * 8192)
 
@@ -138,8 +139,20 @@ def buildHw(cpu_model='sc'):
         py4hw.Constant(hw, 'zero', 0, zero)
         py4hw.Reg(hw, 'auto_reset', zero, reset, reset_value=1)
 
+        cpu = MicroprogrammedRISCV(hw, 'RISCV', reset, port_c, int_soft, int_timer, ext_int_targets, mem_base, registerBase)
+
+
+    elif (cpu_model == 'uppk'):
+        registerBase = mem_base +  (1 << 20) - 0x10000 # (8 * 8192)
+
+        reset = hw.wire('reset')
+        zero = hw.wire('zero')
+
+        py4hw.Constant(hw, 'zero', 0, zero)
+        py4hw.Reg(hw, 'auto_reset', zero, reset, reset_value=1)
+
         cpu = MicroprogrammedRISCVProxyKernel(hw, 'RISCV', reset, port_c, int_soft, int_timer, ext_int_targets, mem_base, registerBase)
-                                              
+           
     else:
         raise Exception(f'cpu model {cpu_model} not supported')
         
