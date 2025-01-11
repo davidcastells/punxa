@@ -73,11 +73,20 @@ class StoreAMOAccessFault(ProcessorException):
 class EnvCallUMode(ProcessorException):
     code = 8
 
+    def __init__(self, syscall):
+        self.msg = f'syscall: 0x{syscall:X}'
+
 class EnvCallSMode(ProcessorException):
     code = 9
 
+    def __init__(self, syscall):
+        self.msg = f'syscall: 0x{syscall:X}'
+
 class EnvCallMMode(ProcessorException):
     code = 11
+
+    def __init__(self, syscall):
+        self.msg = f'syscall: 0x{syscall:X}'
 
 class InstructionPageFault(ProcessorException):
     code = 12
