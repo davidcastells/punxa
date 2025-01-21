@@ -53,14 +53,19 @@ class CLINT(Logic):
 
     def clock(self):
         if (self.msip & 1):
+            if (self.int_soft.get() == 0):
+                # only print debug messages at the positive edge
+                print('WARNING: CLINT Software interrupt {:016X} < {:016X}'.format(self.mtimecmp, self.mtime))
             self.int_soft.prepare(1)
-            print('WARNING: CLINT Software interrupt {:016X} < {:016X}'.format(self.mtimecmp, self.mtime))
         else:
             self.int_soft.prepare(0)
         
         if (self.mtimecmp < self.mtime):            
+            if (self.int_timer.get() == 0):
+                # only print debug messages at the positive edge
+                print('WARNING: CLINT Timer interrupt {:016X} < {:016X}'.format(self.mtimecmp, self.mtime))
             self.int_timer.prepare(1)
-            print('WARNING: CLINT Timer interrupt {:016X} < {:016X}'.format(self.mtimecmp, self.mtime))
+
         else:
             self.int_timer.prepare(0)
 
