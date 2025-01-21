@@ -44,6 +44,9 @@ When completed, next goal is Linux boot.
 <tr>
  <td>Single Cycle </td><td>99.6 %   |█████████████████████████████████████████████|</td>
 </tr>
+<tr>
+ <td>Microprogrammed </td><td>53.8 %   |█████████████████████████░░░░░░░░░░░░░░░░░░░░|</td>
+</tr>
 </table>
 
 check [riscv-tests](https://github.com/davidcastells/punxa/blob/main/test/riscv-tests/README.md) for a complete list
