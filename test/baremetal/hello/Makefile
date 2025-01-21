@@ -1,16 +1,16 @@
-all: hello.elf
+all: hello_64.elf
 
 disasm: hello.disasm
 
 clean:
-	rm hello.elf
-	rm hello.disasm
+	rm hello_64.elf
+	rm hello_64.disasm
 
-hello.elf: hello.c
-	riscv64-unknown-elf-gcc  -e _startup startup.S kernel.c hello.c -o hello.elf
+hello_64.elf: hello.c
+	riscv64-unknown-elf-gcc  -e _startup startup.S kernel.c hello.c -o hello_64.elf
 
-hello.disasm: hello.elf
-	riscv64-unknown-elf-objdump -d hello.elf > hello.disasm
+hello_64.disasm: hello_64.elf
+	riscv64-unknown-elf-objdump -d hello_64.elf > hello_64.disasm
 
 run_spike:
 	 spike pk hello.elf

@@ -38,20 +38,27 @@ def list_commands():
 
 def regs():
     cpu = _ci_cpu
-    print('pc: {:016X}'.format(cpu.getPc()))
+    
+    if (_ci_cpu.isa == 64):
+        fmt = '016X'
+    else:
+        fmt = '08X'
+        
+    pc = cpu.getPc()
+    print(f'pc: {pc:{fmt}}')
     for i in range(8):
         ri = cpu.getReg(i)
         ri8 = cpu.getReg(i+8)
         ri16 = cpu.getReg(i+16)
         ri24 = cpu.getReg(i+24)
-        print(f'r{i:2}={ri:016X}  |  r{i+8:2}={ri8:016X}  |  r{i+16:2}={ri16:016X}  |  r{i+24:2}={ri24:016X} ')
+        print(f'r{i:2}={ri:{fmt}}  |  r{i+8:2}={ri8:{fmt}}  |  r{i+16:2}={ri16:{fmt}}  |  r{i+24:2}={ri24:{fmt}} ')
             
     for i in range(8):
         ri = cpu.getFreg(i)
         ri8 = cpu.getFreg(i+8)
         ri16 = cpu.getFreg(i+16)
         ri24 = cpu.getFreg(i+24)
-        print(f'fr{i:2}={ri:016X}  |  fr{i+8:2}={ri8:016X}  |  fr{i+16:2}={ri16:016X}  |  fr{i+24:2}={ri24:016X} ')
+        print(f'fr{i:2}={ri:{fmt}}  |  fr{i+8:2}={ri8:{fmt}}  |  fr{i+16:2}={ri16:{fmt}}  |  fr{i+24:2}={ri24:{fmt}} ')
 
 def write_trace(filename='newtrace.json'):
     cpu = _ci_cpu
@@ -190,6 +197,8 @@ def loadProgram(memory, filename, offset, verbose=False):
     if (_ic_verbose):
         print('program loaded!')
 
+
+    
 def multi_split(s, l):
     ret = [s]
 

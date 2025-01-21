@@ -61,9 +61,14 @@ def dummy_print(*args, **kargs):
 pr = print
 
 class ControlUnit(py4hw.Logic):
-    def __init__(self, parent, name:str, reset, status, control):
+    def __init__(self, parent, name:str, reset, status, control, XLEN):
         super().__init__(parent, name)
         
+        print('CU XLEN = ', XLEN)
+        self.XLEN = XLEN
+        self.XLEN_BYTES = XLEN // 8
+        
+
         self.addIn('reset', reset)
         
         self.status = {}
@@ -256,7 +261,7 @@ class ControlUnit(py4hw.Logic):
         
     def loadRegFromCsr(self, intReg, csr):
         self.microins = f'{intReg} = CSR[0x{csr:X}]'
-        self.vcontrol['control_imm'] = self.parent.register_csr_offset + csr * 8 
+        self.vcontrol['control_imm'] = self.parent.register_csr_offset + csr * self.XLEN_BYTES 
         
         yield from self.aluOp('sum', 'reg_base', 'control_imm', 'MAR')
         yield from self.loadReg(intReg)
@@ -270,7 +275,7 @@ class ControlUnit(py4hw.Logic):
         # loads an integer register into an internal register
         # the index of the integer register is taken from an immediate value
         self.microins = f'{intReg} = r{nreg}'   
-        self.vcontrol['control_imm'] = nreg * 8
+        self.vcontrol['control_imm'] = nreg * self.XLEN_BYTES
         yield from self.aluOp('sum', 'reg_base', 'control_imm', 'MAR')
         yield from self.loadReg(intReg)
         
@@ -299,21 +304,21 @@ class ControlUnit(py4hw.Logic):
         
     def saveRegToAux(self, intReg, aux):
         self.state = f'AUX{aux} = {intReg}'
-        self.vcontrol['control_imm'] = self.parent.register_aux_offset + aux * 8 
+        self.vcontrol['control_imm'] = self.parent.register_aux_offset + aux * self.XLEN_BYTES 
         
         yield from self.aluOp('sum', 'reg_base', 'control_imm', 'MAR')
         yield from self.saveReg(intReg)
 
     def saveRegToCsr(self, intReg, csr):
         self.state = f'CSR[0x{csr:X}] = {intReg}'
-        self.vcontrol['control_imm'] = self.parent.register_csr_offset + csr * 8 
+        self.vcontrol['control_imm'] = self.parent.register_csr_offset + csr * self.XLEN_BYTES
         
         yield from self.aluOp('sum', 'reg_base', 'control_imm', 'MAR')
         yield from self.saveReg(intReg)
         
     def saveRegToMemImm(self, intReg, nreg):
         self.state = f'r{nreg} = {intReg}'   
-        self.vcontrol['control_imm'] = nreg * 8
+        self.vcontrol['control_imm'] = nreg * self.XLEN_BYTES
         yield from self.aluOp('sum', 'reg_base', 'control_imm', 'MAR')
         yield from self.saveReg(intReg)
         
@@ -1093,6 +1098,12 @@ class ControlUnit(py4hw.Logic):
         
         off8_C = compose(ins, [[5,2],[10,3]]) << 3
         off7_CL = compose(ins, [[5,1],[10,3],[6,1]]) << 2
+
+        if (self.XLEN == 64):
+            fmt = '016X'
+        else:
+            fmt = '08X'
+
         
         if (op == 'C.LW'):
             yield from self.loadRegFromMem('A', 'c_r1')
@@ -1118,7 +1129,7 @@ class ControlUnit(py4hw.Logic):
 
             #address = self.reg[c_rs1] + off8_C
             #self.reg[c_rd] = yield from self.virtualMemoryLoad(address, 64//8)
-            pr('r{} = [r{} + {}] -> [{}]={:016X}'.format(c_rd, c_rs1, off8_C, self.parent.addressFmt(address), vrd))
+            pr('r{} = [r{} + {}] -> [{}]={}'.format(c_rd, c_rs1, off8_C, self.parent.addressFmt(address), f'{vrd:{fmt}}'))
         elif (op == 'C.FLW'):
             off = compose(ins, [[5,1],[10,3],[6,1]]) << 2
             address = self.reg[c_rs1] + off
@@ -1149,6 +1160,12 @@ class ControlUnit(py4hw.Logic):
     def executeCIWIns(self):
         op = self.decoded_ins
         ins = self.ins
+        
+        if (self.XLEN == 64):
+            fmt = '016X'
+        else:
+            fmt = '08X'
+
 
         c_rd = 8 + get_bits(ins, 2, 3)
         imm8 = compose(ins, [[7,4],[11,2],[5,1],[6,1]]) << 2
@@ -1159,12 +1176,18 @@ class ControlUnit(py4hw.Logic):
             vrd = self.parent._wires['R'].get()
             yield from self.saveRegToMem('R', 'c_rd')
             # self.reg[c_rd] = self.reg[2] + imm8
-            pr('r{} = r2 + {} -> {:016X}'.format(c_rd, imm8 , vrd))
+            pr(f'r{c_rd} = r2 + {imm8} -> {vrd:{fmt}}')
         else:
             print(' - CIW-Type instruction not supported!')
             self.parent.getSimulator().stop()
 
     def executeCBIns(self):
+        
+        if (self.XLEN == 64):
+            fmt = '016X'
+        else:
+            fmt = '08X'
+
         op = self.decoded_ins
         ins = self.ins
         
@@ -1181,7 +1204,7 @@ class ControlUnit(py4hw.Logic):
             vrd = self.parent._wires['R'].get()
             yield from self.saveRegToMem('R', 'c_r1')
             #self.reg[c_rd] = self.reg[c_rd] & simm6
-            pr('r{} = r{} & {} -> {:016X}'.format(c_r1, c_r1, simm6, vrd))
+            pr(f'r{c_r1} = r{c_r1} & {simm6} -> {vrd:{fmt}}')
         elif (op == 'C.SRLI'):
             yield from self.aluOp('bypass2', 'B', 'simm6', 'B')
             yield from self.zeroExtend('B', 6, 64)
@@ -1190,7 +1213,7 @@ class ControlUnit(py4hw.Logic):
             vrd = self.parent._wires['R'].get()
             yield from self.saveRegToMem('R', 'c_r1')
             #self.reg[c_rd] = self.reg[c_rd] >> imm6
-            pr('r{} = r{} >> {} -> {:016X}'.format(c_r1, c_r1, imm6, vrd))
+            pr(f'r{c_r1} = r{c_r1} >> {imm6} -> {vrd:{fmt}}')
         elif (op == 'C.SRAI'):
             yield from self.aluOp('bypass2', 'B', 'simm6', 'B')
             yield from self.zeroExtend('B', 6, 64)
@@ -1201,7 +1224,7 @@ class ControlUnit(py4hw.Logic):
             vrd = self.parent._wires['R'].get()
             yield from self.saveRegToMem('R', 'c_r1')
             #self.reg[c_rd] = (IntegerHelper.c2_to_signed(self.reg[c_rd],64) >> imm6) & ((1<<64)-1)
-            pr('r{} = r{} >> {} -> {:016X}'.format(c_r1, c_r1, imm6, vrd))
+            pr(f'r{c_r1} = r{c_r1} >> {imm6} -> {vrd:{fmt}}')
         elif (op == 'C.BEQZ'):
             yield from self.loadRegFromMem('A', 'c_r1')
             self.vcontrol['control_imm'] = 0
@@ -1212,7 +1235,7 @@ class ControlUnit(py4hw.Logic):
                 yield from self.aluOp('sum', 'PC', 'soff9_C', 'PC')
                 self.jmp_address = self.parent._wires['PC'].get()
                 
-            pr('r{} == 0 ? {} -> {:016X}'.format(c_r1, self.should_jump, self.jmp_address))
+            pr(f'r{c_r1} == 0 ? {self.should_jump} -> {self.jmp_address:{fmt}}')
         elif (op == 'C.BNEZ'):
             yield from self.loadRegFromMem('A', 'c_r1')
             self.vcontrol['control_imm'] = 0
@@ -1223,7 +1246,7 @@ class ControlUnit(py4hw.Logic):
                 yield from self.aluOp('sum', 'PC', 'soff9_C', 'PC')
                 self.jmp_address = self.parent._wires['PC'].get()
                 
-            pr('r{} != 0 ? {} -> {:016X}'.format(c_r1, self.should_jump, self.jmp_address))
+            pr(f'r{c_r1} != 0 ? {self.should_jump} -> {self.jmp_address:{fmt}}')
         else:
             print(' - CIW-Type instruction not supported!')
             self.parent.getSimulator().stop()
@@ -1449,6 +1472,12 @@ class ControlUnit(py4hw.Logic):
         off9_C = compose(ins, [[2,3], [12,1], [5,2]]) << 3
         off8_CS = compose(ins, [[2,2],[12,1],[4,3]]) << 2
         
+        if (self.XLEN == 64):
+            fmt = '016X'
+        else:
+            fmt = '08X'
+
+        
         if (op == 'C.LI'):
             yield from self.aluOp('bypass2', 'A', 'simm6', 'R')
             vrd = self.parent._wires['R'].get()
@@ -1524,7 +1553,7 @@ class ControlUnit(py4hw.Logic):
             vrd = self.parent._wires['R'].get()
             yield from self.saveRegToMem('R', 'rd')            
             #self.reg[c_rd] = (self.reg[c_rd] + imm6) & ((1<<64)-1)
-            pr('r{} = r{} + {} -> {:016X}'.format(rd, rd, simm6, vrd))
+            pr(f'r{rd} = r{rd} + {simm6} -> {vrd:{fmt}}')
         elif (op == 'C.ADDIW'):
             yield from self.loadRegFromMem('A', 'rd')
             yield from self.aluOp('sum', 'A', 'simm6', 'R')
@@ -3840,6 +3869,12 @@ class ControlUnit(py4hw.Logic):
         rs2 = (ins >> 20) & 0x1F
         soff13 = compose_sign(ins, [[31,1], [7,1], [25,6], [8,4]]) << 1
 
+        if (self.XLEN == 64):
+            fmt = '016X'
+        else:
+            fmt = '08X'
+
+
         # A = r1
         yield from self.loadRegFromMem('A', 'r1')
         # B = r2 
@@ -3887,7 +3922,7 @@ class ControlUnit(py4hw.Logic):
         if (self.should_jump):
             yield from self.aluOp('sum', 'PC', 'soff13', 'PC')
 
-        pr('r{} != r{} ? {} pc+0x{:X} = {:016X}'.format(rs1, rs2, self.should_jump, soff13, self.jmp_address))    
+        pr(f'r{rs1} != r{rs2} ? {self.should_jump} pc+0x{soff13:X} = {self.jmp_address:{fmt}}')    
 
     def executeSIns(self):
         op = self.decoded_ins
@@ -3995,6 +4030,12 @@ class ControlUnit(py4hw.Logic):
         shamt5 = compose(ins, [[20,5]])
         csr = compose(ins, [[20, 12]])
 
+        if (self.XLEN == 64):
+            fmt = '016X'
+        else:
+            fmt = '08X'
+
+
         if (op == 'ADDI'):
             if (self.verbose):
                 pr('[CU] ADDI')
@@ -4006,7 +4047,7 @@ class ControlUnit(py4hw.Logic):
 
             yield from self.saveRegToMem('R', 'rd')
             
-            pr('r{} = r{} + {} -> {:016X}'.format(rd, rs1, simm12, vr))
+            pr(f'r{rd} = r{rs1} + {simm12} -> {vr:{fmt}}')
         elif (op == 'SLTI'):
             # rd = r1 < simm12
             # A = r1
@@ -4303,9 +4344,9 @@ class ControlUnit(py4hw.Logic):
             #    csrname = self.implemented_csrs[csr]
                 
             if (rd == 0):
-                pr('{} = r{} -> {:016X}'.format(csrname, rs1, v1))
+                pr(f'{csrname} = r{rs1} -> {v1:{fmt}}')
             else:
-                pr('r{} = {}, {} = r{} -> {:016X},{:016X}'.format(rd, csrname, csrname, rs1, vcsr, v1))
+                pr(f'r{rd} = {csrname}, {csrname} = r{rs1} -> {vcsr:{fmt}},{v1:{fmt}}')
 
         elif (op == 'CSRRS'):
             # Read and set
@@ -4335,11 +4376,11 @@ class ControlUnit(py4hw.Logic):
             csrname = self.parent.implemented_csrs[csr]
             
             if (rd == 0):
-                pr('{} |= r{} -> {:016X}'.format(csrname, rs1, vcsr)) 
+                pr(f'{csrname} |= r{rs1} -> {vcsr:{fmt}}') 
             elif (rs1 == 0):
-                pr('r{} = {} -> {:016X}'.format(rd, csrname, vrd))           
+                pr(f'r{rd} = {csrname} -> {vrd:{fmt}}')           
             else:
-                pr('r{} = {}, {} |= r{} -> {:016X},{:016X}'.format(rd, csrname, csrname, rs1, vrd, vcsr))            
+                pr(f'r{rd} = {csrname}, {csrname} |= r{rs1} -> {vrd:{fmt}},{vcsr:{fmt}}')            
         
         elif (op == 'CSRRC'):
             # Read and clear
@@ -4700,13 +4741,14 @@ class ControlUnit(py4hw.Logic):
             yield from self.loadRegFromCsr('R', 0xFFF)
             #curpriv = self.csr[0xFFF] # current privilege
             curpriv = self.parent._wires['R'].get()
-            
+            yield from self.loadRegFromMemImm('A', 17)
+            syscall = self.parent._wires['A'].get()
             if (curpriv == 3): 
-                raise EnvCallMMode()
+                raise EnvCallMMode(syscall)
             elif (curpriv == 1):
-                raise EnvCallSMode()
+                raise EnvCallSMode(syscall)
             elif (curpriv == 0):
-                raise EnvCallUMode()
+                raise EnvCallUMode(syscall)
             else:
                 raise Exception('unknown privilege level {}'.format(curpriv))
         elif (op == 'EBREAK'):
@@ -4724,6 +4766,12 @@ class ControlUnit(py4hw.Logic):
         rs2 = (ins >> 20) & 0x1F
 
         simm32 = (compose_sign(ins, [[12,20]]) << 12) & ((1<<64)-1)
+        
+        if (self.XLEN == 64):
+            fmt = '016X'
+        else:
+            fmt = '08X'
+
 
         if (op == 'AUIPC'):
             simm = compose(ins, [[12,20]]) << 12
@@ -4733,7 +4781,7 @@ class ControlUnit(py4hw.Logic):
             vr = self.parent._wires['R'].get()
             yield from self.saveRegToMem('R', 'rd')
             
-            pr('r{} = pc + {:08X} -> {:016X}'.format(rd, simm, vr))      
+            pr(f'r{rd} = pc + {simm:08X} -> {vr:{fmt}}')      
             
         elif (op == 'LUI'):
             # A = 0 (probably rs1 is 0)
@@ -4794,8 +4842,10 @@ class ControlUnit(py4hw.Logic):
     def retire(self):
         self.state = 'retire'
         yield from self.loadRegFromCsr('A', CSR_INSTRET)
+        #print('INFO: read instret', self.parent._wires['A'].get())
         self.vcontrol['control_imm'] = 1
         yield from self.aluOp('sum', 'A', 'control_imm', 'A')
+        #print('INFO: updating instret', self.parent._wires['A'].get())
         yield from self.saveRegToCsr('A', CSR_INSTRET)
         
     def encodeFeatures(self, str):
@@ -4819,9 +4869,12 @@ class ControlUnit(py4hw.Logic):
         yield from self.writeCsr(CSR_MIMPID, 0x70756e7861323431)  # @todo should be reversed
         yield from self.writeCsr(CSR_MHARTID, 0) # mhartid
     
-
+    def initDynamicCSRs(self):
+        yield from self.writeCsr(0xFFF,  CSR_PRIVLEVEL_MACHINE)
+        
     def run(self):
         yield from self.initStaticCSRs()
+        yield from self.initDynamicCSRs()
         
         while True:
             try:
@@ -5174,9 +5227,19 @@ class MicroprogrammedRISCV(py4hw.Logic):
     def __init__(self, parent, name:str, 
                  reset,
                  memory:MemoryInterface, 
-                 int_soft_machine, int_timer_machine, ext_int_targets, resetAddress, registerBase):
+                 int_soft_machine, int_timer_machine, ext_int_targets, 
+                 resetAddress, registerBase,
+                 XLEN=64):
 
         super().__init__(parent, name)
+        
+        self.isa = XLEN
+        
+        XLEN_BYTES = XLEN // 8
+        XLEN_BYTES_SHIFT = int(math.log2(XLEN_BYTES))
+
+        self.XLEN = XLEN
+        self.XLEN_BYTES = XLEN_BYTES
         
         self.mem = self.addInterfaceSource('memory', memory)
 
@@ -5206,19 +5269,19 @@ class MicroprogrammedRISCV(py4hw.Logic):
 
         hlp = py4hw.LogicHelper(self)
         
-        q_a = self.wire('A', 64)
-        q_b = self.wire('B', 64)
-        q_r = self.wire('R', 64)
-        q_mar = self.wire('MAR', 64)
+        q_a = self.wire('A', XLEN)
+        q_b = self.wire('B', XLEN)
+        q_r = self.wire('R', XLEN)
+        q_mar = self.wire('MAR', XLEN)
         q_i = self.wire('IR', 32)
-        self.q_pc = self.wire('PC', 64)
+        self.q_pc = self.wire('PC', XLEN)
         
-        d_a = self.wire('dA', 64)
-        d_b = self.wire('dB', 64)
-        d_r = self.wire('dR', 64)
-        d_mar = self.wire('dMAR', 64)
+        d_a = self.wire('dA', XLEN)
+        d_b = self.wire('dB', XLEN)
+        d_r = self.wire('dR', XLEN)
+        d_mar = self.wire('dMAR', XLEN)
         d_i = self.wire('dIR', 32)
-        d_pc = self.wire('dPC', 64)
+        d_pc = self.wire('dPC', XLEN)
         
         control['ena_A'] = self.wire('ena_A')
         control['ena_B']= self.wire('ena_B')
@@ -5303,36 +5366,37 @@ class MicroprogrammedRISCV(py4hw.Logic):
 
         py4hw.Buf(self, 'd_i', memory.read_data, d_i)
         
-        alu_r = self.wire('alu_r', 64)      
+        alu_r = self.wire('alu_r', XLEN)      
         
-        rd_m8 = compose_hw(self, 'rd_m8', q_i, [[7, 5]], 3)
-        rs1_m8 = compose_hw(self, 'rs1_m8', q_i, [[15,5]], 3)
-        rs2_m8 = compose_hw(self, 'rs2_m8', q_i, [[20,5]], 3)
-        csr_m8 = compose_hw(self, 'csr_m8', q_i, [[20, 12]], 3)
+        # we precompute the offsets of registers in memory
+        rd_mxbs = compose_hw(self, 'rd_mxbs', q_i, [[7, 5]], XLEN_BYTES_SHIFT)
+        rs1_mxbs = compose_hw(self, 'rs1_mxbs', q_i, [[15,5]], XLEN_BYTES_SHIFT)
+        rs2_mxbs = compose_hw(self, 'rs2_mxbs', q_i, [[20,5]], XLEN_BYTES_SHIFT)
+        csr_mxbs = compose_hw(self, 'csr_mxbs', q_i, [[20, 12]], XLEN_BYTES_SHIFT)
         
-        c_rd_m8 = compose_hw(self, 'c_rd_m8', q_i, [[2,3]], 3, 8*8)
-        c_rs1_m8 = compose_hw(self, 'c_rs1_m8', q_i, [[7,3]], 3, 8*8)
+        c_rd_mxbs = compose_hw(self, 'c_rd_mxbs', q_i, [[2,3]], XLEN_BYTES_SHIFT, XLEN_BYTES*8)
+        c_rs1_mxbs = compose_hw(self, 'c_rs1_mxbs', q_i, [[7,3]], XLEN_BYTES_SHIFT, XLEN_BYTES*8)
 
         #csrimm_m8 = compose_hw(self, 'csrimm_m8', q_i, [[0, 12]], 3)
 
         self.register_integer_offset = 0
-        self.register_floating_point_offset = 32 * 8
-        self.register_aux_offset = (32+32) * 8
-        self.register_csr_offset = (32+32+32) * 8
+        self.register_floating_point_offset = 32 * XLEN_BYTES
+        self.register_aux_offset = (32+32) * XLEN_BYTES
+        self.register_csr_offset = (32+32+32) * XLEN_BYTES
         
-        base_regs = hlp.hw_constant(64, registerBase)
-        base_fregs = hlp.hw_constant(64, registerBase + self.register_floating_point_offset)
-        base_csrs =  hlp.hw_constant(64, self.register_csr_offset)
-        r1_offset = hlp.hw_or2(base_regs, rs1_m8)
-        r2_offset = hlp.hw_or2(base_regs, rs2_m8)
-        rd_offset = hlp.hw_or2(base_regs, rd_m8)
-        fr1_offset = hlp.hw_or2(base_fregs, rs1_m8)
-        fr2_offset = hlp.hw_or2(base_fregs, rs2_m8)
-        frd_offset = hlp.hw_or2(base_fregs, rd_m8)
-        c_r1_offset = hlp.hw_or2(base_regs, c_rs1_m8)
-        c_rd_offset = hlp.hw_or2(base_regs, c_rd_m8)
+        base_regs = hlp.hw_constant(XLEN, registerBase)
+        base_fregs = hlp.hw_constant(XLEN, registerBase + self.register_floating_point_offset)
+        base_csrs =  hlp.hw_constant(XLEN, self.register_csr_offset)
+        r1_offset = hlp.hw_or2(base_regs, rs1_mxbs)
+        r2_offset = hlp.hw_or2(base_regs, rs2_mxbs)
+        rd_offset = hlp.hw_or2(base_regs, rd_mxbs)
+        fr1_offset = hlp.hw_or2(base_fregs, rs1_mxbs)
+        fr2_offset = hlp.hw_or2(base_fregs, rs2_mxbs)
+        frd_offset = hlp.hw_or2(base_fregs, rd_mxbs)
+        c_r1_offset = hlp.hw_or2(base_regs, c_rs1_mxbs)
+        c_rd_offset = hlp.hw_or2(base_regs, c_rd_mxbs)
         
-        csr_offset = hlp.hw_or2(base_regs, hlp.hw_add(base_csrs, csr_m8))
+        csr_offset = hlp.hw_or2(base_regs, hlp.hw_add(base_csrs, csr_mxbs))
         #csrimm_offset = hlp.hw_or2(base_regs, hlp.hw_add(base_csrs, csrimm_m8))        
         
         py4hw.Mux2(self, 'sel_A', control['sel_A_mem'], alu_r, memory.read_data, d_a)
@@ -5391,7 +5455,7 @@ class MicroprogrammedRISCV(py4hw.Logic):
 
         ALU(self, 'ALU', reset, q_i, q_a, q_b, self.q_pc, q_r, alu_r, control, status, registerBase)
 
-        ControlUnit(self, 'CU', reset, status, control)
+        ControlUnit(self, 'CU', reset, status, control, XLEN)
         
     def setVerbose(self, verbose):
         global pr
@@ -5421,7 +5485,7 @@ class MicroprogrammedRISCV(py4hw.Logic):
     def getCSR(self, idx):
         csrBase = self.registerBase - self.behavioural_memory.mem_base + self.register_csr_offset 
         #print('reading from base {:016X}'.format(csrBase))
-        return self.behavioural_memory.read_i64(csrBase+ idx * 8)
+        return self.behavioural_memory.read_i64(csrBase+ idx * self.XLEN_BYTES)
     
     def getPc(self):
         return self.q_pc.get()
