@@ -1160,6 +1160,12 @@ class ControlUnit(py4hw.Logic):
     def executeCIWIns(self):
         op = self.decoded_ins
         ins = self.ins
+        
+        if (self.XLEN == 64):
+            fmt = '016X'
+        else:
+            fmt = '08X'
+
 
         c_rd = 8 + get_bits(ins, 2, 3)
         imm8 = compose(ins, [[7,4],[11,2],[5,1],[6,1]]) << 2
@@ -1170,12 +1176,18 @@ class ControlUnit(py4hw.Logic):
             vrd = self.parent._wires['R'].get()
             yield from self.saveRegToMem('R', 'c_rd')
             # self.reg[c_rd] = self.reg[2] + imm8
-            pr('r{} = r2 + {} -> {:016X}'.format(c_rd, imm8 , vrd))
+            pr(f'r{c_rd} = r2 + {imm8} -> {vrd:{fmt}}')
         else:
             print(' - CIW-Type instruction not supported!')
             self.parent.getSimulator().stop()
 
     def executeCBIns(self):
+        
+        if (self.XLEN == 64):
+            fmt = '016X'
+        else:
+            fmt = '08X'
+
         op = self.decoded_ins
         ins = self.ins
         
@@ -1192,7 +1204,7 @@ class ControlUnit(py4hw.Logic):
             vrd = self.parent._wires['R'].get()
             yield from self.saveRegToMem('R', 'c_r1')
             #self.reg[c_rd] = self.reg[c_rd] & simm6
-            pr('r{} = r{} & {} -> {:016X}'.format(c_r1, c_r1, simm6, vrd))
+            pr(f'r{c_r1} = r{c_r1} & {simm6} -> {vrd:{fmt}}')
         elif (op == 'C.SRLI'):
             yield from self.aluOp('bypass2', 'B', 'simm6', 'B')
             yield from self.zeroExtend('B', 6, 64)
@@ -1201,7 +1213,7 @@ class ControlUnit(py4hw.Logic):
             vrd = self.parent._wires['R'].get()
             yield from self.saveRegToMem('R', 'c_r1')
             #self.reg[c_rd] = self.reg[c_rd] >> imm6
-            pr('r{} = r{} >> {} -> {:016X}'.format(c_r1, c_r1, imm6, vrd))
+            pr(f'r{c_r1} = r{c_r1} >> {imm6} -> {vrd:{fmt}}')
         elif (op == 'C.SRAI'):
             yield from self.aluOp('bypass2', 'B', 'simm6', 'B')
             yield from self.zeroExtend('B', 6, 64)
@@ -1212,7 +1224,7 @@ class ControlUnit(py4hw.Logic):
             vrd = self.parent._wires['R'].get()
             yield from self.saveRegToMem('R', 'c_r1')
             #self.reg[c_rd] = (IntegerHelper.c2_to_signed(self.reg[c_rd],64) >> imm6) & ((1<<64)-1)
-            pr('r{} = r{} >> {} -> {:016X}'.format(c_r1, c_r1, imm6, vrd))
+            pr(f'r{c_r1} = r{c_r1} >> {imm6} -> {vrd:{fmt}}')
         elif (op == 'C.BEQZ'):
             yield from self.loadRegFromMem('A', 'c_r1')
             self.vcontrol['control_imm'] = 0
@@ -1223,7 +1235,7 @@ class ControlUnit(py4hw.Logic):
                 yield from self.aluOp('sum', 'PC', 'soff9_C', 'PC')
                 self.jmp_address = self.parent._wires['PC'].get()
                 
-            pr('r{} == 0 ? {} -> {:016X}'.format(c_r1, self.should_jump, self.jmp_address))
+            pr(f'r{c_r1} == 0 ? {self.should_jump} -> {self.jmp_address:{fmt}}')
         elif (op == 'C.BNEZ'):
             yield from self.loadRegFromMem('A', 'c_r1')
             self.vcontrol['control_imm'] = 0
