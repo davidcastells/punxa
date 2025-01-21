@@ -1322,17 +1322,28 @@ class SingleCycleRISCV(py4hw.Logic):
                 pr('[r{}] = r{}, r{}=1 -> [{}] not reserved'.format(rs1, rs2, rd, self.addressFmt(address)))
         elif (op == 'AMOADD.D'):
             address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
-            newvalue= self.reg[rd] + self.reg[rs2] & ((1<<64)-1)
+            oldvalue = yield from self.virtualMemoryLoad(address, 64//8)
+            newvalue= oldvalue + self.reg[rs2] & ((1<<64)-1)
             yield from self.virtualMemoryWrite(address, 64//8, newvalue)
-            pr('[r{}] = [r{}] + r{} -> [{}]={:016X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
+            #pr('[r{}] = [r{}] + r{} -> [{}]={:016X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
+            if (rd == 0):
+                pr('[r{}] = [r{}] + r{} -> [{}]={:016X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
+            else:      
+                self.reg[rd] = oldvalue
+                pr('r{} = [r{}], [r{}] = [r{}] + r{} -> {:016X}, [{}]={:016X}'.format(rd, rs1, rs1, rs1, rs2, oldvalue, self.addressFmt(address), newvalue))
         elif (op == 'AMOADD.W'):
             address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
-            self.reg[rd] = signExtend(self.reg[rd], 32, 64) 
-            newvalue= self.reg[rd] + self.reg[rs2] & 0xFFFFFFFF
+            oldvalue = yield from self.virtualMemoryLoad(address, 32//8)
+            oldvalue = signExtend(oldvalue, 32, 64) 
+
+            newvalue= oldvalue + self.reg[rs2] & 0xFFFFFFFF
             yield from self.virtualMemoryWrite(address, 32//8, newvalue)
-            pr('[r{}] = [r{}] + r{} -> [{}]={:08X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
+            if (rd == 0):
+                pr('[r{}] = [r{}] + r{} -> [{}]={:08X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
+            else:
+                self.reg[rd] = oldvalue
+                pr('r{} = [r{}], [r{}] = [r{}] + r{} -> {:016X}, [{}]={:08X}'.format(rd, rs1, rs1, rs1, rs2, oldvalue, self.addressFmt(address), newvalue))
+                                            
         elif (op == 'AMOAND.W'):
             address = self.reg[rs1]
             self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
@@ -1342,10 +1353,14 @@ class SingleCycleRISCV(py4hw.Logic):
             pr('[r{}] = [r{}] & r{} -> [{}]={:08X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
         elif (op == 'AMOAND.D'):
             address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
-            newvalue= self.reg[rd] & self.reg[rs2] 
+            oldvalue = yield from self.virtualMemoryLoad(address, 64//8)
+            newvalue= oldvalue & self.reg[rs2] 
             yield from self.virtualMemoryWrite(address, 64//8, newvalue)
-            pr('[r{}] = [r{}] & r{} -> [{}]={:016X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
+            if (rd == 0):
+                pr('[r{}] = [r{}] & r{} -> [{}]={:016X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
+            else:
+                self.reg[rd] = oldvalue
+                pr('r{} = [r{}], [r{}] = [r{}] & r{} -> {:016X}, [{}]={:016X}'.format(rd, rs1, rs1, rs1, rs2, oldvalue, self.addressFmt(address), newvalue))
         elif (op == 'AMOOR.W'):
             address = self.reg[rs1]
             self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
@@ -1355,10 +1370,14 @@ class SingleCycleRISCV(py4hw.Logic):
             pr('[r{}] = [r{}] | r{} -> [{}]={:08X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
         elif (op == 'AMOOR.D'):
             address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
-            newvalue= self.reg[rd] | self.reg[rs2] 
+            oldvalue = yield from self.virtualMemoryLoad(address, 64//8)
+            newvalue= oldvalue | self.reg[rs2] 
             yield from self.virtualMemoryWrite(address, 64//8, newvalue)
-            pr('[r{}] = [r{}] | r{} -> [{}]={:016X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
+            if (rd == 0):
+                pr('[r{}] = [r{}] | r{} -> [{}]={:016X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
+            else:
+                self.reg[rd] = oldvalue
+                pr('r{} = [r{}], [r{}] = [r{}] | r{} -> {:016X}, [{}]={:016X}'.format(rd, rs1, rs1, rs1, rs2, oldvalue, self.addressFmt(address), newvalue))
         elif (op == 'AMOXOR.W'):
             address = self.reg[rs1]
             self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
@@ -2003,7 +2022,7 @@ class SingleCycleRISCV(py4hw.Logic):
             self.jmp_address = self.reg[c_rs1]
             self.reg[1] = self.pc + 2
             pr('r{}, r1 = pc+2 -> {},{}'.format(c_rs1, self.addressFmt(self.jmp_address), self.addressFmt(self.reg[1])))
-            self.functionEnter(self.jmp_address, True)
+            self.functionEnter(self.jmp_address, False)
             
         elif (op == 'C.EBREAK'):
             # 
@@ -2209,7 +2228,7 @@ class SingleCycleRISCV(py4hw.Logic):
             self.should_jump = True
             self.jmp_address = self.pc + off12
             pr('{} -> {:016X}'.format(off12, self.jmp_address))
-            self.functionEnter(self.jmp_address, True)
+            #self.functionEnter(self.jmp_address, True)
         else:
             print(' - CJ-Type instruction not supported!')
             self.parent.getSimulator().stop()
@@ -2414,6 +2433,13 @@ class SingleCycleRISCV(py4hw.Logic):
         if (real_idx == CSR_SATP):
             if (self.csr[CSR_PRIVLEVEL] == CSR_PRIVLEVEL_SUPERVISOR) and (self.csr[CSR_MSTATUS] & CSR_MSTATUS_TVM_MASK):
                 raise IllegalInstruction('Trying to write SATP with TVM', self.ins)
+            
+            n = (v >> 60) & ((1<<4)-1)
+            sn = ['Base', '','','','','','','','Sv39','Sv48','Sv57','Sv64'][n]
+            
+            if (sn != 'Sv39'):
+                print('WARNING: trying to set VM mode', sn)
+                return 
                 
         if (real_idx == CSR_FCSR):
             # write also in FFLAGS
