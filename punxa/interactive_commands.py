@@ -1192,7 +1192,7 @@ def translateVirtualAddress32(va):
     if (is_leaf):
         print(f'Level 1 PTE index {vpn[1]} in {pte_addr:08X}. Type={pte_type} VA: {vpn[1]:03X} | {v_vof:08X} PA: {v_ppn:X} + {v_vof:X} = {v_pa:08X}', end='')
         print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
-        return
+        return va
 
     phy = ppn1 << 22 | ppn0 << 12
     print(f'Level 1 PTE index {vpn[1]} in {pte_addr:08X}. Type={pte_type} Table = {phy:08X}', end='')
@@ -1233,7 +1233,7 @@ def translateVirtualAddress32(va):
     if (is_leaf):
         print(f'Level 0 PTE index {vpn[0]} in {pte_addr:09X}. Type={pte_type} VA: {vpn[1]:03X} | {vpn[0]:03X} | {v_vof:08X} PA: {v_ppn:X} + {v_vof:X} = {v_pa:08X}', end='')
         print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
-        return
+        return va
 
     phy = ppn1 << 22 | ppn0 << 12
     print(f'Level 0 PTE index {vpn[0]} in {pte_addr:08X}. Type={pte_type} Table = {phy:08X}', end='')
@@ -1318,7 +1318,7 @@ def translateVirtualAddress(va):
     if (is_leaf):
         print(f'Level 2 PTE index {vpn[2]} in {pte_addr:016X}. Type={pte_type} VA: {vpn[2]:03X} | {v_vof:08X} PA: {v_ppn:X} + {v_vof:X} = {v_pa:016X}', end='')
         print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
-        return
+        return v_pa
     
     phy = ppn2 << 30 | ppn1 << 21 | ppn0 << 12
     print(f'Level 2 PTE index {vpn[2]} in {pte_addr:016X}. Type={pte_type} Table = {phy:016X}', end='')
@@ -1360,7 +1360,7 @@ def translateVirtualAddress(va):
     if (is_leaf):
         print(f'Level 1 PTE index {vpn[1]} in {pte_addr:016X}. Type={pte_type} VA: {vpn[2]:03X} | {vpn[1]:03X} | {v_vof:08X} PA: {v_ppn:X} + {v_vof:X} = {v_pa:016X}', end='')
         print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
-        return
+        return v_pa
     
     phy = ppn2 << 30 | ppn1 << 21 | ppn0 << 12
     print(f'Level 1 PTE index {vpn[1]} in {pte_addr:016X}. Type={pte_type} Table = {phy:016X}', end='')
@@ -1402,7 +1402,7 @@ def translateVirtualAddress(va):
     if (is_leaf):
         print(f'Level 0 PTE index {vpn[0]} in {pte_addr:016X}. Type={pte_type} VA: {vpn[2]:03X} | {vpn[1]:03X} | {v_vof:08X} PA: {v_ppn:X} + {v_vof:X} = {v_pa:016X}', end='')
         print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
-        return
+        return v_pa
     
     phy = ppn2 << 30 | ppn1 << 21 | ppn0 << 12
     print(f'Level 0 PTE index {vpn[0]} in {pte_addr:016X}. Type={pte_type} Table = {phy:016X}', end='')
