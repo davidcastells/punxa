@@ -1114,3 +1114,313 @@ Test rv64uzfh-v-recoding            = FAILED - Test return value = 73
 Total: 349 Correct: 104 (29.8 %)
 ```
 
+## RV32 Microprogrammed Version
+
+To run them do
+
+```
+ python  tb_ISA_microprogrammed_32.py -c "runAllTests()"
+```
+
+
+***Summary***
+
+<pre>
+rv32mi-p        100.0 %  |█████████████████████████████████████████████|
+rv32si-p        100.0 %  |█████████████████████████████████████████████|
+rv32ua-p        100.0 %  |█████████████████████████████████████████████|
+rv32ua-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv32uc-p        100.0 %  |█████████████████████████████████████████████|
+rv32uc-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv32ud-p        100.0 %  |█████████████████████████████████████████████|
+rv32ud-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv32uf-p        100.0 %  |█████████████████████████████████████████████|
+rv32uf-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv32ui-p        100.0 %  |█████████████████████████████████████████████|
+rv32ui-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv32um-p        100.0 %  |█████████████████████████████████████████████|
+rv32um-v        0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv32uzba-p      100.0 %  |█████████████████████████████████████████████|
+rv32uzba-v      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv32uzbb-p      100.0 %  |█████████████████████████████████████████████|
+rv32uzbb-v      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv32uzbc-p      100.0 %  |█████████████████████████████████████████████|
+rv32uzbc-v      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv32uzbs-p      100.0 %  |█████████████████████████████████████████████|
+rv32uzbs-v      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+rv32uzfh-p      100.0 %  |█████████████████████████████████████████████|
+rv32uzfh-v      0.0 %    |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░|
+</pre>
+
+The detailed current output is:
+
+```
+Test rv32mi-p-breakpoint            = OK
+Test rv32mi-p-csr                   = OK
+Test rv32mi-p-illegal               = OK
+Test rv32mi-p-lh-misaligned         = OK
+Test rv32mi-p-lw-misaligned         = OK
+Test rv32mi-p-ma_addr               = OK
+Test rv32mi-p-ma_fetch              = OK
+Test rv32mi-p-mcsr                  = OK
+Test rv32mi-p-sbreak                = OK
+Test rv32mi-p-scall                 = OK
+Test rv32mi-p-sh-misaligned         = OK
+Test rv32mi-p-shamt                 = OK
+Test rv32mi-p-sw-misaligned         = OK
+Test rv32mi-p-zicntr                = OK
+Test rv32si-p-csr                   = OK
+Test rv32si-p-dirty                 = OK
+Test rv32si-p-ma_fetch              = OK
+Test rv32si-p-sbreak                = OK
+Test rv32si-p-scall                 = OK
+Test rv32si-p-wfi                   = OK
+Test rv32ua-p-amoadd_w              = OK
+Test rv32ua-p-amoand_w              = OK
+Test rv32ua-p-amomaxu_w             = OK
+Test rv32ua-p-amomax_w              = OK
+Test rv32ua-p-amominu_w             = OK
+Test rv32ua-p-amomin_w              = OK
+Test rv32ua-p-amoor_w               = OK
+Test rv32ua-p-amoswap_w             = OK
+Test rv32ua-p-amoxor_w              = OK
+Test rv32ua-p-lrsc                  = OK
+Test rv32ua-v-amoadd_w              = FAILED - avoided
+Test rv32ua-v-amoand_w              = FAILED - avoided
+Test rv32ua-v-amomaxu_w             = FAILED - avoided
+Test rv32ua-v-amomax_w              = FAILED - avoided
+Test rv32ua-v-amominu_w             = FAILED - avoided
+Test rv32ua-v-amomin_w              = FAILED - avoided
+Test rv32ua-v-amoor_w               = FAILED - avoided
+Test rv32ua-v-amoswap_w             = FAILED - avoided
+Test rv32ua-v-amoxor_w              = FAILED - avoided
+Test rv32ua-v-lrsc                  = FAILED - avoided
+Test rv32uc-p-rvc                   = OK
+Test rv32uc-v-rvc                   = FAILED - avoided
+Test rv32ud-p-fadd                  = OK
+Test rv32ud-p-fclass                = OK
+Test rv32ud-p-fcmp                  = OK
+Test rv32ud-p-fcvt                  = OK
+Test rv32ud-p-fcvt_w                = OK
+Test rv32ud-p-fdiv                  = OK
+Test rv32ud-p-fmadd                 = OK
+Test rv32ud-p-fmin                  = OK
+Test rv32ud-p-ldst                  = OK
+Test rv32ud-p-recoding              = OK
+Test rv32ud-v-fadd                  = FAILED - avoided
+Test rv32ud-v-fclass                = FAILED - avoided
+Test rv32ud-v-fcmp                  = FAILED - avoided
+Test rv32ud-v-fcvt                  = FAILED - avoided
+Test rv32ud-v-fcvt_w                = FAILED - avoided
+Test rv32ud-v-fdiv                  = FAILED - avoided
+Test rv32ud-v-fmadd                 = FAILED - avoided
+Test rv32ud-v-fmin                  = FAILED - avoided
+Test rv32ud-v-ldst                  = FAILED - avoided
+Test rv32ud-v-recoding              = FAILED - avoided
+Test rv32uf-p-fadd                  = OK
+Test rv32uf-p-fclass                = OK
+Test rv32uf-p-fcmp                  = OK
+Test rv32uf-p-fcvt                  = OK
+Test rv32uf-p-fcvt_w                = OK
+Test rv32uf-p-fdiv                  = OK
+Test rv32uf-p-fmadd                 = OK
+Test rv32uf-p-fmin                  = OK
+Test rv32uf-p-ldst                  = OK
+Test rv32uf-p-move                  = OK
+Test rv32uf-p-recoding              = OK
+Test rv32uf-v-fadd                  = FAILED - avoided
+Test rv32uf-v-fclass                = FAILED - avoided
+Test rv32uf-v-fcmp                  = FAILED - avoided
+Test rv32uf-v-fcvt                  = FAILED - avoided
+Test rv32uf-v-fcvt_w                = FAILED - avoided
+Test rv32uf-v-fdiv                  = FAILED - avoided
+Test rv32uf-v-fmadd                 = FAILED - avoided
+Test rv32uf-v-fmin                  = FAILED - avoided
+Test rv32uf-v-ldst                  = FAILED - avoided
+Test rv32uf-v-move                  = FAILED - avoided
+Test rv32uf-v-recoding              = FAILED - avoided
+Test rv32ui-p-add                   = OK
+Test rv32ui-p-addi                  = OK
+Test rv32ui-p-and                   = OK
+Test rv32ui-p-andi                  = OK
+Test rv32ui-p-auipc                 = OK
+Test rv32ui-p-beq                   = OK
+Test rv32ui-p-bge                   = OK
+Test rv32ui-p-bgeu                  = OK
+Test rv32ui-p-blt                   = OK
+Test rv32ui-p-bltu                  = OK
+Test rv32ui-p-bne                   = OK
+Test rv32ui-p-fence_i               = OK
+Test rv32ui-p-jal                   = OK
+Test rv32ui-p-jalr                  = OK
+Test rv32ui-p-lb                    = OK
+Test rv32ui-p-lbu                   = OK
+Test rv32ui-p-lh                    = OK
+Test rv32ui-p-lhu                   = OK
+Test rv32ui-p-lui                   = OK
+Test rv32ui-p-lw                    = OK
+Test rv32ui-p-ma_data               = OK
+Test rv32ui-p-or                    = OK
+Test rv32ui-p-ori                   = OK
+Test rv32ui-p-sb                    = OK
+Test rv32ui-p-sh                    = OK
+Test rv32ui-p-simple                = OK
+Test rv32ui-p-sll                   = OK
+Test rv32ui-p-slli                  = OK
+Test rv32ui-p-slt                   = OK
+Test rv32ui-p-slti                  = OK
+Test rv32ui-p-sltiu                 = OK
+Test rv32ui-p-sltu                  = OK
+Test rv32ui-p-sra                   = OK
+Test rv32ui-p-srai                  = OK
+Test rv32ui-p-srl                   = OK
+Test rv32ui-p-srli                  = OK
+Test rv32ui-p-sub                   = OK
+Test rv32ui-p-sw                    = OK
+Test rv32ui-p-xor                   = OK
+Test rv32ui-p-xori                  = OK
+Test rv32ui-v-add                   = FAILED - avoided
+Test rv32ui-v-addi                  = FAILED - avoided
+Test rv32ui-v-and                   = FAILED - avoided
+Test rv32ui-v-andi                  = FAILED - avoided
+Test rv32ui-v-auipc                 = FAILED - avoided
+Test rv32ui-v-beq                   = FAILED - avoided
+Test rv32ui-v-bge                   = FAILED - avoided
+Test rv32ui-v-bgeu                  = FAILED - avoided
+Test rv32ui-v-blt                   = FAILED - avoided
+Test rv32ui-v-bltu                  = FAILED - avoided
+Test rv32ui-v-bne                   = FAILED - avoided
+Test rv32ui-v-fence_i               = FAILED - avoided
+Test rv32ui-v-jal                   = FAILED - avoided
+Test rv32ui-v-jalr                  = FAILED - avoided
+Test rv32ui-v-lb                    = FAILED - avoided
+Test rv32ui-v-lbu                   = FAILED - avoided
+Test rv32ui-v-lh                    = FAILED - avoided
+Test rv32ui-v-lhu                   = FAILED - avoided
+Test rv32ui-v-lui                   = FAILED - avoided
+Test rv32ui-v-lw                    = FAILED - avoided
+Test rv32ui-v-ma_data               = FAILED - avoided
+Test rv32ui-v-or                    = FAILED - avoided
+Test rv32ui-v-ori                   = FAILED - avoided
+Test rv32ui-v-sb                    = FAILED - avoided
+Test rv32ui-v-sh                    = FAILED - avoided
+Test rv32ui-v-simple                = FAILED - avoided
+Test rv32ui-v-sll                   = FAILED - avoided
+Test rv32ui-v-slli                  = FAILED - avoided
+Test rv32ui-v-slt                   = FAILED - avoided
+Test rv32ui-v-slti                  = FAILED - avoided
+Test rv32ui-v-sltiu                 = FAILED - avoided
+Test rv32ui-v-sltu                  = FAILED - avoided
+Test rv32ui-v-sra                   = FAILED - avoided
+Test rv32ui-v-srai                  = FAILED - avoided
+Test rv32ui-v-srl                   = FAILED - avoided
+Test rv32ui-v-srli                  = FAILED - avoided
+Test rv32ui-v-sub                   = FAILED - avoided
+Test rv32ui-v-sw                    = FAILED - avoided
+Test rv32ui-v-xor                   = FAILED - avoided
+Test rv32ui-v-xori                  = FAILED - avoided
+Test rv32um-p-div                   = OK
+Test rv32um-p-divu                  = OK
+Test rv32um-p-mul                   = OK
+Test rv32um-p-mulh                  = OK
+Test rv32um-p-mulhsu                = OK
+Test rv32um-p-mulhu                 = OK
+Test rv32um-p-rem                   = OK
+Test rv32um-p-remu                  = OK
+Test rv32um-v-div                   = FAILED - avoided
+Test rv32um-v-divu                  = FAILED - avoided
+Test rv32um-v-mul                   = FAILED - avoided
+Test rv32um-v-mulh                  = FAILED - avoided
+Test rv32um-v-mulhsu                = FAILED - avoided
+Test rv32um-v-mulhu                 = FAILED - avoided
+Test rv32um-v-rem                   = FAILED - avoided
+Test rv32um-v-remu                  = FAILED - avoided
+Test rv32uzba-p-sh1add              = OK
+Test rv32uzba-p-sh2add              = OK
+Test rv32uzba-p-sh3add              = OK
+Test rv32uzba-v-sh1add              = FAILED - avoided
+Test rv32uzba-v-sh2add              = FAILED - avoided
+Test rv32uzba-v-sh3add              = FAILED - avoided
+Test rv32uzbb-p-andn                = OK
+Test rv32uzbb-p-clz                 = OK
+Test rv32uzbb-p-cpop                = OK
+Test rv32uzbb-p-ctz                 = OK
+Test rv32uzbb-p-max                 = OK
+Test rv32uzbb-p-maxu                = OK
+Test rv32uzbb-p-min                 = OK
+Test rv32uzbb-p-minu                = OK
+Test rv32uzbb-p-orc_b               = OK
+Test rv32uzbb-p-orn                 = OK
+Test rv32uzbb-p-rev8                = OK
+Test rv32uzbb-p-rol                 = OK
+Test rv32uzbb-p-ror                 = OK
+Test rv32uzbb-p-rori                = OK
+Test rv32uzbb-p-sext_b              = OK
+Test rv32uzbb-p-sext_h              = OK
+Test rv32uzbb-p-xnor                = OK
+Test rv32uzbb-p-zext_h              = OK
+Test rv32uzbb-v-andn                = FAILED - avoided
+Test rv32uzbb-v-clz                 = FAILED - avoided
+Test rv32uzbb-v-cpop                = FAILED - avoided
+Test rv32uzbb-v-ctz                 = FAILED - avoided
+Test rv32uzbb-v-max                 = FAILED - avoided
+Test rv32uzbb-v-maxu                = FAILED - avoided
+Test rv32uzbb-v-min                 = FAILED - avoided
+Test rv32uzbb-v-minu                = FAILED - avoided
+Test rv32uzbb-v-orc_b               = FAILED - avoided
+Test rv32uzbb-v-orn                 = FAILED - avoided
+Test rv32uzbb-v-rev8                = FAILED - avoided
+Test rv32uzbb-v-rol                 = FAILED - avoided
+Test rv32uzbb-v-ror                 = FAILED - avoided
+Test rv32uzbb-v-rori                = FAILED - avoided
+Test rv32uzbb-v-sext_b              = FAILED - avoided
+Test rv32uzbb-v-sext_h              = FAILED - avoided
+Test rv32uzbb-v-xnor                = FAILED - avoided
+Test rv32uzbb-v-zext_h              = FAILED - avoided
+Test rv32uzbc-p-clmul               = OK
+Test rv32uzbc-p-clmulh              = OK
+Test rv32uzbc-p-clmulr              = OK
+Test rv32uzbc-v-clmul               = FAILED - avoided
+Test rv32uzbc-v-clmulh              = FAILED - avoided
+Test rv32uzbc-v-clmulr              = FAILED - avoided
+Test rv32uzbs-p-bclr                = OK
+Test rv32uzbs-p-bclri               = OK
+Test rv32uzbs-p-bext                = OK
+Test rv32uzbs-p-bexti               = OK
+Test rv32uzbs-p-binv                = OK
+Test rv32uzbs-p-binvi               = OK
+Test rv32uzbs-p-bset                = OK
+Test rv32uzbs-p-bseti               = OK
+Test rv32uzbs-v-bclr                = FAILED - avoided
+Test rv32uzbs-v-bclri               = FAILED - avoided
+Test rv32uzbs-v-bext                = FAILED - avoided
+Test rv32uzbs-v-bexti               = FAILED - avoided
+Test rv32uzbs-v-binv                = FAILED - avoided
+Test rv32uzbs-v-binvi               = FAILED - avoided
+Test rv32uzbs-v-bset                = FAILED - avoided
+Test rv32uzbs-v-bseti               = FAILED - avoided
+Test rv32uzfh-p-fadd                = OK
+Test rv32uzfh-p-fclass              = OK
+Test rv32uzfh-p-fcmp                = OK
+Test rv32uzfh-p-fcvt                = OK
+Test rv32uzfh-p-fcvt_w              = OK
+Test rv32uzfh-p-fdiv                = OK
+Test rv32uzfh-p-fmadd               = OK
+Test rv32uzfh-p-fmin                = OK
+Test rv32uzfh-p-ldst                = OK
+Test rv32uzfh-p-move                = OK
+Test rv32uzfh-p-recoding            = OK
+Test rv32uzfh-v-fadd                = FAILED - avoided
+Test rv32uzfh-v-fclass              = FAILED - avoided
+Test rv32uzfh-v-fcmp                = FAILED - avoided
+Test rv32uzfh-v-fcvt                = FAILED - avoided
+Test rv32uzfh-v-fcvt_w              = FAILED - avoided
+Test rv32uzfh-v-fdiv                = FAILED - avoided
+Test rv32uzfh-v-fmadd               = FAILED - avoided
+Test rv32uzfh-v-fmin                = FAILED - avoided
+Test rv32uzfh-v-ldst                = FAILED - avoided
+Test rv32uzfh-v-move                = FAILED - avoided
+Test rv32uzfh-v-recoding            = FAILED - avoided
+Total: 266 Correct: 143 (53.8 %)
+```
+
