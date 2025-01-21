@@ -29,7 +29,7 @@ UART_SCR_OFFSET	= 7	# I/O: Scratch Register */
 UART_MDR1_OFFSET	 = 8 # I/O:  Mode Register */
 
 #define UART_LSR_FIFOE		0x80	/* Fifo error */
-#define UART_LSR_TEMT		0x40	/* Transmitter empty */
+UART_LSR_TEMT =	0x40	# Transmitter empty 
 UART_LSR_THRE = 0x20    # Transmit-hold-register empty 
 #define UART_LSR_BI		0x10	/* Break interrupt indicator */
 #define UART_LSR_FE		0x08	/* Frame error indicator */
@@ -40,11 +40,13 @@ UART_LSR_THRE = 0x20    # Transmit-hold-register empty
 
 class Uart(Logic):
 
-    def __init__(self, parent:Logic, name:str, port):
+    def __init__(self, parent:Logic, name:str, port, reg_size=1):
         super().__init__(parent, name)
         
         self.port = self.addInterfaceSink('port', port)
         self.console = ['']        
+        self.verbose = False
+        self.reg_size = reg_size
 
     def addConsoleChar(self, c):
         if (c == '\n'):
@@ -58,7 +60,7 @@ class Uart(Logic):
             
     def readReg(self, reg):
         if (reg == UART_LSR_OFFSET):
-            return UART_LSR_THRE
+            return UART_LSR_THRE | UART_LSR_TEMT # report tx empty
         else:
             return 0
         
@@ -78,31 +80,42 @@ class Uart(Logic):
         
         if (read == 1 or write == 1):
             if (read == 1):
-                #print('READ UART addr:{:04X} be:{}'.format(addr, be)) 
                 reg_addr = addr
                 idx = 0
                 v = 0
-                while (be > 0):
-                    if ((be & 1) == 1):
-                        #print('READ UART REG {}'.format(reg_addr))
-                        v |= self.readReg(reg_addr) << (8*idx)  
-                    be = be >> 1
-                    reg_addr += 1
-                    idx += 1
+                if (self.reg_size == 4):
+                    v = self.readReg(addr // 4)
+                elif (self.reg_size == 1):
+                    while (be > 0):
+                        if ((be & 1) == 1):
+                            #print('READ UART REG {}'.format(reg_addr))
+                            v |= self.readReg(reg_addr) << (8*idx)  
+                        be = be >> 1
+                        reg_addr += 1
+                        idx += 1
+                else:
+                    raise Exception()
                 
                 self.port.read_data.prepare(v)
+                if (self.verbose): print('READ UART addr:{:04X} be:{:0X} = {:04X}'.format(addr, be, v)) 
                 
             if (write == 1):
+                if (self.verbose): print('WRITE UART addr:{:04X} be:{} = {:04X}'.format(addr, be, write_data)) 
                 reg_addr = addr
                 idx = 0
                 v = write_data
-                while (be > 0):
-                    if ((be & 1) == 1):
-                        #print('WRITE UART REG {}'.format(reg_addr))
-                        self.writeReg(reg_addr, (v >> (8*idx)) & 0xFF)  
-                    be = be >> 1
-                    reg_addr += 1
-                    idx += 1
+                if (self.reg_size == 4):
+                    self.writeReg(addr // 4, v)
+                elif (self.reg_size == 1):
+                    while (be > 0):
+                        if ((be & 1) == 1):
+                            #print('WRITE UART REG {}'.format(reg_addr))
+                            self.writeReg(reg_addr, (v >> (8*idx)) & 0xFF)  
+                        be = be >> 1
+                        reg_addr += 1
+                        idx += 1
+                else:
+                    raise Exception()
                 
                 self.port.read_data.prepare(0)
 
