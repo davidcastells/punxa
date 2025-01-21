@@ -310,7 +310,11 @@ class SingleCycleRISCV(py4hw.Logic):
     def fetchIns(self):
         # Check interrupts
         if (self.int_timer_machine.get() == 1):
+            # @ this should happen automatically in a real processor because this bit is a shadow
+            # register of the interrupt line
             self.csr[CSR_MIP] |= CSR_MIP_MTIP_MASK 
+            
+            
 
         if (self.csr[CSR_MSTATUS] & CSR_MSTATUS_MIE_MASK):
             # check interrupts
@@ -709,6 +713,7 @@ class SingleCycleRISCV(py4hw.Logic):
             pr('{:08X}: {:08X}     {} '.format(self.pc , ins,  self.decoded_ins), end='' )
         
     def getPhysicalAddressQuick(self, address, memory_op=MEMORY_OP_LOAD):
+        # Only used for formating output
         priv = self.csr[0xfff] # privilege
         satp = self.csr[0x180] # satp
 
@@ -1324,7 +1329,7 @@ class SingleCycleRISCV(py4hw.Logic):
             self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
             newvalue= self.reg[rd] + self.reg[rs2] & ((1<<64)-1)
             yield from self.virtualMemoryWrite(address, 64//8, newvalue)
-            pr('[r{}] = [r{}] + r{} -> [{}]={:016X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
+            pr('r{} = [r{}], [r{}] = [r{}] + r{} -> {:016X}, [{}]={:016X}'.format(rd, rds1, rs1, rs1, rs2, self.reg[rd], self.addressFmt(address), newvalue))
         elif (op == 'AMOADD.W'):
             address = self.reg[rs1]
             self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
