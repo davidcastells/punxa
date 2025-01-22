@@ -141,6 +141,7 @@ def buildHw(cpu_model='sc'):
 
         cpu = MicroprogrammedRISCV(hw, 'RISCV', reset, port_c, int_soft, int_timer, ext_int_targets, mem_base, registerBase)
 
+
     elif (cpu_model == 'uppk'):
         registerBase = mem_base +  (1 << 20) - 0x10000 # (8 * 8192)
 
