@@ -15,8 +15,16 @@
 #define SYSCALL_BRK  214
 #define SYSCALL_OPEN  1024
 
-uint64_t syscall_fstat(uint64_t fd, uint64_t buf);
-uint64_t syscall_write(uint64_t fd, uint64_t buf, uint64_t count);
+#if __riscv_xlen == 32
+    #pragma message "Compiling for 32-bit RISC-V"
+    #define UINT uint32_t
+#elif __riscv_xlen == 64
+    #pragma message "Compiling for 64-bit RISC-V"
+    #define UINT uint64_t
+#endif
+
+UINT syscall_fstat(UINT fd, UINT buf);
+UINT syscall_write(UINT fd, UINT buf, UINT count);
 
 __attribute__((always_inline)) 
 static inline void read_csr_mcause() {
@@ -24,49 +32,48 @@ static inline void read_csr_mcause() {
 }
 
 __attribute__((always_inline)) 
-static inline uint64_t read_csr_mepc() {
-    uint64_t result;
+static inline UINT read_csr_mepc() {
+    uintmax_t result;
     asm volatile ("csrr %0, %1" : "=r"(result) : "i"(CSR_MEPC));
     return result;
 }
 
 __attribute__((always_inline)) 
-static inline void write_csr_mepc(uint64_t value) {
+static inline void write_csr_mepc(UINT value) {
     asm volatile ("csrw %0, %1" : : "i"(CSR_MEPC), "r"(value));
 }
 
-__attribute__((always_inline)) 
-static inline uint64_t read_a0() {
-    uint64_t value;
-    asm volatile("mv %0, a0" : "=r"(value));
-    return value;
-}
-__attribute__((always_inline)) 
-static inline uint64_t read_a7() {
-    uint64_t value;
-    asm volatile("mv %0, a7" : "=r"(value));
-    return value;
-}
+
 __attribute__((aligned(8))) 
 __attribute__((naked)) 
 void trap_handler() {
 
+#if __riscv_xlen == 32
+    asm volatile (
+        "addi sp, sp, -16\n"       // Adjust stack pointer (16 bytes for 4 registers)
+        "sw ra, 12(sp)\n"          // Save return address (ra) 
+        "sw s0, 8(sp)\n"          // Save frame pointer (s0) 
+        "sw s1, 4(sp)\n"           // Save callee-saved register (s1) 
+        "sw s2, 0(sp)\n"           // Save callee-saved register (s2) 
+    );
+#else
     asm volatile (
         "addi sp, sp, -32\n"       // Adjust stack pointer (32 bytes for 4 registers)
-        "sd ra, 24(sp)\n"          // Save return address (ra) at offset 24
-        "sd s0, 16(sp)\n"          // Save frame pointer (s0) at offset 16
-        "sd s1, 8(sp)\n"           // Save callee-saved register (s1) at offset 8
-        "sd s2, 0(sp)\n"           // Save callee-saved register (s2) at offset 0
+        "sd ra, 24(sp)\n"          // Save return address (ra) 
+        "sd s0, 16(sp)\n"          // Save frame pointer (s0) 
+        "sd s1, 8(sp)\n"           // Save callee-saved register (s1) 
+        "sd s2, 0(sp)\n"           // Save callee-saved register (s2) 
     );
-    
-    register uint64_t mcause asm("t0");
+#endif
+
+    register UINT mcause asm("t0");
     read_csr_mcause();
     
-    register uint64_t a0 asm("a0");
-    register uint64_t a1 asm("a1");
-    register uint64_t a2 asm("a2");
-    register uint64_t a3 asm("a3");
-    register uint64_t syscall asm("a7");
+    register UINT a0 asm("a0");
+    register UINT a1 asm("a1");
+    register UINT a2 asm("a2");
+    register UINT a3 asm("a3");
+    register UINT syscall asm("a7");
             
     asm volatile("" : : : "a0");  // Clobber the register
     asm volatile("" : : : "a1");  // Clobber the register
@@ -78,7 +85,7 @@ void trap_handler() {
     if (mcause == ENV_CALL_MMODE) 
     {
         // 11: ECALL in Machine mode
-        //register uint64_t syscall = read_a7();
+
 
         
         if (syscall == SYSCALL_FSTAT)
@@ -107,9 +114,21 @@ void trap_handler() {
     }
     
     {
-        register uint64_t mepc = read_csr_mepc();
+        register UINT mepc = read_csr_mepc();
         write_csr_mepc(mepc+4);
         
+#if __riscv_xlen == 32
+        asm volatile 
+        (
+        // Restore callee-saved registers and return address from the stack
+        "lw ra, 12(sp)\n"         // Load return address (ra) from offset 24
+        "lw s0, 8(sp)\n"         // Load frame pointer (s0) from offset 16
+        "lw s1, 4(sp)\n"          // Load callee-saved register (s1) from offset 8
+        "lw s2, 0(sp)\n"          // Load callee-saved register (s2) from offset 0
+        // Adjust the stack pointer back to its original value
+        "addi sp, sp, 16\n"       // Restore stack pointer (undo allocation)
+        );
+#else        
         asm volatile 
         (
         // Restore callee-saved registers and return address from the stack
@@ -120,21 +139,22 @@ void trap_handler() {
         // Adjust the stack pointer back to its original value
         "addi sp, sp, 32\n"       // Restore stack pointer (undo allocation)
         );
+#endif 
     
         asm volatile("mret"); 
     }
 }
 
-#define UART_BASE 0xFFF0C2C000
+#define UART_BASE 0x10000000
 #define UART_THR_OFFSET 0
 
-uint64_t syscall_fstat(uint64_t fd, uint64_t buf)
+UINT syscall_fstat(UINT fd, UINT buf)
 {
     // char* pbuf = (char*) buf;
     return -1; 
 }
 
-uint64_t syscall_write(uint64_t fd, uint64_t buf, uint64_t count)
+UINT syscall_write(UINT fd, UINT buf, UINT count)
 {
     char* pbuf = (char*) buf;
     char* uart = (char*) UART_BASE;
