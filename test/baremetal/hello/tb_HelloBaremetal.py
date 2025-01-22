@@ -42,6 +42,7 @@ import zlib
 mem_base =  0x00000000
 #test_base = 0x80001000
 
+UART_BASE = 0x10000000
     
 def is_hex(s):
     try:
@@ -70,7 +71,7 @@ def is_hex(s):
 #  | start          | stop           | device        |
 #  | 0000 0000 0000 | 0001 BFEF FFFF | memory (5GB)  |
 #  | 0000 BFF0 0000 | 0002 8000 0000 | pmem (3GB)    |
-#  | 00FF F0C2 C000 | 00FF F0C2 CFFF | uart          |
+#  | 0000 1000 0000 | 0000 1000 FFFF | uart          |
 #  | 00FF F102 0000 | 00FF F102 FFFF | CLINT         |
 #  | 00FF F110 0000 | 00FF F11F FFFF | PLIC          |
 
@@ -122,7 +123,7 @@ def buildHw(cpu_model='sc'):
     bus = MultiplexedBus(hw, 'bus', port_c, [(port_m, mem_base),
                                           #(port_t, test_base),
                                           #(port_d, 0x01BFF00000),
-                                          (port_u, 0xFFF0C2C000),
+                                          (port_u, UART_BASE),
                                           (port_p, 0xFFF1100000),
                                           (port_l, 0xFFF1020000)])
 
@@ -141,6 +142,16 @@ def buildHw(cpu_model='sc'):
 
         cpu = MicroprogrammedRISCV(hw, 'RISCV', reset, port_c, int_soft, int_timer, ext_int_targets, mem_base, registerBase)
 
+    elif (cpu_model == 'up32'):
+        registerBase = mem_base +  (1 << 20) - 0x10000 # (8 * 8192)
+
+        reset = hw.wire('reset')
+        zero = hw.wire('zero')
+
+        py4hw.Constant(hw, 'zero', 0, zero)
+        py4hw.Reg(hw, 'auto_reset', zero, reset, reset_value=1)
+
+        cpu = MicroprogrammedRISCV(hw, 'RISCV', reset, port_c, int_soft, int_timer, ext_int_targets, mem_base, registerBase, 32)
 
     elif (cpu_model == 'uppk'):
         registerBase = mem_base +  (1 << 20) - 0x10000 # (8 * 8192)
@@ -176,7 +187,12 @@ def getCpu():
     return cpu
 
 def prepare(cpu_model='sc'):
-    test_file = 'hello.elf'
+
+    if (cpu_model[-2:] == 32):
+        test_file = 'hello_32.elf'    
+    else:
+        test_file = 'hello_64.elf'
+        
     global hw
     hw = buildHw(cpu_model)
     programFile = ex_dir + test_file
