@@ -160,7 +160,7 @@ def getCpu():
     return cpu
 
 def prepare(cpu_model='sc'):
-    test_file = 'hello.elf'
+    test_file = 'hello_64.elf'
     global hw
     hw = buildHw(cpu_model)
     programFile = ex_dir + test_file
