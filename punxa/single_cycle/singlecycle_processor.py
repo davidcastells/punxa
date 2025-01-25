@@ -1885,7 +1885,8 @@ class SingleCycleRISCV(py4hw.Logic):
             jmpCall = (rd == 0)
             if (rd != 0):
                 self.reg[rd] = self.pc + 4
-            self.should_jump = True
+
+            self.should_jump = (rd != 1)
             self.jmp_address = self.pc + off21_J
             self.functionEnter(self.jmp_address, jmpCall)
             
