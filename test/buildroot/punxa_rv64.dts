@@ -1,0 +1,100 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+
+/dts-v1/;
+
+
+
+/ {
+	compatible = "punxa_rv64";
+	model = "punxa_rv64";
+
+	aliases {
+        uart0 = &uart0;
+        serial0 = &uart0; /* Alias for the first serial port */
+    };
+
+    chosen {
+        bootargs = "console=ttyS0,115200 debug loglevel=7 earlycon=uart8250,mmio32,0x10000000";
+        stdout-path = "serial0:115200n8"; 
+    };
+
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		timebase-frequency = <50000000>;
+		CPU0: cpu@0 {
+			device_type = "cpu";
+			reg = <0>;
+			status = "okay";
+			compatible = "riscv";
+			riscv,isa = "rv64imafdc";
+			riscv,priv-major = <1>;
+			riscv,priv-minor = <10>;
+			mmu-type = "riscv,sv39";
+			clock-frequency = <50000000>;
+			i-cache-size = <0x400>;
+			i-cache-line-size = <32>;
+			d-cache-size = <0x400>;
+			d-cache-line-size = <32>;
+			CPU0_intc: interrupt-controller {
+				#interrupt-cells = <1>;
+				interrupt-controller;
+				compatible = "riscv,cpu-intc";
+			};
+		};
+
+	};
+
+
+
+	soc {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+
+		plic0: interrupt-controller@c000000 {
+			compatible = "riscv,plic0";
+			#interrupt-cells = <1>;
+			interrupt-controller;
+			reg = <0xC000000 0x2000000>;
+			riscv,ndev=<71>;
+		};
+
+    clint0: clint@2000000 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+        compatible = "riscv,clint0";
+        reg = <0x02000000  0x10000>;
+    };
+
+	memory@80000000 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+        device_type = "memory";
+        reg = <0x80000000  0x40000000>;
+    };
+
+
+	uart0: uart@10000000  {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "uart16550", "ns16550a";
+		reg = <0x10000000 0x1000>;
+		interrupts = <9 4>;
+		clock-frequency = <50000000>;
+		reg-shift = <2>;
+		reg-offset = <32>;
+		no-loopback-test = <1>;
+		interrupt-parent = <&plic0>;
+	};
+
+
+
+
+	};
+
+
+
+
+};
