@@ -11,7 +11,7 @@ import os
 
 baseDir = '../../../'
 
-mem_width = 64
+
 
 if not(baseDir in sys.path):
     print('appending .. to path')
@@ -26,6 +26,7 @@ from punxa.uart import *
 from punxa.clint import *
 from punxa.plic import *
 from punxa.single_cycle.singlecycle_processor import *
+from punxa.single_cycle.singlecycle_processor_32 import *
 from punxa.single_cycle.singlecycle_processor_proxy_kernel import *
 from punxa.microprogrammed.microprogrammed_processor import *
 from punxa.microprogrammed.microprogrammed_processor_proxy_kernel import *
@@ -82,23 +83,16 @@ def buildHw(cpu_model='sc'):
 
     hw = HWSystem()
 
-    port_c = MemoryInterface(hw, 'port_c', mem_width, 40)
-    port_m = MemoryInterface(hw, 'port_m', mem_width, 20)     # 20	bits = 
-    port_u = MemoryInterface(hw, 'port_u', mem_width, 8)      # 8 bits = 256
-    port_l = MemoryInterface(hw, 'port_l', mem_width, 16)      # 8 bits = 256
-    port_p = MemoryInterface(hw, 'port_p', mem_width, 24)      # 8 bits = 256
     #port_t = MemoryInterface(hw, 'port_t', mem_width, 8)     # 8 bits = 256
     # Memory initialization
 
-    memory = SparseMemory(hw, 'main_memory', mem_width, 32, port_m, mem_base=mem_base)
+
 
     #memory.reallocArea(0, 1 << 16)
 
     #test = ISATestCommunication(hw, 'test', mem_width, 8, port_t)
 
 
-    # Uart initialization
-    uart = Uart(hw, 'uart', port_u)
 
 
     int_soft = hw.wire('int_soft')
@@ -114,11 +108,29 @@ def buildHw(cpu_model='sc'):
     ext_int_targets.append(hw.wire('int_machine'))
     ext_int_targets.append(hw.wire('int_supervisor'))
 
+
+    if ('32' in cpu_model):
+        mem_width = 32
+    else:
+        mem_width = 64
+                    
+    port_c = MemoryInterface(hw, 'port_c', mem_width, 40)
+    port_m = MemoryInterface(hw, 'port_m', mem_width, 22)     # 20	bits = 
+    port_u = MemoryInterface(hw, 'port_u', mem_width, 8)      # 8 bits = 256
+    port_l = MemoryInterface(hw, 'port_l', mem_width, 16)      # 8 bits = 256
+    port_p = MemoryInterface(hw, 'port_p', mem_width, 24)      # 8 bits = 256
+
+    memory = SparseMemory(hw, 'main_memory', mem_width, 32, port_m, mem_base=mem_base)
+    
     # CLINT initialization
     clint = CLINT(hw, 'clint', port_l, int_soft, int_timer)
 
     # PLIC initialization
     plic = PLIC(hw, 'plic', port_p, ext_int_sources, ext_int_targets)
+    
+    # Uart initialization
+    uart = Uart(hw, 'uart', port_u)
+
 
     bus = MultiplexedBus(hw, 'bus', port_c, [(port_m, mem_base),
                                           #(port_t, test_base),
@@ -127,12 +139,16 @@ def buildHw(cpu_model='sc'):
                                           (port_p, 0xFFF1100000),
                                           (port_l, 0xFFF1020000)])
 
+
     if (cpu_model == 'sc'):
         cpu = SingleCycleRISCV(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
+    if (cpu_model == 'sc32'):
+        cpu = SingleCycleRISCV32(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
     elif (cpu_model == 'scpk'):
         cpu = SingleCycleRISCVProxyKernel(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
     elif (cpu_model == 'up'):
-        registerBase = mem_base +  (1 << 20) - 0x10000 # (8 * 8192)
+        registerBase = 0x200000
+        print(f'Register Base: {registerBase:016X}')
 
         reset = hw.wire('reset')
         zero = hw.wire('zero')
@@ -143,7 +159,8 @@ def buildHw(cpu_model='sc'):
         cpu = MicroprogrammedRISCV(hw, 'RISCV', reset, port_c, int_soft, int_timer, ext_int_targets, mem_base, registerBase)
 
     elif (cpu_model == 'up32'):
-        registerBase = mem_base +  (1 << 20) - 0x10000 # (8 * 8192)
+        registerBase = 0x200000
+        print(f'Register Base: {registerBase:016X}')
 
         reset = hw.wire('reset')
         zero = hw.wire('zero')
@@ -167,6 +184,7 @@ def buildHw(cpu_model='sc'):
     else:
         raise Exception(f'cpu model {cpu_model} not supported')
         
+                                          
     cpu.min_clks_for_trace_event = 1000
     cpu.behavioural_memory = memory
 
@@ -186,9 +204,25 @@ def getHw():
 def getCpu():
     return cpu
 
+def addWaveform():
+    global wvf
+    global cpu
+    watch = py4hw.debug.getPorts(cpu)
+    CU = cpu.children['CU']
+    watch.append(FieldInspector(CU, 'decoded_ins'))
+    watch.append(FieldInspector(CU, 'microins'))
+    watch.append(FieldInspector(CU, 'state'))
+    watch.append(cpu._wires['IR'])
+    watch.append(cpu._wires['A'])
+    watch.append(cpu._wires['B'])
+    watch.append(cpu._wires['R'])
+    wvf = py4hw.Waveform(hw, 'wvf', watch)
+    
+
+
 def prepare(cpu_model='sc'):
 
-    if (cpu_model[-2:] == 32):
+    if (cpu_model[-2:] == '32'):
         test_file = 'hello_32.elf'    
     else:
         test_file = 'hello_64.elf'
@@ -197,8 +231,8 @@ def prepare(cpu_model='sc'):
     hw = buildHw(cpu_model)
     programFile = ex_dir + test_file
     
-    loadElf(memory, programFile, 0 ) # 32*4 - 0x10054)    
-    loadSymbolsFromElf(cpu,  programFile, mem_base) # 32*4 - 0x10054)
+    loadElf(memory, programFile, 0 , verbose=False) 
+    loadSymbolsFromElf(cpu,  programFile, mem_base, verbose=False) 
 
     #start_adr = findFunction('_startup')
     start_adr = getElfEntryPoint(programFile)
@@ -207,7 +241,7 @@ def prepare(cpu_model='sc'):
     stack_base = 0x90000
     stack_size = 0x10000
     
-    if (cpu_model == 'sc' or cpu_model == 'scpk'):
+    if (cpu_model == 'sc' or cpu_model == 'sc32' or cpu_model == 'scpk'):
         cpu.pc = start_adr
         cpu.reg[2] = mem_base + stack_base + stack_size - 8
     elif (cpu_model == 'up'):
@@ -215,6 +249,14 @@ def prepare(cpu_model='sc'):
         memory.reallocArea(cpu.registerBase , (32+32+32+4096)*8)
 
         addr_r2 = cpu.registerBase + 2*8
+        value = mem_base + stack_base + stack_size - 8
+        memory.write_i32(addr_r2, value)
+        
+    elif (cpu_model == 'up32'):
+        cpu.children['PC'].value = start_adr
+        memory.reallocArea(cpu.registerBase , (32+32+32+4096)*4)
+
+        addr_r2 = cpu.registerBase + 2*4
         value = mem_base + stack_base + stack_size - 8
         memory.write_i32(addr_r2, value)
         
@@ -228,6 +270,8 @@ def prepare(cpu_model='sc'):
     print('')
     print(f'\tStack base: 0x{stack_base:016X} size: 0x{stack_size:016X}')
     print(f'\tHeap base:  0x{cpu.heap_base:016X} size: 0x{cpu.heap_size:016X}')
+    
+
 
 
 def runTest(test_file):
