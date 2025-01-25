@@ -124,6 +124,7 @@ def loadElf(memory, filename, offset, verbose=False):
             except:
                 print('Failed to write to address {:016X}'.format(p + offset))
 
+        
 def getElfEntryPoint(filename):
     from elftools.elf.elffile import ELFFile
     with open(filename, 'rb') as f:
@@ -138,8 +139,10 @@ def getElfEntryPoint(filename):
 
         return elf.header.e_entry
         
-def loadSymbolsFromElf(cpu,  filename, offset):
+def loadSymbolsFromElf(cpu,  filename, offset, verbose=False):
     from elftools.elf.elffile import ELFFile
+    
+    if (verbose): print('Opening ELF', filename)
     
     with open(filename, 'rb') as f:
         elffile = ELFFile(f)
@@ -154,6 +157,8 @@ def loadSymbolsFromElf(cpu,  filename, offset):
                         addr = symbol['st_value'] + offset
                         name = symbol.name
                         cpu.funcs[addr]= name
+                        
+                        if (verbose): print(f'symbol: {name} = {addr:08X}')
                     except Exception as e:
                         print('WARNING no symbol', e)
 
