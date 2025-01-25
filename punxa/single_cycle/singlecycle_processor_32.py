@@ -557,7 +557,7 @@ class SingleCycleRISCV32(py4hw.Logic):
        # elif (self.mem_width == 64):
             #value = yield from self.memoryLoad64(address, b, memory_op)
         else:
-            raise Exception()
+            raise Exception(f'unexpected memory width: {self.mem_width}')
         return value
 
     # OK
@@ -1641,12 +1641,13 @@ class SingleCycleRISCV32(py4hw.Logic):
             pr('fr{} = [r2 + {}] -> {:08X}'.format(rd, off, self.freg[rd]))
         elif (op == 'ECALL'):
             curpriv = self.csr[0xFFF] # current privilege
+            syscall = self.reg[17]
             if (curpriv == 3):
-                raise EnvCallMMode()
+                raise EnvCallMMode(syscall)
             elif (curpriv == 1):
-                raise EnvCallSMode()
+                raise EnvCallSMode(syscall)
             elif (curpriv == 0):
-                raise EnvCallUMode()
+                raise EnvCallUMode(syscall)
             else:
                 raise Exception('unknown privilege level {}'.format(curpriv))
         elif (op == 'EBREAK'):
@@ -1863,13 +1864,6 @@ class SingleCycleRISCV32(py4hw.Logic):
             else:
                 self.functionEnter(self.jmp_address, True)
             pr('r{} -> {:08X}'.format(c_rs1, self.jmp_address))
-        elif (op == 'C.JAL'):
-            off12 = compose_sign(ins, [[12, 1], [8, 1], [9, 2], [6, 1], [7, 1], [2, 1], [11, 1], [3, 3]]) << 1
-            self.should_jump = True
-            self.jmp_address = self.pc + off12
-            self.reg[1] = self.pc + 2
-            pr('{} -> {:08X}'.format(off12, self.jmp_address))
-            self.functionEnter(self.jmp_address, True)
         elif (op == 'C.JALR'):
             self.should_jump = True
             self.jmp_address = self.reg[c_rs1]
@@ -2094,19 +2088,17 @@ class SingleCycleRISCV32(py4hw.Logic):
             self.jmp_address = self.pc + off12
             pr('{} -> {:08X}'.format(off12, self.jmp_address))
             self.functionEnter(self.jmp_address, True)
+        elif (op == 'C.JAL'):
+            self.should_jump = True
+            self.jmp_address = self.pc + off12
+            self.reg[1] = self.pc + 2
+            pr('{} -> {:08X}'.format(off12, self.jmp_address))
+            self.functionEnter(self.jmp_address, True)
 
         else:
             print(' - CJ-Type instruction not supported!')
             self.parent.getSimulator().stop()
 
-            '''
-                    elif (op == 'C.JAL'):
-                        self.should_jump = True
-                        self.jmp_address = self.pc + off12
-                        self.reg[1] = self.pc + 2
-                        pr('{} -> {:08X}'.format(off12, self.jmp_address))
-                        self.functionEnter(self.jmp_address, True)
-                    '''
 
     # OK
     def executeCLIns(self):
