@@ -131,7 +131,7 @@ JTypeIns = ['JAL']
 CSRRIns   = ['CSRRW','CSRRS','CSRRC']
 CSRIIns   = ['CSRRWI','CSRRSI','CSRRCI']
 
-CRTypeIns = ['C.ADD', 'C.MV', 'C.EBREAK','C.JR','C.JALR', 'C.JAL']
+CRTypeIns = ['C.ADD', 'C.MV', 'C.EBREAK','C.JR','C.JALR']
 CITypeIns = ['C.NOP', 'C.LWSP', 'C.LDSP', 'C.SLLI',
              'C.LQSP', 'C.FLWSP', 'C.FLDSP', 'C.LI', 'C.LUI',
              'C.ADDI','C.ADDIW','C.ADDI16SP']
@@ -141,7 +141,7 @@ CSTypeIns = ['C.AND', 'C.OR', 'C.XOR', 'C.SUB', 'C.ADDW', 'C.SUBW',
              'C.SW','C.SD','C.SQ','C.FSW', 'C.FSD']
 CSSTypeIns = ['C.SWSP','C.SDSP','C.SQSP','C.FSWSP','C.FSDSP']
 CBTypeIns = ['C.ANDI','C.BEQZ', 'C.BNEZ','C.SRLI','C.SRAI']
-CJTypeIns = ['C.J']
+CJTypeIns = ['C.J', 'C.JAL']
 
 CustomTypeIns = ['CUSTOM0', 'CUSTOM1', 'CUSTOM2', 'CUSTOM3' ]
 
