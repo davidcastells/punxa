@@ -15,6 +15,9 @@ hello_32.elf: hello.c
 hello_64.disasm: hello_64.elf
 	riscv64-unknown-elf-objdump -d hello_64.elf > hello_64.disasm
 
+hello_32.disasm: hello_32.elf
+	riscv32-unknown-elf-objdump -d hello_32.elf > hello_32.disasm
+
 run_spike:
 	 spike pk hello.elf
 
