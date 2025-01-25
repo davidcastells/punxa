@@ -65,3 +65,22 @@ or, in a more compact way
 
 In this case less instructions are executed since the trap handler is not actually called as ECALL is intercepted by the proxy kernel processor and its appropiate functionality is provided by the host.
 Simulation also stops earlier when syscall_exit is handled.
+
+## Supported configurations
+
+We support various configurations. We can use the single cycle processor, for 64 bits or 32 bits, and without and with proxy kernel. The following table describes the tested combinations so far.
+
+<table>  
+  <thead><tr><td>Processor Model</td><td>Configuration string</td><td>Result</td></tr></thead>
+  <tr><td>Single Cycle 64 bits</td><td>sc<td>OK</td></tr>
+  <tr><td>Single Cycle 64 bits with Proxy Kernel</td><td>scpk<td>OK</td></tr>
+  <tr><td>Microprogramed 64 bits</td><td>up<td>OK</td></tr>
+  <tr><td>Microprogramed 64 bits with Proxy Kernel</td><td>uppk<td>Not working yet</td></tr>
+  <tr><td>Single Cycle 32 bits</td><td>sc32<td>OK</td></tr>
+  <tr><td>Single Cycle 32 bits with Proxy Kernel</td><td>sc32pk<td>Not supported yet</td></tr>
+  <tr><td>Microprogramed 32 bits</td><td>up32<td>OK</td></tr>
+  <tr><td>Microprogramed 32 bits with Proxy Kernel</td><td>up32pk<td>Not supported yet</td></tr>
+  
+</table>
+
+
