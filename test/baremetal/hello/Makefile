@@ -1,10 +1,14 @@
-all: hello_64.elf
+all: compile disasm
 
-disasm: hello.disasm
+compile: hello_64.elf hello_32.elf
+
+disasm: hello_32.disasm hello_64.disasm
 
 clean:
-	rm hello_64.elf
-	rm hello_64.disasm
+	rm -f hello_32.elf
+	rm -f hello_64.elf
+	rm -f hello_32.disasm
+	rm -f hello_64.disasm
 
 hello_64.elf: hello.c
 	riscv64-unknown-elf-gcc  -e _startup startup.S kernel.c hello.c -o hello_64.elf
