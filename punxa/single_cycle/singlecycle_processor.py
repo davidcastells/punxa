@@ -1882,11 +1882,11 @@ class SingleCycleRISCV(py4hw.Logic):
         off21_J = compose_sign(ins, [[31,1], [12,8], [20,1], [21,10]]) << 1  
 
         if (op == 'JAL'):
-            jmpCall = (rd == 0)
+            jmpCall = (rd != 1)
             if (rd != 0):
                 self.reg[rd] = self.pc + 4
 
-            self.should_jump = (rd != 1)
+            self.should_jump = True
             self.jmp_address = self.pc + off21_J
             self.functionEnter(self.jmp_address, jmpCall)
             
