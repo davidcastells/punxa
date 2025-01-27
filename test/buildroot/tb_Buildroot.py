@@ -265,6 +265,26 @@ def dumpDTB():
     va = memory.read_i64(pa-mem_base)
     pa = translateVirtualAddress(va)
     dump(pa, 0x800)
+    
+def saveDTB():
+    global mem_base
+    va = findFunction('_dtb_early_va')
+    pa = translateVirtualAddress(va)
+    va = memory.read_i64(pa-mem_base)
+    address = translateVirtualAddress(va)
+    size = 0x800
+    
+    filename = 'exported.dtb'
+    #memory = _ci_cpu.behavioural_memory
+    pos = address 
+    with open(filename, "wb") as f:
+        for i in range(size):
+            value = memory.readByte(pos-mem_base)
+            #print('{:02X}'.format(value), end='')
+            f.write(value.to_bytes())
+            pos += 1
+            
+        
 
 def prepare():
     print('No checkpoint, loading program')
