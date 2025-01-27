@@ -162,6 +162,37 @@ def loadSymbolsFromElf(cpu,  filename, offset, verbose=False):
                     except Exception as e:
                         print('WARNING no symbol', e)
 
+def getSymbolsFromElf(filename, offset, verbose=False):
+    # get a dictionary with collosions
+    from collections import defaultdict
+    from elftools.elf.elffile import ELFFile
+    
+    addr_to_func = defaultdict(list)
+    func_to_addr = defaultdict(list)
+    
+    if (verbose): print('Opening ELF', filename)
+    
+    with open(filename, 'rb') as f:
+        elffile = ELFFile(f)
+
+        # Iterate through sections to find the symbol table
+        for section in elffile.iter_sections():
+            #if section.name == '.symtab':  # Commonly, the symbol table section is named '.symtab'
+            if hasattr(section, 'iter_symbols'):
+                for symbol in section.iter_symbols():
+                    #if symbol['st_info']['type'] == 'STT_FUNC':
+                    try:
+                        addr = symbol['st_value'] + offset
+                        name = symbol.name
+                        addr_to_func[addr].append(name)
+                        func_to_addr[name].append(addr)
+                        
+                        if (verbose): print(f'symbol: {name} = {addr:08X}')
+                    except Exception as e:
+                        print('WARNING no symbol', e)
+                        
+    return addr_to_func, func_to_addr
+
 def loadProgram(memory, filename, offset, verbose=False):
     """
     
@@ -1019,17 +1050,19 @@ def pageTables32(root=None, vbase = 0, level=1, printPTE=True):
     
     return totalTables
 
-def pageTables64(root=None, vbase = 0, level=1, printPTE=True):
+def pageTables64(root=None, vbase = 0, level=2, printPTE=True):
     """
     Traverses the page tables from the provided root page table.
     The R flag indicates that the PTE is a leaf.
     
     Parameters
     ----------
-    root : TYPE, optional
-        DESCRIPTION. The default is None.
-    vbase : TYPE, optional
-        DESCRIPTION. The default is 0.
+    root : int, optional
+        This is the pointer to the root of the page table. The default is None.
+        When None it will take the pointer from the SATP CSR.
+    vbase : int, optional
+        Since the printing of the translation of addresses is multilevel, each 
+        level defines a part of the virtual address. The default is 0.
     level : TYPE, optional
         DESCRIPTION. The default is 2.
     printPTE : TYPE, optional
@@ -1098,7 +1131,7 @@ def pageTables64(root=None, vbase = 0, level=1, printPTE=True):
         V = [' ','V'][valid]
         
         
-        va = vbase + (1 << vpn_pos[level]) * i
+        va = vbase + (i << vpn_pos[level]) 
                 
         phy = ppn2 << 30 | ppn1 << 21 | ppn0 << 12
 
