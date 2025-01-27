@@ -85,56 +85,6 @@ def loadSymbols(cpu, filename, address_fix=0):
 
 
 
-def run(upto, maxclks=100000, verbose=True, autoCheckpoint=False):
-    import time
-    global print
-    global dummy_print
-
-    
-    if not(verbose):
-        cpu.setVerbose(False)
-                        
-    sim = hw.getSimulator()
-
-    t0 = time.time()
-    clk0 = sim.total_clks
-
-    t0 = time.time()
-    clk0 = sim.total_clks
-    
-    count = 0
-    istart = cpu.csr[0xC02]
-    ilast = istart
-    
-    while (cpu.pc != upto):
-        sim.clk(1)
-        count += 1
-        icur = cpu.csr[0xC02]
-        
-        if not(sim.do_run):
-            break;
-        if (count > maxclks):
-            break;
-        if ((icur % 10000 == 0) and (icur != ilast)):
-            print('ins: {:n}'.format(icur))
-            ilast = icur
-            
-    if (cpu.pc != upto):
-        print('did not reach address')
-
-        if (sim.do_run and autoCheckpoint):
-            print('auto checkpointing')
-            checkpoint()
-
-    if not(verbose):
-        cpu.setVerbose(True)
-
-    tf = time.time()
-    clkf = sim.total_clks
-    
-    print('clks: {} time: {} simulation freq: {}'.format(clkf-clk0, tf-t0, (clkf-clk0)/(tf-t0)))
-        
-        
 
                   
 def dump(address, size=0x100):
@@ -267,9 +217,10 @@ def restoreOpensbi():
     print('Restoring patched memory to avoid relocation')
     restore('opensbi.dat')
     programFile = ex_dir + 'fw_payload.elf'
+    loadSymbolsFromElf(cpu, programFile, 0)
     linuxSymbols = 'vmlinux.sym'
-    loadSymbols(cpu, linuxSymbols)
-    loadSymbols(cpu, linuxSymbols, -0xffffffff80000000 + 0x80200000)
+    #loadSymbols(cpu, linuxSymbols)
+    #loadSymbols(cpu, linuxSymbols, -0xffffffff80000000 + 0x80200000)
 
 def restoreLinux():
     print('Restoring patched memory to avoid relocation')
@@ -297,6 +248,23 @@ def prepareXip():
     linuxSymbols = 'vmlinux.sym'
     loadSymbols(cpu, linuxSymbols)
     loadSymbols(cpu, linuxSymbols, -0xffffffff80000000 + 0x80000000)
+    
+def enableMemblockDebug():
+    va = findFunction('memblock_debug')
+    pa = translateVirtualAddress(va)
+    memory.write_i64(pa-mem_base, 1)
+
+def disableMemblockDebug():
+    va = findFunction('memblock_debug')
+    pa = translateVirtualAddress(va)
+    memory.write_i64(pa-mem_base, 0)
+    
+def dumpDTB():
+    va = findFunction('_dtb_early_va')
+    pa = translateVirtualAddress(va)
+    va = memory.read_i64(pa-mem_base)
+    pa = translateVirtualAddress(va)
+    dump(pa, 0x800)
 
 def prepare():
     print('No checkpoint, loading program')
@@ -311,6 +279,9 @@ def prepare():
     loadSymbols(cpu, linuxSymbols, -0xffffffff80000000 + 0x80200000)
 
     cpu.reg[11] = 0x81000000
+    
+    cpu.min_clks_for_trace_event = 1
+
 
     reallocMem(0x80020000, 0x400 * 400)
     reallocMem(0x82200000, 0x400 * 400)
@@ -331,7 +302,53 @@ def prepare():
 
 #run(cpu.getPhysicalAddressQuick(0xFFFFFFE00060A1F4), maxclks=100000000)
 
+def getSz(ptr):
+    doRun = True
+    i = 0
+    s = ''
+    while (doRun):
+        c = memory.read_i32(ptr+i-mem_base) & 0xFF
+        if (c == 0):
+            doRun = False
+            continue
+        
+        s += chr(c)
+        i += 1
+    return s
 
+def OpenSBIInfo():
+    domain = findFunction('root')
+    
+    domain_name = domain + 0x18
+    domain_harts_offset = domain + 0x58
+    domain_mem_regions_offset = domain + 0x60
+    
+    domain_harts_ptr = memory.read_i32(domain_harts_offset-mem_base)
+    domain_harts = memory.read_i32(domain_harts_ptr-mem_base)
+
+    domain_mem_regions_ptr = memory.read_i32(domain_mem_regions_offset-mem_base)
+    
+    print('Open SBI')
+    print('Domains:')
+    print(' Root:', getSz(domain_name))
+    print(' Harts Bitmap:', hex(domain_harts))
+    
+    print(' Memory Regions:')
+    
+    doRun = True
+    i = 0
+    while (doRun):
+        domain_mem_region_order = memory.read_i64(domain_mem_regions_ptr - mem_base)
+        domain_mem_region_base = memory.read_i64(domain_mem_regions_ptr + 8 - mem_base)
+        domain_mem_region_flags = memory.read_i64(domain_mem_regions_ptr + 8*2 - mem_base)
+
+        if (domain_mem_region_order == 0):
+            doRun = False
+            continue
+        print(f'  Region {i} order: {domain_mem_region_order} base:{domain_mem_region_base:016X} flags:{domain_mem_region_flags:016X}')
+        
+        domain_mem_regions_ptr += 8*3
+        i += 1
 
 if __name__ == "__main__":
     print(sys.argv)
