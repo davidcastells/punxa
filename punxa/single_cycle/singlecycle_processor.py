@@ -1680,8 +1680,9 @@ class SingleCycleRISCV(py4hw.Logic):
             pr('r{} = sign extend 16 (r{}) -> {:016X}'.format(rd, rs1, self.reg[rd]))
         elif (op == 'LD'):
             address = self.reg[rs1] + simm12
+            pr(f'r{rd} = [r{rs1} + {simm12}]', end='')
             self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
-            pr('r{} = [r{} + {}] -> [{}]={:016X}'.format(rd, rs1, simm12, self.addressFmt(address), self.reg[rd]))
+            pr('-> [{}]={:016X}'.format(self.addressFmt(address), self.reg[rd]))
         elif (op == 'LW'):
             address = self.reg[rs1] + simm12
             pr('r{} = [r{} + {}] '.format(rd, rs1, simm12), end = '')
