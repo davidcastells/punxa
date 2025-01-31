@@ -12,10 +12,11 @@ For the processor, we currently support two 64-bit models :
 The single-cycle version suppports full system simulation and proxy-kernel simulation (as in Spike).
 We also introduce a Linux proxy-kernel to simulate applications compiled with riscv64-unknown-linux-gnu-gcc.
 
-We also support one 32-bit model:
+We also support two 32-bit models:
 
 - Behavioral Model of a single-cycle execution processor without pipeline
-
+- Microprogrammed structural design with an algorithmic Control Unit implementation
+  
 ## Testing
 
 We started focussing on RV64 and Baremetal applications (compiled with risc64-unknown-elf-gcc).
