@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Buildroot -gd6e94bd-dirty Configuration
+# Buildroot -g76b4a0e-dirty Configuration
 #
 BR2_HAVE_DOT_CONFIG=y
 BR2_HOST_GCC_AT_LEAST_4_9=y
@@ -236,7 +236,7 @@ BR2_TOOLCHAIN_SUPPORTS_PIE=y
 # BR2_TOOLCHAIN_GLIBC_GCONV_LIBS_COPY is not set
 BR2_TOOLCHAIN_EXTRA_LIBS=""
 BR2_TOOLCHAIN_HAS_FULL_GETTEXT=y
-BR2_TARGET_OPTIMIZATION=""
+BR2_TARGET_OPTIMIZATION="-O0"
 BR2_TARGET_LDFLAGS=""
 BR2_TOOLCHAIN_HEADERS_AT_LEAST_3_0=y
 BR2_TOOLCHAIN_HEADERS_AT_LEAST_3_1=y
@@ -372,9 +372,9 @@ BR2_JLEVEL=0
 BR2_STRIP_strip=y
 BR2_STRIP_EXCLUDE_FILES=""
 BR2_STRIP_EXCLUDE_DIRS=""
-# BR2_OPTIMIZE_0 is not set
+BR2_OPTIMIZE_0=y
 # BR2_OPTIMIZE_1 is not set
-BR2_OPTIMIZE_2=y
+# BR2_OPTIMIZE_2 is not set
 # BR2_OPTIMIZE_3 is not set
 # BR2_OPTIMIZE_G is not set
 # BR2_OPTIMIZE_S is not set
@@ -411,10 +411,10 @@ BR2_SSP_OPTION="-fstack-protector-strong"
 # BR2_RELRO_PARTIAL is not set
 BR2_RELRO_FULL=y
 BR2_FORTIFY_SOURCE_ARCH_SUPPORTS=y
-# BR2_FORTIFY_SOURCE_NONE is not set
-BR2_FORTIFY_SOURCE_1=y
-# BR2_FORTIFY_SOURCE_2 is not set
-# BR2_FORTIFY_SOURCE_3 is not set
+
+#
+# Fortify Source needs a glibc toolchain and optimization
+#
 
 #
 # System configuration
