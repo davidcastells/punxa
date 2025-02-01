@@ -2,6 +2,9 @@ help:
 	@echo "Make options:"
 	@echo "  make clean_checkpoint -> cleans the checkpointed files"
 	@echo "  make vmlinux.sym -> creates the linux symbols file"
+	@echo "  make linkconfig -> links the linux configuration file"
+	@echo "  make linkdevicetree -> links the device tree"
+	
 
 clean_checkpoint:
 	rm -fr checkpoint.dat
