@@ -1,100 +1,109 @@
-// SPDX-License-Identifier: (GPL-2.0 OR MIT)
-
 /dts-v1/;
 
-
-
 / {
+	#address-cells = <0x02>;
+	#size-cells = <0x02>;
+
 	compatible = "punxa_rv64";
 	model = "punxa_rv64";
 
+	reserved-memory {
+		#address-cells = <0x02>;
+		#size-cells = <0x02>;
+		ranges;
+
+		mmode_resv1@80000000 {
+			reg = <0x00 0x80000000 0x0 0x20000>;
+			no-map;
+			compatible="reserved-memory";
+		};
+
+		mmode_resv0@80020000 {
+			reg = <0x00 0x80020000 0x0 0x10000>;
+			no-map;
+			compatible="reserved-memory";
+		};
+	};
+
 	aliases {
-        uart0 = &uart0;
-        serial0 = &uart0; /* Alias for the first serial port */
-    };
+		uart0 = "/soc/uart@10000000";
+		serial0 = "/soc/uart@10000000";
+	};
 
-    chosen {
-        bootargs = "console=ttyS0,115200 debug loglevel=7 earlycon=uart8250,mmio32,0x10000000";
-        stdout-path = "serial0:115200n8"; 
-    };
-
+	chosen {
+		bootargs = "console=ttyS0,115200 debug loglevel=15 earlycon=uart8250,mmio32,0x10000000 vmalloc=16M";
+		stdout-path = "serial0:115200n8";
+	};
 
 	cpus {
-		#address-cells = <1>;
-		#size-cells = <0>;
-		timebase-frequency = <50000000>;
-		CPU0: cpu@0 {
+		#address-cells = <0x01>;
+		#size-cells = <0x00>;
+		timebase-frequency = <0x2faf080>;
+
+		cpu@0 {
 			device_type = "cpu";
-			reg = <0>;
+			reg = <0x00>;
 			status = "okay";
 			compatible = "riscv";
 			riscv,isa = "rv64imafdc";
-			riscv,priv-major = <1>;
-			riscv,priv-minor = <10>;
+			riscv,priv-major = <0x01>;
+			riscv,priv-minor = <0x0a>;
 			mmu-type = "riscv,sv39";
-			clock-frequency = <50000000>;
+			clock-frequency = <0x2faf080>;
 			i-cache-size = <0x400>;
-			i-cache-line-size = <32>;
+			i-cache-line-size = <0x20>;
 			d-cache-size = <0x400>;
-			d-cache-line-size = <32>;
-			CPU0_intc: interrupt-controller {
-				#interrupt-cells = <1>;
+			d-cache-line-size = <0x20>;
+
+			interrupt-controller {
+				#interrupt-cells = <0x01>;
 				interrupt-controller;
 				compatible = "riscv,cpu-intc";
 			};
 		};
-
 	};
 
-
-
+memory@80000000 {
+			#address-cells = <0x02>;
+			#size-cells = <0x02>;
+			device_type = "memory";
+			reg = <0x0 0x80000000 0x0 0x40000000>;
+		};
+		
 	soc {
-		#address-cells = <1>;
-		#size-cells = <1>;
+		#address-cells = <0x02>;
+		#size-cells = <0x02>;
 		compatible = "simple-bus";
 
-		plic0: interrupt-controller@c000000 {
+		interrupt-controller@c000000 {
 			compatible = "riscv,plic0";
-			#interrupt-cells = <1>;
+			#interrupt-cells = <0x01>;
 			interrupt-controller;
-			reg = <0xC000000 0x2000000>;
-			riscv,ndev=<71>;
+			reg = <0x0 0xc000000 0x0 0x2000000>;
+			riscv,ndev = <0x47>;
+			phandle = <0x01>;
 		};
 
-    clint0: clint@2000000 {
-		#address-cells = <1>;
-		#size-cells = <1>;
-        compatible = "riscv,clint0";
-        reg = <0x02000000  0x10000>;
-    };
+		clint@2000000 {
+			#address-cells = <0x02>;
+			#size-cells = <0x02>;
+			compatible = "riscv,clint0";
+			reg = <0x0 0x2000000 0x0 0x10000>;
+		};
 
-	memory@80000000 {
-		#address-cells = <1>;
-		#size-cells = <1>;
-        device_type = "memory";
-        reg = <0x80000000  0x40000000>;
-    };
+		
 
-
-	uart0: uart@10000000  {
-		#address-cells = <1>;
-		#size-cells = <1>;
-		compatible = "uart16550", "ns16550a";
-		reg = <0x10000000 0x1000>;
-		interrupts = <9 4>;
-		clock-frequency = <50000000>;
-		reg-shift = <2>;
-		reg-offset = <32>;
-		no-loopback-test = <1>;
-		interrupt-parent = <&plic0>;
+		uart@10000000 {
+			#address-cells = <0x02>;
+			#size-cells = <0x02>;
+			compatible = "uart16550,ns16550a";
+			reg = <0x0 0x10000000 0x0 0x1000>;
+			interrupts = <0x09 0x04>;
+			clock-frequency = <0x2faf080>;
+			reg-shift = <0x02>;
+			reg-offset = <0x20>;
+			no-loopback-test = <0x01>;
+			interrupt-parent = <0x01>;
+		};
 	};
-
-
-
-
-	};
-
-
-
-
 };
