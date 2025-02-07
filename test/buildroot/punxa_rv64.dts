@@ -1,25 +1,25 @@
 /dts-v1/;
 
 / {
-	#address-cells = <0x02>;
-	#size-cells = <0x02>;
+	#address-cells = <0x01>;
+	#size-cells = <0x01>;
 
 	compatible = "punxa_rv64";
 	model = "punxa_rv64";
 
 	reserved-memory {
-		#address-cells = <0x02>;
-		#size-cells = <0x02>;
+		#address-cells = <0x01>;
+		#size-cells = <0x01>;
 		ranges;
 
 		mmode_resv1@80000000 {
-			reg = <0x00 0x80000000 0x0 0x20000>;
+			reg = < 0x80000000 0x20000>;
 			no-map;
 			compatible="reserved-memory";
 		};
 
 		mmode_resv0@80020000 {
-			reg = <0x00 0x80020000 0x0 0x10000>;
+			reg = < 0x80020000  0x10000>;
 			no-map;
 			compatible="reserved-memory";
 		};
@@ -31,7 +31,7 @@
 	};
 
 	chosen {
-		bootargs = "console=ttyS0,115200 debug loglevel=15 earlycon=uart8250,mmio32,0x10000000 vmalloc=16M";
+		bootargs = "console=ttyS0,115200 debug loglevel=15 earlycon=uart8250,mmio32,0x10000000 mem=64M ";
 		stdout-path = "serial0:115200n8";
 	};
 
@@ -55,7 +55,7 @@
 			d-cache-size = <0x400>;
 			d-cache-line-size = <0x20>;
 
-			interrupt-controller {
+			intc0: interrupt-controller {
 				#interrupt-cells = <0x01>;
 				interrupt-controller;
 				compatible = "riscv,cpu-intc";
@@ -64,46 +64,49 @@
 	};
 
 memory@80000000 {
-			#address-cells = <0x02>;
-			#size-cells = <0x02>;
+			#address-cells = <0x01>;
+			#size-cells = <0x01>;
 			device_type = "memory";
-			reg = <0x0 0x80000000 0x0 0x40000000>;
+			reg = < 0x80000000  0x40000000>;
 		};
 		
 	soc {
-		#address-cells = <0x02>;
-		#size-cells = <0x02>;
+		#address-cells = <0x01>;
+		#size-cells = <0x01>;
 		compatible = "simple-bus";
+		ranges;
 
-		interrupt-controller@c000000 {
+		plic: interrupt-controller@c000000 {
+			#address-cells = <0x02>;
 			compatible = "riscv,plic0";
 			#interrupt-cells = <0x01>;
 			interrupt-controller;
-			reg = <0x0 0xc000000 0x0 0x2000000>;
+			reg = <0x0 0xc000000 0x2000000>;
 			riscv,ndev = <0x47>;
-			phandle = <0x01>;
+			interrupts-extended = <&intc0 9 &intc0 11>;
 		};
 
 		clint@2000000 {
-			#address-cells = <0x02>;
-			#size-cells = <0x02>;
+			#address-cells = <0x01>;
+			#size-cells = <0x01>;
 			compatible = "riscv,clint0";
-			reg = <0x0 0x2000000 0x0 0x10000>;
+			reg = <0x2000000 0x10000>;
+			interrupts-extended = <&intc0 3 &intc0 7>;
 		};
 
 		
 
 		uart@10000000 {
-			#address-cells = <0x02>;
-			#size-cells = <0x02>;
+			#address-cells = <0x01>;
+			#size-cells = <0x01>;
 			compatible = "uart16550,ns16550a";
-			reg = <0x0 0x10000000 0x0 0x1000>;
-			interrupts = <0x09 0x04>;
+			reg = <0x10000000 0x1000>;
+			interrupts = <0x01>;
 			clock-frequency = <0x2faf080>;
 			reg-shift = <0x02>;
 			reg-offset = <0x20>;
 			no-loopback-test = <0x01>;
-			interrupt-parent = <0x01>;
+			interrupt-parent = <&plic>;
 		};
 	};
 };
