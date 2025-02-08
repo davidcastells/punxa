@@ -1,7 +1,7 @@
 # punxa
 Python-based RISC-V Full System Simulator.
 
-Punxa provides HDL models of different parts of a full RISC-V system designed in different design styles using py4hw.
+Punxa provides HDL models of different parts of a full RISC-V system designed in different design styles using [py4hw](https://github.com/davidcastells/py4hw).
 
 For the processor, we currently support two 64-bit models :
 
@@ -58,3 +58,16 @@ check [riscv-tests](https://github.com/davidcastells/punxa/blob/main/test/riscv-
 - [Mandelbrot](https://github.com/davidcastells/punxa/blob/main/test/proxykernel_software/mandelbrot/README.md)
 - [File sort](https://github.com/davidcastells/punxa/tree/main/test/proxykernel_software/sort/README.md)
 - [Paranoia](https://github.com/davidcastells/punxa/tree/main/test/proxykernel_software/paranoia/README.md)
+
+### Publications
+Cite as 
+
+```
+@INPROCEEDINGS{castells2024educational,
+  author={Castells-Rufas, David and Novo, David and Martorell, Xavier},
+  booktitle={2024 39th Conference on Design of Circuits and Integrated Systems (DCIS)}, 
+  title={An Educational Tool to Analyze the Hardware/Software Integration in RISC-V Systems}, 
+  year={2024},
+  pages={1-6},
+  doi={10.1109/DCIS62603.2024.10769201}}
+```
