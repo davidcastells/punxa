@@ -5,36 +5,39 @@ Created on Sat Jun 15 20:41:52 2024
 @author: dcr
 """
 
-
+class ProcessorInterrupt(Exception):
+    msg = ''
+    tval = 0
+    
 class ProcessorException(Exception):
     msg = ''
     tval = 0
 
-class UserSoftwareInterrupt(ProcessorException):
+class UserSoftwareInterrupt(ProcessorInterrupt):
     code = 0
 
-class SupervisorSoftwareInterrupt(ProcessorException):
+class SupervisorSoftwareInterrupt(ProcessorInterrupt):
     code = 1
 
-class MachineSoftwareInterrupt(ProcessorException):
+class MachineSoftwareInterrupt(ProcessorInterrupt):
     code = 3
 
-class UserTimerInterrupt(ProcessorException):
+class UserTimerInterrupt(ProcessorInterrupt):
     code = 4
 
-class SupervisorTimerInterrupt(ProcessorException):
+class SupervisorTimerInterrupt(ProcessorInterrupt):
     code = 5
 
-class MachineTimerInterrupt(ProcessorException):
+class MachineTimerInterrupt(ProcessorInterrupt):
     code = 7
 
-class UserExternalInterrupt(ProcessorException):
+class UserExternalInterrupt(ProcessorInterrupt):
     code = 8
 
-class SupervisorExternalInterrupt(ProcessorException):
+class SupervisorExternalInterrupt(ProcessorInterrupt):
     code = 9
 
-class MachineExternalInterrupt(ProcessorException):
+class MachineExternalInterrupt(ProcessorInterrupt):
     code = 11
 
 
