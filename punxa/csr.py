@@ -24,81 +24,82 @@ Latest Debug Specification Used: 1.0.0-rc4
 #-----------------------------
 
 
-CSR_MISA = 0x301
 
-CSR_FFLAGS = 0x001
-CSR_FRM = 0x002
-CSR_FCSR = 0x003
+CSR_FFLAGS =        0x001
+CSR_FRM =           0x002
+CSR_FCSR =          0x003
 
-CSR_SSTATUS = 0x100
-CSR_SIE = 0x104
-CSR_STVEC = 0x105
-CSR_SCOUNTEREN = 0x106
-CSR_SSCRATCH = 0x140
-CSR_SEPC = 0x141
-CSR_SCAUSE = 0x142
-CSR_STVAL = 0x143
-CSR_SIP = 0x144
-CSR_SATP = 0x180
+CSR_SSTATUS =       0x100
+CSR_SIE =           0x104
+CSR_STVEC =         0x105
+CSR_SCOUNTEREN =    0x106
+CSR_SSCRATCH =      0x140
+CSR_SEPC =          0x141
+CSR_SCAUSE =        0x142
+CSR_STVAL =         0x143
+CSR_SIP =           0x144
+CSR_SATP =          0x180
 
-CSR_MSTATUS = 0x300
-CSR_MEDELEG = 0x302
-CSR_MIDELEG = 0x303
-CSR_MIE = 0x304
-CSR_MTVEC = 0x305
-CSR_MCOUNTEREN = 0x306
+CSR_MSTATUS =       0x300
+CSR_MISA =          0x301
+CSR_MEDELEG =       0x302
+CSR_MIDELEG =       0x303
+CSR_MIE =           0x304
+CSR_MTVEC =         0x305
+CSR_MCOUNTEREN =    0x306
 CSR_MCOUNTINHIBIT = 0x320
 
-CSR_MHPMEVENT3 = 0x323
+CSR_MHPMEVENT3 =    0x323
+
 #        for i in range(3,32):
 #            self.implemented_csrs[0x320+i] = 'mhpmevent{}'.format(i)
 
 
-CSR_MSCRATCH = 0x340
-CSR_MEPC = 0x341
-CSR_MCAUSE = 0x342
-CSR_MTVAL = 0x343
-CSR_MIP = 0x344
-CSR_MBASE = 0x380
+CSR_MSCRATCH =      0x340
+CSR_MEPC =          0x341
+CSR_MCAUSE =        0x342
+CSR_MTVAL =         0x343
+CSR_MIP =           0x344
+CSR_MBASE =         0x380
         
-CSR_PMPCFG0 = 0x3A0
+CSR_PMPCFG0 =       0x3A0
         
 # for i in range(64):
 #     self.implemented_csrs[0x3B0+i] = 'pmpaddr{}'.format(i)
         
 
 # Machine non-maskable interrupt handling
-CSR_MNSCRATCH = 0x740
-CSR_MNEPC =     0x741
-CSR_MNCAUSE =   0x742
-CSR_MNSTATUS =  0x744
+CSR_MNSCRATCH =     0x740
+CSR_MNEPC =         0x741
+CSR_MNCAUSE =       0x742
+CSR_MNSTATUS =      0x744
 
 # Debug/Trace registers
-CSR_TSELECT =   0x7A0
-CSR_TDATA1 =   0x7A1
-CSR_TDATA2 =   0x7A2
-CSR_TDATA3 =   0x7A3
-CSR_TINFO =     0x7A4
-CSR_TCONTROL =  0x7A5
-CSR_MCONTEXT =  0x7A8
+CSR_TSELECT =       0x7A0
+CSR_TDATA1 =        0x7A1
+CSR_TDATA2 =        0x7A2
+CSR_TDATA3 =        0x7A3
+CSR_TINFO =         0x7A4
+CSR_TCONTROL =      0x7A5
+CSR_MCONTEXT =      0x7A8
 
-CSR_MCYCLE =    0xB00
-CSR_MINSTRET =  0xB02
+CSR_MCYCLE =        0xB00
+CSR_MINSTRET =      0xB02
 
 # for i in range(3,32):
 #     self.implemented_csrs[0xB00+i] = 'mhpmcounter{}'.format(i)
 
-CSR_CYCLE =     0xC00
-CSR_TIME =      0xC01
-CSR_INSTRET =   0xC02
+CSR_CYCLE =         0xC00
+CSR_TIME =          0xC01
+CSR_INSTRET =       0xC02
 
-CSR_MCPUID =    0xf00
-CSR_MVENDORID = 0xF11
-CSR_MARCHID =   0xF12
-CSR_MIMPID =    0xF13
-CSR_MHARTID =   0xf14
+CSR_MCPUID =        0xF00
+CSR_MVENDORID =     0xF11
+CSR_MARCHID =       0xF12
+CSR_MIMPID =        0xF13
+CSR_MHARTID =       0xf14
 
-CSR_PRIVLEVEL = 0xFFF
+CSR_PRIVLEVEL =     0xFFF
 
 # ------------------------------------
 
@@ -115,12 +116,12 @@ csr_var_rw = [CSR_FFLAGS]
 csr_unf_rw = []
 
 # Mirrors of other CSRs depending on the privilege level
-csr_mirrored = {}
+csr_mirrored = {CSR_SIE:CSR_MIE, CSR_SIP:CSR_MIP}
 
 
 
 csr_partial_wr_mask = {}
-csr_mirror_mask = {}
+csr_mirror_mask = {CSR_SIE:-1, CSR_SIP:-1} # @todo define the correct masks
 
 # ------------------------------------
 
@@ -213,6 +214,17 @@ CSR_MSTATUS_SIE_MASK = (1 << 1)
 CSR_MSTATUS_UIE_MASK = (1)
 
 csr_partial_wr_mask[CSR_MSTATUS] = CSR_MSTATUS_SD_MASK  | CSR_MSTATUS_TSR_MASK | CSR_MSTATUS_TW_MASK | CSR_MSTATUS_TVM_MASK | CSR_MSTATUS_MXR_MASK | CSR_MSTATUS_SUM_MASK | CSR_MSTATUS_MPRV_MASK | CSR_MSTATUS_FS_MASK | CSR_MSTATUS_MPP_MASK | CSR_MSTATUS_SPP_MASK | CSR_MSTATUS_MPIE_MASK | CSR_MSTATUS_SPIE_MASK | CSR_MSTATUS_UPIE_MASK | CSR_MSTATUS_MIE_MASK | CSR_MSTATUS_SIE_MASK | CSR_MSTATUS_UIE_MASK
+
+
+# 0x303 - MIDELEG
+CSR_MIDELEG_SSI_MASK = (1<<1) # supervisor software interrupt
+CSR_MIDELEG_MSI_MASK = (1<<3)
+CSR_MIDELEG_STI_MASK = (1<<5)
+CSR_MIDELEG_MTI_MASK = (1<<7)
+CSR_MIDELEG_SEI_MASK = (1<<9)
+CSR_MIDELEG_MEI_MASK = (1<<11)
+CSR_MIDELEG_COF_MASK = (1<<13)
+
 
 # 0x304 - MIE  
 CSR_MIE_MEIE_MASK = (1<<11)
