@@ -85,15 +85,8 @@ def buildHw(cpu_model='sc'):
 
     #port_t = MemoryInterface(hw, 'port_t', mem_width, 8)     # 8 bits = 256
     # Memory initialization
-
-
-
     #memory.reallocArea(0, 1 << 16)
-
     #test = ISATestCommunication(hw, 'test', mem_width, 8, port_t)
-
-
-
 
     int_soft = hw.wire('int_soft')
     int_timer = hw.wire('int_timer')
@@ -142,7 +135,7 @@ def buildHw(cpu_model='sc'):
 
     if (cpu_model == 'sc'):
         cpu = SingleCycleRISCV(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
-    if (cpu_model == 'sc32'):
+    elif (cpu_model == 'sc32'):
         cpu = SingleCycleRISCV32(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
     elif (cpu_model == 'scpk'):
         cpu = SingleCycleRISCVProxyKernel(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
@@ -223,7 +216,7 @@ def addWaveform():
 def prepare(cpu_model='sc'):
 
     if (cpu_model[-2:] == '32'):
-        test_file = 'hello_32.elf'    
+        test_file = 'hello_32.elf' 
     else:
         test_file = 'hello_64.elf'
         
