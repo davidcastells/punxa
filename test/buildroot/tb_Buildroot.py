@@ -50,8 +50,6 @@ mem_base = 0x80000000
     
 def reallocMem(add, size):
     memory.reallocArea(add - mem_base, size)
-
-
     
 def is_hex(s):
     try:
@@ -85,135 +83,103 @@ def loadSymbols(cpu, filename, address_fix=0):
 
 
 
-
-                  
-def dump(address, size=0x100):
-    pos = address 
-    for i in range((size+15)//16):
-        sline = ''
-        print('{:016X}:|'.format(pos), end='')
-        for j in range(16):
-            value = memory.readByte(pos-mem_base)
-            print('{:02X}'.format(value), end='')
-            if (value >= 32 and value < 127):
-                sline += chr(value)
-            else:
-                sline += '·'
-            pos += 1
-            
-        print('| "{}"'.format(sline))
-#    memory.write(32*4+0x00, 0xfe010113) # addi    sp,sp,-32
-#    memory.write(32*4+0x04, 0x00112e23) # sw      ra,28(sp)
-
-
-
+def buildHw():
     
+    #  +-----+    +-----+     +-----+
+    #  | CPU |--C-| bus |--M--| mem |
+    #  +-----+    |     |     +-----+
+    #             |     |     +------+
+    #             |     |--U--| uart |
+    #             |     |     +------+
+    #             |     |     +------+
+    #             |     |--P--| PLIC |
+    #             |     |     +------+
+    #             |     |     +-------+
+    #             |     |--L--| CLINT |
+    #             |     |     +-------+
+    #             +-----+
+    #  | start          | stop           | device        |
+    #  | 0000 0C00 0000 | 0000 0C20 0FFF | PLIC          |
+    #  | 0000 1000 0000 | 0000 1000 0FFF | UART          |
+    #  | 0000 8000 0000 | 0001 BFEF FFFF | memory (5GB)  |
+    #  | 0001 BFF0 0000 | 0002 8000 0000 | pmem (3GB)    |
+    #  | 00FF F102 0000 | 00FF F102 FFFF | CLINT         |
+    global memory
+    global cpu
+    global hw
+    global uart
+        
+    hw = HWSystem()
 
-#  +-----+    +-----+     +-----+
-#  | CPU |--C-| bus |--M--| mem |
-#  +-----+    |     |     +-----+
-#             |     |     +------+
-#             |     |--U--| uart |
-#             |     |     +------+
-#             |     |     +------+
-#             |     |--P--| PLIC |
-#             |     |     +------+
-#             |     |     +-------+
-#             |     |--L--| CLINT |
-#             |     |     +-------+
-#             +-----+
-#  | start          | stop           | device        |
-#  | 0000 0C00 0000 | 0000 0C20 0FFF | PLIC          |
-#  | 0000 1000 0000 | 0000 1000 0FFF | UART          |
-#  | 0000 8000 0000 | 0001 BFEF FFFF | memory (5GB)  |
-#  | 0001 BFF0 0000 | 0002 8000 0000 | pmem (3GB)    |
-#  | 00FF F102 0000 | 00FF F102 FFFF | CLINT         |
+    port_c = MemoryInterface(hw, 'port_c', mem_width, 40)
+    port_m = MemoryInterface(hw, 'port_m', mem_width, 32)     # 32bits = 4 GB
+    port_u = MemoryInterface(hw, 'port_u', mem_width, 8)      # 8 bits = 256
+    port_l = MemoryInterface(hw, 'port_l', mem_width, 16)      # 8 bits = 256
+    port_p = MemoryInterface(hw, 'port_p', mem_width, 24)      # 8 bits = 256
+    port_d = MemoryInterface(hw, 'port_d', mem_width, 32)     # 4 GB
+    # Memory initialization
 
+    #memory = Memory(hw, 'main_memory', 32, 25-2, port)
+    memory = SparseMemory(hw, 'main_memory', mem_width, 32, port_m, mem_base=mem_base)
 
-hw = HWSystem()
+    #memory.reallocArea(0xB0200000, 0x2000)
 
-port_c = MemoryInterface(hw, 'port_c', mem_width, 40)
-port_m = MemoryInterface(hw, 'port_m', mem_width, 32)     # 32bits = 4 GB
-port_u = MemoryInterface(hw, 'port_u', mem_width, 8)      # 8 bits = 256
-port_l = MemoryInterface(hw, 'port_l', mem_width, 16)      # 8 bits = 256
-port_p = MemoryInterface(hw, 'port_p', mem_width, 24)      # 8 bits = 256
-port_d = MemoryInterface(hw, 'port_d', mem_width, 32)     # 4 GB
-# Memory initialization
+    #pmem = PersistentMemory(hw, 'pmem', ex_dir + 'pmem.img', port_d)
 
-#memory = Memory(hw, 'main_memory', 32, 25-2, port)
-memory = SparseMemory(hw, 'main_memory', mem_width, 32, port_m, mem_base=mem_base)
-
-#memory.reallocArea(0xB0200000, 0x2000)
-
-#pmem = PersistentMemory(hw, 'pmem', ex_dir + 'pmem.img', port_d)
-
-# Uart initialization
-uart = Uart(hw, 'uart', port_u, reg_size=4)
-
-
-int_soft = hw.wire('int_soft')
-int_timer = hw.wire('int_timer')
-
-ext_int_sources = []
-ext_int_sources.append(hw.wire('ext_int_0'))
-ext_int_sources.append(hw.wire('ext_int_1'))
-Constant(hw, 'ext_int_0', 0, ext_int_sources[0])
-Constant(hw, 'ext_int_1', 0, ext_int_sources[1])
-
-ext_int_targets = []
-ext_int_targets.append(hw.wire('int_machine'))
-ext_int_targets.append(hw.wire('int_supervisor'))
-
-# CLINT initialization
-clint = CLINT(hw, 'clint', port_l, int_soft, int_timer)
-
-# PLIC initialization
-plic = PLIC(hw, 'plic', port_p, ext_int_sources, ext_int_targets)
+    # Uart initialization
+    uart = Uart(hw, 'uart', port_u, reg_size=4)
 
 
-#memory.write(2*4, 512*4) # set the sp to the end of the memory
-bus = MultiplexedBus(hw, 'bus', port_c, [(port_m, mem_base),
-                                          #(port_d, 0x01BFF00000),
-                                          (port_u, UART_ADDR),
-                                          (port_p, PLIC_ADDR),
-                                          (port_l, CLINT_ADDR)])
+    int_soft = hw.wire('int_soft')
+    int_timer = hw.wire('int_timer')
 
-cpu = SingleCycleRISCV(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
+    ext_int_sources = []
+    ext_int_sources.append(hw.wire('ext_int_0'))
+    ext_int_sources.append(hw.wire('ext_int_1'))
+    Constant(hw, 'ext_int_0', 0, ext_int_sources[0])
+    Constant(hw, 'ext_int_1', 0, ext_int_sources[1])
 
-#cpu.stopOnExceptions = True
-cpu.behavioural_memory = memory
+    ext_int_targets = []
+    ext_int_targets.append(hw.wire('int_machine'))
+    ext_int_targets.append(hw.wire('int_supervisor'))
 
-#loadSymbols(cpu, ex_dir + 'fw_payload.sym', 0) # 32*4 - 0x10054)
-#loadSymbols(cpu, ex_dir + 'vmlinux.sym',  0) # 32*4 - 0x10054)
-#loadSymbols(cpu, ex_dir + 'vmlinux.sym',  0xFFFFFFE00000704C - 0x8020704C) # 32*4 - 0x10054)
-#loadSymbols(cpu, ex_dir + 'vmlinux.sym', 0) # 0x0000000080200000 - 0xffffffe000000000) # 32*4 - 0x10054)
+    # CLINT initialization
+    clint = CLINT(hw, 'clint', port_l, int_soft, int_timer)
+
+    # PLIC initialization
+    plic = PLIC(hw, 'plic', port_p, ext_int_sources, ext_int_targets)
 
 
-cpu.min_clks_for_trace_event = 1000
+    #memory.write(2*4, 512*4) # set the sp to the end of the memory
+    bus = MultiplexedBus(hw, 'bus', port_c, [(port_m, mem_base),
+                                              #(port_d, 0x01BFF00000),
+                                              (port_u, UART_ADDR),
+                                              (port_p, PLIC_ADDR),
+                                              (port_l, CLINT_ADDR)])
+
+    cpu = SingleCycleRISCV(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
+
+    #cpu.stopOnExceptions = True
+    cpu.csr_write_verbose = True
+    cpu.behavioural_memory = memory
+
+
+
+    cpu.min_clks_for_trace_event = 1000
+
+    punxa.interactive_commands._ci_hw = hw
+    punxa.interactive_commands._ci_cpu = cpu
+    punxa.interactive_commands._ci_bus = bus
+    punxa.interactive_commands._ci_uart = uart 
+
 
 # pass objects to interactive commands module
 import punxa.interactive_commands
-punxa.interactive_commands._ci_hw = hw
-punxa.interactive_commands._ci_cpu = cpu
-punxa.interactive_commands._ci_bus = bus
-punxa.interactive_commands._ci_uart = uart 
 
-#hw.getSimulator().clk(150000)
-
-#for i in range(10):
-#    hw.getSimulator().clk(1)
-#    
-#    print('IR=', cpu.IR.get())
-#    print('PC=', cpu.PC.get())
-#    print('MAR=', cpu.MAR.get())
-
-#from py4hw.schematic import Schematic
-
-#hw.getSimulator().clk(100)
-#gui.Workbench(hw)
 
 
 def restoreOpensbi():
+    buildHw()   
     print('Restoring patched memory to avoid relocation')
     restore('opensbi.dat')
     programFile = ex_dir + 'fw_payload.elf'
@@ -223,6 +189,7 @@ def restoreOpensbi():
     #loadSymbols(cpu, linuxSymbols, -0xffffffff80000000 + 0x80200000)
 
 def restoreLinux():
+    buildHw()
     print('Restoring patched memory to avoid relocation')
     restore('checkpoint.dat')
     programFile = ex_dir + 'fw_payload.elf'
@@ -231,7 +198,8 @@ def restoreLinux():
     loadSymbols(cpu, linuxSymbols, -0xffffffff80000000 + 0x80200000)
     
 def runOpensbi():
-    tbreak(0x80200000); go()
+    #tbreak(0x80200000); go()
+    run(0x80200000, 1000000000, verbose=False) 
     checkpoint('opensbi.dat')
     write_trace('opensbi.json')
     
@@ -242,12 +210,6 @@ def dumpLog():
     print('va desc_ring = {:016X}'.format(va_desc_ring))
     print('va textring = {:016X}'.format(va_text_ring))
     
-def prepareXip():
-    programFile = ex_dir + 'Image'
-    loadProgram(memory, programFile, 0x80000000-mem_base )
-    linuxSymbols = 'vmlinux.sym'
-    loadSymbols(cpu, linuxSymbols)
-    loadSymbols(cpu, linuxSymbols, -0xffffffff80000000 + 0x80000000)
     
 def enableMemblockDebug():
     va = findFunction('memblock_debug')
@@ -272,7 +234,7 @@ def saveDTB():
     pa = translateVirtualAddress(va)
     va = memory.read_i64(pa-mem_base)
     address = translateVirtualAddress(va)
-    size = 0x800
+    size = 2973
     
     filename = 'exported.dtb'
     #memory = _ci_cpu.behavioural_memory
@@ -281,12 +243,24 @@ def saveDTB():
         for i in range(size):
             value = memory.readByte(pos-mem_base)
             #print('{:02X}'.format(value), end='')
-            f.write(value.to_bytes())
+            f.write(value.to_bytes(1, byteorder='little'))
             pos += 1
             
         
 
+def loadOpenSBISymbols():
+    programFile = ex_dir + 'fw_payload.elf'
+    loadSymbolsFromElf(cpu,  programFile, 0)
+
+def loadLinuxSymbols():
+    linuxSymbols = 'vmlinux.sym'
+    loadSymbols(cpu, linuxSymbols)
+    loadSymbols(cpu, linuxSymbols, -0xffffffff80000000 + 0x80200000)
+
 def prepare():
+    global memory
+    global cpu
+    buildHw()
     print('No checkpoint, loading program')
     programFile = ex_dir + 'fw_payload.elf'
     fdtFile = ex_dir + 'punxa_rv64.dtb'
@@ -302,25 +276,10 @@ def prepare():
     
     cpu.min_clks_for_trace_event = 1
 
+    reallocMem(0x80020000, 0x10000)
+    reallocMem(0x80200000, 0x3fe00000)
 
-    reallocMem(0x80020000, 0x400 * 400)
-    reallocMem(0x82200000, 0x400 * 400)
-    #reallocMem(0xFBFFF000,  0x4001000)
-    #reallocMem(0x100100000, 0x400 * 0x400)
-    #reallocMem(0x100200000, 0x400 * 0x400)
-    #reallocMem(0x100300000, 0x400 * 0x400)
-    #reallocMem(0x100400000, 0x400 * 0x400)
-    #reallocMem(0x100800000, 0x400 * 0x400)
-    #reallocMem(0x100900000, 0x400 * 0x400)
-    #reallocMem(0x1BA000000,  0x5f00000)
 
-#hw.getSimulator().clk(15900)
-
-# should write 1 in 0x3B030
-
-#step(20)
-
-#run(cpu.getPhysicalAddressQuick(0xFFFFFFE00060A1F4), maxclks=100000000)
 
 def getSz(ptr):
     doRun = True
@@ -335,7 +294,79 @@ def getSz(ptr):
         s += chr(c)
         i += 1
     return s
+    
+def runIters(iters=5):
+    iter = 0 
+    while (iter < iters):              
+        run(0, 1000000, verbose=False)
 
+        stack()
+        iter += 1
+        
+        for line in uart.console[-10:]:
+            print(line)
+
+def runToMemblockAddRange(iters=10):
+    va = findFunction('memblock_add_range')
+    if (va is None):
+        va = findFunction('memblock_add_range.isra.0')
+        if (va is None):
+            raise Exception()
+         
+    iter = 0 
+    while (iter < iters):              
+        run(va, 1000000, verbose=False)
+
+        if (cpu.pc == va):
+            reallocMem(cpu.reg[11], cpu.reg[12]);step(10)
+            checkpoint()
+        else:
+            stack()
+            iter += 1
+
+def runUntilInterrupt(max_clks=100000):
+    sim = hw.getSimulator()
+    cnt = 0
+    while (cnt < max_clks):
+        timer_wire = cpu.int_timer_machine.get()
+        cnt += 1
+        sim.clk()
+        
+        if (timer_wire == 1):
+            print('Timer Interrupt!')
+            return
+            
+def reportInterrupts():
+    print('Interrupt Status')
+    print(' CPU:') # be prepared for multiple CPUs
+    timer_wire = cpu.int_timer_machine.get()
+    
+    mideleg_mt = 1 if (cpu.csr[CSR_MIDELEG] & CSR_MIDELEG_MTI_MASK) else 0
+    mideleg_st = 1 if (cpu.csr[CSR_MIDELEG] & CSR_MIDELEG_STI_MASK) else 0
+        
+    mtip = 1 if (cpu.csr[CSR_MIP] & CSR_MIP_MTIP_MASK) else 0
+    stip = 1 if (cpu.csr[CSR_MIP] & CSR_MIP_STIP_MASK) else 0
+    utip = 1 if (cpu.csr[CSR_MIP] & CSR_MIP_UTIP_MASK) else 0
+
+    mtie = 1 if (cpu.csr[CSR_MIE] & CSR_MIE_MTIE_MASK) else 0
+    stie = 1 if (cpu.csr[CSR_MIE] & CSR_MIE_STIE_MASK) else 0
+    utie = 1 if (cpu.csr[CSR_MIE] & CSR_MIE_UTIE_MASK) else 0
+    
+    mie = 1 if (cpu.csr[CSR_MSTATUS] & CSR_MSTATUS_MIE_MASK) else 0
+    sie = 1 if (cpu.csr[CSR_MSTATUS] & CSR_MSTATUS_SIE_MASK) else 0
+    uie = 1 if (cpu.csr[CSR_MSTATUS] & CSR_MSTATUS_UIE_MASK) else 0
+        
+    if (mideleg_st):
+        print(f'   CLINT MIDELEG     MIP          MIE       MSTATUS')
+        print(f'   timer [{timer_wire}]    MTIP [{mtip}] --> MTIE [{mtie}] --> MIE [{mie}]')
+        print(f'            \-> STIP [{stip}] --> STIE [{stie}] --> SIE [{sie}]')
+
+    else:
+        print(f'   CLINT MIDELEG     MIP          MIE       MSTATUS')
+        print(f'   timer [{timer_wire}]--> MTIP [{mtip}] --> MTIE [{mtie}] --> MIE [{mie}]')
+        print(f'       (sw) --> STIP [{stip}] --> STIE [{stie}] --> SIE [{sie}]')
+
+    
 def OpenSBIInfo():
     domain = findFunction('root')
     
@@ -369,6 +400,7 @@ def OpenSBIInfo():
         
         domain_mem_regions_ptr += 8*3
         i += 1
+
 
 if __name__ == "__main__":
     print(sys.argv)
