@@ -84,12 +84,15 @@ def stack():
         f = finfo[0]    # no need to translate, since symbols are provided in 
                         # virtual memory addresses for kernel
         j = finfo[2]    # indicates it is a jump
+        ra = finfo[3]   # return address
 
         ec = '|' if j else '+->'        
+        ras = '' if j else f'->ra: {ra:016X}' 
+        
         if (f in _ci_cpu.funcs.keys()):
-            print(' '*indent, ec, _ci_cpu.funcs[f])
+            print(' '*indent, ec, _ci_cpu.funcs[f], ras)
         else:
-            print(' '*indent, ec, '{:016X}'.format(f))
+            print(' '*indent, ec, '{:016X}'.format(f), ras)
             
         if not(j): indent += 1
 
@@ -508,6 +511,7 @@ def reportCSR32(csr):
         print('instret ({:03X}): {:08X}'.format(ncsr, v))
         print('  * retired instructions: {}'.format(v))
 
+        
     else:
         print('{} ({}): {:08X}'.format(csr, ncsr, v))
 
@@ -541,6 +545,15 @@ def reportCSR(csr):
                 'Reserved','Reserved']
     table3_3 = ['Off', 'Initial', 'Clean', 'Dirty']
     table3_5 = ['Direct', 'Reserved']
+    table14_0 = ['Instruction address misaligned', 'Instruction access fault', 'Illegal instruction',
+                 'Breakpoint', 'Load address misaligned','Load access fault',
+                 'Store/AMO address misaligned','Store/AMO access fault','Environment call from U-mode',
+                 'Environment call from S-mode','Reserved','Environment call from M-mode',
+                 'Instruction page fault','Load page fault','Reserved','Store/AMO page fault' ]
+    table14_1 = ['Reserved', 'Supervisor software interrupt', 'Reserved', 'Machine software interrupt',
+                 'Reserved', 'Supervisor timer interrupt', 'Reserved', 'Machine timer interrupt',
+                 'Reserved', 'Supervisor external interrupt', 'Reserved', 'Machine external interrupt',
+                 'Reserved', 'Counter-overflow interrupt', 'Reserved', 'Reserved']
     
     if (csr == 'mstatus'):
         print('mstatus ({:03X}): {:016X}'.format(ncsr, v))
@@ -654,26 +667,14 @@ def reportCSR(csr):
     elif (csr == 'medeleg'): 
         print('medeleg ({:03X}):  {:016X}'.format(ncsr, v))
         print(' delegate exceptions to lower privilege modes.')
-        msg = ['Instruction address misaligned',
-               'Instruction access fault',
-               'Illegal instruction',
-               'Breakpoint',
-                'Load address misaligned',
-                'Load access fault',
-                'Store/AMO address misaligned',
-                'Store/AMO access fault',
-                'Environment call from U-mode',
-                'Environment call from S-mode',
-                'Reserved',
-                'Environment call from M-mode',
-                'Instruction page fault',
-                'Load page fault',
-                'Reserved',
-                'Store/AMO page fault' ]
-        
         for i in range(16):
-            if (get_bit(v, i)): print('  * {}'.format(msg[i]))
-            
+            if (get_bit(v, i)): print('  * {}'.format(table14_0[i]))
+    elif (csr == 'mideleg'):
+        print('mideleg ({:03X}):  {:016X}'.format(ncsr, v))
+        print(' delegate interrupts to lower privilege modes.')
+        for i in range(16):
+            if (get_bit(v, i)): print('  * {}'.format(table14_1[i]))
+        
     elif (csr == 'tselect'):
         print('tselect: {:016X}'.format(v))
         
@@ -749,7 +750,7 @@ def reportCSR(csr):
         print('  * retired instructions: {}'.format(v))
         
     else:
-        print('{} ({}): {:16X}'.format(csr, ncsr, v))
+        print('{} ({:03X}): {:16X}'.format(csr, ncsr, v))
 
 def checkpoint(filename='checkpoint.dat'):
     import shutil
@@ -774,7 +775,7 @@ def checkpoint(filename='checkpoint.dat'):
     for i in range(4096):
         ser.write_i64(cpu.csr[i])
 
-    ser.write_int_tuple_list(cpu.stack, 3)
+    ser.write_int_tuple_list(cpu.stack, 5)
     
     # Serialize Memory Info
     ser.write_i64(len(memory.area))
@@ -816,7 +817,7 @@ def restore(filename= 'checkpoint.dat'):
     for i in range(4096):
         cpu.csr[i] = ser.read_i64()
 
-    cpu.stack = ser.read_int_tuple_list(3)
+    cpu.stack = ser.read_int_tuple_list(5)
 
     # Deserialize Memory Info
     memory.area = []
