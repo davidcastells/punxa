@@ -101,7 +101,9 @@ class CLINT(Logic):
 
         if (self.port.read.get() == 1):
             
-            if (field == 'mtimecmp'):
+            if (field == 'mtime'):
+                read_data = self.mtime 
+            elif (field == 'mtimecmp'):
                 read_data = self.mtimecmp 
             # elif (field == 'mtimecmph'):
             #     read_data = (self.mtimecmp >> 32) & ((1<<32)-1)
