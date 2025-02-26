@@ -1,4 +1,4 @@
-    # -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 Created on Sat Nov 26 13:12:41 2022
 
@@ -94,6 +94,14 @@ def clmulr(a, b):
             x = x ^ (a >> (64-1-i))
     return x
 
+def div_tz(v1, v2):
+    # integer division with rounding toward zero
+    if (sign(v1) != sign(v2)):
+        v = -( abs(v1) // abs(v2) )
+    else:
+        v = ( v1 // v2 )
+    return v
+
 
 class SingleCycleRISCV(py4hw.Logic):
     
@@ -126,6 +134,8 @@ class SingleCycleRISCV(py4hw.Logic):
         
         self.implemented_csrs = {}  # dictionary <address> -> <name>
         self.stack = []             # list of addresses
+        
+        self.per_thread_stack = {}
 
         self.tracer = Tracer()
         self.enable_tracing = True
@@ -219,9 +229,13 @@ class SingleCycleRISCV(py4hw.Logic):
                     # this should be delegated to supervisor mode
                     vec = self.csr[CSR_STVEC] # stvec
                     self.csr[CSR_STVAL] = e.tval
-                    self.csr[CSR_MSTATUS] |= (priv << 8) # set previous mode in SPP
+                    assert(priv <= CSR_PRIVLEVEL_SUPERVISOR)
+                    #self.csr[CSR_MSTATUS] |= (priv&1 << 8) 
+                    setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_SPP_POS, 1, priv&1 ) # set previous mode in SPP
                     self.csr[CSR_SEPC] = self.pc # sepc
                     self.csr[CSR_SCAUSE] = (1 << (self.XLEN -1))  | e.code  # scause
+
+                    setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_SIE_POS, 1, 0)
                     vecname = self.implemented_csrs[0x105]
                     self.csr[CSR_PRIVLEVEL] = 1
                     entertype = 2 # supervisor mode exception
@@ -234,8 +248,7 @@ class SingleCycleRISCV(py4hw.Logic):
                     self.csr[CSR_MEPC] = self.pc # mepc
                     self.csr[CSR_MCAUSE] = (1 << (self.XLEN -1))  | e.code  
                     
-                    setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPIE_POS, 1, 
-                                getCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPIE_POS, 1))
+                    #setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPIE_POS, 1, getCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPIE_POS, 1))
                     setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MIE_POS, 1, 0)
                     vecname = self.implemented_csrs[0x305]
                     self.csr[CSR_PRIVLEVEL] = 3
@@ -284,9 +297,13 @@ class SingleCycleRISCV(py4hw.Logic):
                     # this should be delegated to supervisor mode
                     vec = self.csr[CSR_STVEC] # stvec
                     self.csr[CSR_STVAL] = e.tval
-                    self.csr[0x100] |= (priv << 8) # set previous mode in SPP
+                    assert(priv <= CSR_PRIVLEVEL_SUPERVISOR)
+                    #self.csr[CSR_MSTATUS] |= (priv&1 << 8) 
+                    setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_SPP_POS, 1, priv&1 ) # set previous mode in SPP
                     self.csr[CSR_SEPC] = self.pc # sepc
                     self.csr[CSR_SCAUSE] = e.code  # scause
+                    
+                    setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_SIE_POS, 1, 0)
                     vecname = self.implemented_csrs[0x105]
                     self.csr[CSR_PRIVLEVEL] = 1
                     entertype = 2 # supervisor mode exception
@@ -299,8 +316,7 @@ class SingleCycleRISCV(py4hw.Logic):
                     self.csr[CSR_MEPC] = self.pc # mepc
                     self.csr[CSR_MCAUSE] = e.code  
                     
-                    setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPIE_POS, 1, 
-                                getCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPIE_POS, 1))
+                    # setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPIE_POS, 1, getCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPIE_POS, 1))
                     setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MIE_POS, 1, 0)
                     vecname = self.implemented_csrs[0x305]
                     self.csr[CSR_PRIVLEVEL] = 3
@@ -336,6 +352,13 @@ class SingleCycleRISCV(py4hw.Logic):
         
         pair = (f, self.csr[CSR_CYCLE], jmp, ra, et)
         self.stack.append(pair)
+        
+        thread = self.reg[4]
+        
+        if not(thread in self.per_thread_stack.keys()):
+            self.per_thread_stack[thread] = []
+            
+        self.per_thread_stack[thread].append(pair)
 
         if (not(self.enable_tracing)):
             return
@@ -346,6 +369,16 @@ class SingleCycleRISCV(py4hw.Logic):
                 
     def functionExit(self, et=0):
         # et (exit type) can be 0 (function) 1 (M exception) 2 (S exception)
+
+        thread = self.reg[4]
+        
+        if not(thread in self.per_thread_stack.keys()):
+            self.per_thread_stack[thread] = []
+
+        if not(len(self.per_thread_stack[thread]) == 0):
+            self.per_thread_stack[thread].pop()
+
+
         if (len(self.stack) == 0):
             return
     		
@@ -372,7 +405,7 @@ class SingleCycleRISCV(py4hw.Logic):
         if not(jmp) and (ra != rap):
             if (etsv != et):
                 if (et == 2) and (etsv == 0):
-                    print('WARNING! Entering Supervisor Mode')
+                    print(f'WARNING! Entering Supervisor Mode from function {f}')
             else:
                 fn = f
                 if (fn in self.funcs.keys()):
@@ -994,13 +1027,17 @@ class SingleCycleRISCV(py4hw.Logic):
             self.reg[rd] = ((v1 * v2) >> 64) & ((1<<64)-1)      
             pr('r{} = r{} * r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))
         elif (op == 'MULW'):
-            self.reg[rd] = ( IntegerHelper.c2_to_signed(self.reg[rs1] & ((1<<32)-1), 32) * IntegerHelper.c2_to_signed(self.reg[rs2] & ((1<<32)-1), 32)  )  & ((1<<32)-1)  
+            v1 = IntegerHelper.c2_to_signed(self.reg[rs1] & ((1<<32)-1), 32)
+            v2 = IntegerHelper.c2_to_signed(self.reg[rs2] & ((1<<32)-1), 32)
+            self.reg[rd] = signExtend( v1 * v2 , 32, 64 )   
             pr('r{} = r{} * r{} -> {:08X}'.format(rd, rs1, rs2, self.reg[rd]))            
         elif (op == 'DIV'):
             if (self.reg[rs2] == 0):
                 self.reg[rd] = ((1<<64)-1)
             else:
-                self.reg[rd] = int(IntegerHelper.c2_to_signed(self.reg[rs1], 64) / IntegerHelper.c2_to_signed(self.reg[rs2]  , 64)) & ((1<<64)-1)    
+                v1 = IntegerHelper.c2_to_signed(self.reg[rs1], 64)
+                v2 = IntegerHelper.c2_to_signed(self.reg[rs2], 64)
+                self.reg[rd] = div_tz(v1, v2) & ((1<<64)-1)    
             pr('r{} = r{} / r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))            
         elif (op == 'DIVU'):
             if (self.reg[rs2] == 0):
@@ -1009,23 +1046,21 @@ class SingleCycleRISCV(py4hw.Logic):
                 self.reg[rd] = self.reg[rs1] // self.reg[rs2]      
             pr('r{} = r{} / r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))            
         elif (op == 'DIVW'):
-            if (self.reg[rs2] == 0):
+            v1 = IntegerHelper.c2_to_signed(self.reg[rs1] & ((1<<32)-1), 32)
+            v2 = IntegerHelper.c2_to_signed(self.reg[rs2] & ((1<<32)-1), 32)
+            if (v2 == 0):
                 self.reg[rd] = ((1<<64)-1)
             else:
-                v1 = IntegerHelper.c2_to_signed(self.reg[rs1] & ((1<<32)-1), 32)
-                v2 = IntegerHelper.c2_to_signed(self.reg[rs2] & ((1<<32)-1), 32)
-                if (sign(v1) != sign(v2)):
-                    v = -( abs(v1) // abs(v2) )
-                    self.reg[rd] = signExtend(v & ((1<<32)-1), 32,64) 
-                else:
-                    v = ( v1 // v2 )
-                    self.reg[rd] = signExtend(v & ((1<<32)-1), 32,64)  
+                self.reg[rd] = signExtend(div_tz(v1, v2) & ((1<<32)-1), 32, 64) 
             pr('r{} = r{} / r{} -> {:08X}'.format(rd, rs1, rs2, self.reg[rd]))            
         elif (op == 'DIVUW'):
-            if (self.reg[rs2] == 0):
+            v1 = self.reg[rs1] & ((1<<32)-1)
+            v2 = self.reg[rs2] & ((1<<32)-1)
+            if (v2 == 0):
                 self.reg[rd] = ((1<<64)-1)
             else:
-                self.reg[rd] = signExtend((self.reg[rs1] & ((1<<32)-1)) // (self.reg[rs2] & ((1<<32)-1)), 32, 64) 
+                vr = signExtend(v1 // v2, 32, 64) 
+                self.reg[rd] = vr 
             pr('r{} = r{} / r{} -> {:08X}'.format(rd, rs1, rs2, self.reg[rd]))   
         elif (op == 'REM'):
             v1 = IntegerHelper.c2_to_signed(self.reg[rs1], 64)
@@ -1053,8 +1088,8 @@ class SingleCycleRISCV(py4hw.Logic):
             self.reg[rd] = vr & ((1<<64)-1)  
             pr('r{} = r{} % r{} -> {:08X}'.format(rd, rs1, rs2, self.reg[rd]))            
         elif (op == 'REMU'):
-            v1 = self.reg[rs1]
-            v2 = self.reg[rs2]
+            v1 = self.reg[rs1] 
+            v2 = self.reg[rs2] 
             if (v2 == 0):
                 vr = v1
             else:
@@ -1062,13 +1097,13 @@ class SingleCycleRISCV(py4hw.Logic):
             self.reg[rd] = vr      
             pr('r{} = r{} % r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))   
         elif (op == 'REMUW'):
-            v1 = self.reg[rs1]
-            v2 = self.reg[rs2]
+            v1 = self.reg[rs1] & ((1<<32)-1)
+            v2 = self.reg[rs2] & ((1<<32)-1)
             if (v2 == 0):
                 vr = v1
             else:
                 vr = v1 % v2
-            self.reg[rd] = vr      
+            self.reg[rd] = signExtend(vr, 32, 64)      
             pr('r{} = r{} % r{} -> {:016X}'.format(rd, rs1, rs2, self.reg[rd]))       
         elif (op == 'ADDW'):
             v = (self.reg[rs1] & ((1<<32) -1)) + ( self.reg[rs2] & ((1<<32) -1))
@@ -1421,12 +1456,18 @@ class SingleCycleRISCV(py4hw.Logic):
             newvalue = self.reg[rs2]
             if (self.isReserved(address, 64//8)):
                 yield from self.virtualMemoryWrite(address, 64//8, newvalue)
-                self.reg[rd] = 0    
                 self.reserveAddress(-1,-1)
-                pr('[r{}] = r{}, r[{}]=0 -> [{}]={:016X}'.format(rs1, rs2, rd, self.addressFmt(address), newvalue))
+                if (rd == 0):
+                    pr('[r{}] = r{} -> [{}]={:016X}'.format(rs1, rs2, self.addressFmt(address), newvalue))
+                else:
+                    self.reg[rd] = 0    
+                    pr('[r{}] = r{}, r[{}]=0 -> [{}]={:016X}'.format(rs1, rs2, rd, self.addressFmt(address), newvalue))
             else:
-                self.reg[rd] = 1
-                pr('[r{}] = r{}, r[{}]=1 -> not reserved'.format(rs1, rs2, rd))
+                if (rd == 0):
+                    pr('[r{}] = r{} -> not reserved'.format(rs1, rs2))
+                else:
+                    self.reg[rd] = 1
+                    pr('[r{}] = r{}, r[{}]=1 -> not reserved'.format(rs1, rs2, rd))
         elif (op == 'SC.W'):
             address = self.reg[rs1]
             newvalue = self.reg[rs2]
@@ -1479,10 +1520,13 @@ class SingleCycleRISCV(py4hw.Logic):
                 pr('r{} = [r{}], [r{}] = [r{}] & r{} -> {:016X}, [{}]={:016X}'.format(rd, rs1, rs1, rs1, rs2, oldvalue, self.addressFmt(address), newvalue))
         elif (op == 'AMOOR.W'):
             address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
-            self.reg[rd] = signExtend(self.reg[rd], 32, 64) 
-            newvalue= self.reg[rd] | self.reg[rs2] & 0xFFFFFFFF
+            v = yield from self.virtualMemoryLoad(address, 32//8)
+            v = signExtend(v, 32, 64) 
+            v2 = signExtend(self.reg[rs2], 32, 64)
+            newvalue= (v | v2) & ((1<<32) -1)
             yield from self.virtualMemoryWrite(address, 32//8, newvalue)
+            if (rd != 0):
+                self.reg[rd] = v
             pr('[r{}] = [r{}] | r{} -> [{}]={:08X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
         elif (op == 'AMOOR.D'):
             address = self.reg[rs1]
@@ -1496,16 +1540,20 @@ class SingleCycleRISCV(py4hw.Logic):
                 pr('r{} = [r{}], [r{}] = [r{}] | r{} -> {:016X}, [{}]={:016X}'.format(rd, rs1, rs1, rs1, rs2, oldvalue, self.addressFmt(address), newvalue))
         elif (op == 'AMOXOR.W'):
             address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
-            self.reg[rd] = signExtend(self.reg[rd], 32,64) 
-            newvalue= self.reg[rd] ^ self.reg[rs2] & 0xFFFFFFFF
+            v = yield from self.virtualMemoryLoad(address, 32//8)
+            v = signExtend(v, 32,64) 
+            newvalue= (v ^ self.reg[rs2]) & 0xFFFFFFFF
             yield from self.virtualMemoryWrite(address, 32//8, newvalue)
+            if (rd != 0):
+                self.reg[rd] = v
             pr('[r{}] = [r{}] ^ r{} -> [{}]={:08X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
         elif (op == 'AMOXOR.D'):
             address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
-            newvalue= self.reg[rd] ^ self.reg[rs2] 
+            v = yield from self.virtualMemoryLoad(address, 64//8)
+            newvalue= v ^ self.reg[rs2] 
             yield from self.virtualMemoryWrite(address, 64//8, newvalue)
+            if (rd != 0):
+                self.reg[rd] = v
             pr('[r{}] = [r{}] ^ r{} -> [{}]={:016X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
         elif (op == 'AMOSWAP.W'):
             # [rs1] -> rd
@@ -1531,23 +1579,27 @@ class SingleCycleRISCV(py4hw.Logic):
             address = self.reg[rs1]
             v = yield from self.virtualMemoryLoad(address, 32//8)
             v = IntegerHelper.c2_to_signed(v, 32) 
-            self.reg[rd] = v & ((1<<64)-1)
-            newvalue= max(v , IntegerHelper.c2_to_signed(self.reg[rs2], 32)) & ((1<<32)-1)
+            v2 = IntegerHelper.c2_to_signed(self.reg[rs2], 32)
+            self.reg[rd] = signExtend(v, 32, 64) 
+            newvalue= max(v , v2) 
+            newvalue = signExtend(newvalue, 32,64) 
             yield from self.virtualMemoryWrite(address, 32//8, newvalue)
-            pr('[r{}] = max([r{}] , r{}) -> [{}]={:08X}'.format(rd, rs1, rs2, self.addressFmt(address), newvalue))
+            pr('[r{}] = max([r{}] , r{}), r{}=[r{}] -> [{}]={:08X}, {:016X}'.format(rs1, rs1, rs2, rd, rs1, self.addressFmt(address), newvalue, self.reg[rd]))
         elif (op == 'AMOMAXU.W'):
             address = self.reg[rs1]
             v = yield from self.virtualMemoryLoad(address, 32//8)
             v = zeroExtend(v, 32) 
-            self.reg[rd] = signExtend(v, 32,64) 
             newvalue= max(v , self.reg[rs2] & ((1<<32)-1))
+            self.reg[rd] = signExtend(v, 32,64) 
             yield from self.virtualMemoryWrite(address, 32//8, newvalue)
             pr('[r{}] = max([r{}] , r{}) -> [{}]={:08X}'.format(rd, rs1, rs2, self.addressFmt(address), newvalue))
         elif (op == 'AMOMAX.D'):
             address = self.reg[rs1]
             v = yield from self.virtualMemoryLoad(address, 64//8)
-            self.reg[rd] = signExtend(v, 64, 64) 
-            newvalue= max(self.reg[rd] , self.reg[rs2]) & ((1<<64)-1)
+            v = IntegerHelper.c2_to_signed(v, 64) 
+            v2 = IntegerHelper.c2_to_signed(self.reg[rs2], 64) 
+            self.reg[rd] = v & ((1<<64) -1)             
+            newvalue= max(v , v2) & ((1<<64)-1)
             yield from self.virtualMemoryWrite(address, 64//8, newvalue)
             pr('[r{}] = max([r{}] , r{}) -> [{}]={:08X}'.format(rd, rs1, rs2, self.addressFmt(address), newvalue))
         elif (op == 'AMOMAXU.D'):
@@ -1561,16 +1613,16 @@ class SingleCycleRISCV(py4hw.Logic):
             address = self.reg[rs1]
             v = yield from self.virtualMemoryLoad(address, 32//8)
             v = IntegerHelper.c2_to_signed(v, 32) 
-            self.reg[rd] = v & ((1<<64)-1)
             newvalue= min(v , IntegerHelper.c2_to_signed(self.reg[rs2] & ((1<<32)-1), 32)) & ((1<<32)-1)
+            self.reg[rd] = v & ((1<<64)-1)
             yield from self.virtualMemoryWrite(address, 32//8, newvalue)
             pr('[r{}] = min([r{}] , r{}) -> [{}]={:08X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
         elif (op == 'AMOMINU.W'):
             address = self.reg[rs1]
             v = yield from self.virtualMemoryLoad(address, 32//8)
             v = zeroExtend(v, 32) 
-            self.reg[rd] = signExtend(v, 32,64) 
             newvalue= min(v , self.reg[rs2] & ((1<<32)-1))
+            self.reg[rd] = signExtend(v, 32,64) 
             yield from self.virtualMemoryWrite(address, 32//8, newvalue)
             pr('[r{}] = min([r{}] , r{}) -> [{}]={:08X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
         elif (op == 'AMOMIN.D'):
@@ -1578,14 +1630,15 @@ class SingleCycleRISCV(py4hw.Logic):
             vm = yield from self.virtualMemoryLoad(address, 64//8)
             vm = IntegerHelper.c2_to_signed(vm, 64)
             vr = IntegerHelper.c2_to_signed(self.reg[rs2], 64)
-            self.reg[rd] = vm & ((1<<64)-1)
             newvalue= min(vm , vr) & ((1<<64)-1)
+            self.reg[rd] = vm & ((1<<64)-1)
             yield from self.virtualMemoryWrite(address, 64//8, newvalue)
             pr('[r{}] = min([r{}] , r{}) -> [{}]={:08X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
         elif (op == 'AMOMINU.D'):
             address = self.reg[rs1]
-            self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
-            newvalue= min(self.reg[rd] , self.reg[rs2]) & ((1<<64)-1)
+            v = yield from self.virtualMemoryLoad(address, 64//8)
+            newvalue= min(v , self.reg[rs2]) & ((1<<64)-1)
+            self.reg[rd] = v
             yield from self.virtualMemoryWrite(address, 64//8, newvalue)
             pr('[r{}] = min([r{}] , r{}) -> [{}]={:08X}'.format(rs1, rs1, rs2, self.addressFmt(address), newvalue))
         elif (op == 'SFENCE.VMA'):
@@ -1717,9 +1770,9 @@ class SingleCycleRISCV(py4hw.Logic):
             self.reg[rd] = (self.reg[rs1] + simm12) & ((1<<64)-1)
             pr('r{} = r{} + {} -> {:016X}'.format(rd, rs1, simm12, self.reg[rd]))
         elif (op == 'SLTI'):
-            self.reg[rd] = 0            
-            if  (IntegerHelper.c2_to_signed(self.reg[rs1], 64) < simm12):
-                self.reg[rd] = 1
+            v = 1 if (IntegerHelper.c2_to_signed(self.reg[rs1], 64) < simm12) else 0 
+            if (rd != 0):
+                self.reg[rd] = v            
             pr('r{} = r{} < {} -> {:016X}'.format(rd, rs1, simm12, self.reg[rd]))
         elif (op == 'SLTIU'):
             self.reg[rd] = 0            
@@ -1793,27 +1846,40 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'LD'):
             address = self.reg[rs1] + simm12
             pr(f'r{rd} = [r{rs1} + {simm12}]', end='')
+            if ((address & 0x7) != 0):
+                raise LoadAddressMisaligned(tval=address)
             self.reg[rd] = yield from self.virtualMemoryLoad(address, 64//8)
             pr('-> [{}]={:016X}'.format(self.addressFmt(address), self.reg[rd]))
         elif (op == 'LW'):
             address = self.reg[rs1] + simm12
             pr('r{} = [r{} + {}] '.format(rd, rs1, simm12), end = '')
+            if ((address & 0x3) != 0):
+                raise LoadAddressMisaligned(tval=address)
             v = yield from self.virtualMemoryLoad(address, 32//8)
             self.reg[rd] = signExtend(v, 32, 64) 
             pr('-> [{}]={:016X}'.format(self.addressFmt(address), self.reg[rd]))
         elif (op == 'LWU'):
             address = self.reg[rs1] + simm12
+            pr('r{} = [r{} + {}] '.format(rd, rs1, simm12))
+            if ((address & 0x3) != 0):
+                raise LoadAddressMisaligned(tval=address)
             self.reg[rd] = yield from self.virtualMemoryLoad(address, 32//8)
-            pr('r{} = [r{} + {}] -> [{}]={:016X}'.format(rd, rs1, simm12, self.addressFmt(address), self.reg[rd]))
+            pr('-> [{}]={:016X}'.format(self.addressFmt(address), self.reg[rd]))
         elif (op == 'LH'):
             address = self.reg[rs1] + simm12
+            pr('r{} = [r{} + {}] '.format(rd, rs1, simm12))
+            if ((address & 0x1) != 0):
+                raise LoadAddressMisaligned(tval=address)
             v = yield from self.virtualMemoryLoad(address, 16//8)
             self.reg[rd] = signExtend(v, 16, 64) 
-            pr('r{} = [r{} + {}] -> [{}]={:016X}'.format(rd, rs1, simm12, self.addressFmt(address), self.reg[rd]))
+            pr('-> [{}]={:016X}'.format(self.addressFmt(address), self.reg[rd]))
         elif (op == 'LHU'):
             address = self.reg[rs1] + simm12
+            pr('r{} = [r{} + {}] '.format(rd, rs1, simm12))
+            if ((address & 0x1) != 0):
+                raise LoadAddressMisaligned(tval=address)
             self.reg[rd] = yield from self.virtualMemoryLoad(address, 16//8)
-            pr('r{} = [r{} + {}] -> [{}]={:04X}'.format(rd, rs1, simm12, self.addressFmt(address), self.reg[rd]))
+            pr('-> [{}]={:016X}'.format(self.addressFmt(address), self.reg[rd]))
         elif (op == 'LB'):
             address = self.reg[rs1] + simm12
             v = yield from self.virtualMemoryLoad(address, 8//8)
@@ -1833,27 +1899,26 @@ class SingleCycleRISCV(py4hw.Logic):
             self.dcache[self.reg[rs1]] = 0
             pr('r{}'.format(rs1))
         elif (op == 'CSRRW'):
-            v1 = self.reg[rs1]
-            vcsr, allowed = self.readCSR(csr)
+            newvalue = self.reg[rs1]
+            oldvalue, allowed = yield from self.readCSR(csr)
             if (rd == 0):
-                self.writeCSR(csr, v1)
                 csrname = self.implemented_csrs[csr]
-                pr('{} = r{} -> {:016X}'.format(csrname, rs1, self.csr[csr]))            
+                pr('{} = r{} -> {:016X}'.format(csrname, rs1, newvalue))            
             else:
-                self.writeCSR(csr, v1)
-                if (rd != 0) and (allowed): self.reg[rd] = vcsr
+                if (rd != 0) and (allowed): self.reg[rd] = oldvalue
                 csrname = self.implemented_csrs[csr]
                 
                 if (rd == 0):
-                    pr('{} = r{} -> {:016X}'.format(csrname, rs1, v1))
+                    pr('{} = r{} -> {:016X}'.format(csrname, rs1, newvalue))
                 else:
-                    pr('r{} = {}, {} = r{} -> {:016X},{:016X}'.format(rd, csrname, csrname, rs1, self.reg[rd], v1))
+                    pr('r{} = {}, {} = r{} -> {:016X},{:016X}'.format(rd, csrname, csrname, rs1, oldvalue, newvalue))
+            self.writeCSR(csr, newvalue)
 
         elif (op == 'CSRRS'):
             # Read and set
             # rd <= csr, csr <= csr | rs1 
             v1 = self.reg[rs1] 
-            vcsr, allowed = self.readCSR(csr)
+            vcsr, allowed = yield from self.readCSR(csr)
             if (v1 != 0): self.setCSR(csr, v1)
             if (rd != 0) and allowed: self.reg[rd] = vcsr
             csrname = self.implemented_csrs[csr]
@@ -1868,7 +1933,7 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'CSRRC'):
             # Read and clear
             v1 = self.reg[rs1]
-            csrv , allowed = self.readCSR(csr)
+            csrv , allowed = yield from self.readCSR(csr)
             csrname = self.implemented_csrs[csr]
             if (rd == 0):
                 pr('{} &= ~r{} -> {:016X}'.format(csrname, rs1, self.csr[csr]))            
@@ -1878,7 +1943,7 @@ class SingleCycleRISCV(py4hw.Logic):
             if (rd != 0) and allowed: self.reg[rd] = csrv
         
         elif (op == 'CSRRWI'):
-            vcsr, allowed = self.readCSR(csr)
+            vcsr, allowed = yield from self.readCSR(csr)
             if (rd != 0) and allowed: self.reg[rd] = vcsr
             self.writeCSR(csr, rs1)
             csrname = self.implemented_csrs[csr]
@@ -1887,7 +1952,7 @@ class SingleCycleRISCV(py4hw.Logic):
             else:
                 pr('r{} = {}, {} = {} -> {:016X}'.format(rd, csrname, csrname, rs1, self.reg[rd]))
         elif (op == 'CSRRSI'):
-            vcsr, allowed = self.readCSR(csr)
+            vcsr, allowed = yield from self.readCSR(csr)
             nvcsr = vcsr | rs1
             csrname = self.implemented_csrs[csr]
             if (rd == 0):
@@ -1897,11 +1962,15 @@ class SingleCycleRISCV(py4hw.Logic):
             if (rs1 != 0): self.setCSR(csr, rs1)
             if (rd != 0) and allowed: self.reg[rd] = vcsr
         elif (op == 'CSRRCI'):
-            crsv, allowed = self.readCSR(csr)
-            if (rs1 != 0): self.clearCSR(csr, rs1)
-            if (rd != 0) and allowed: self.reg[rd] = crsv
+            oldValue, allowed = yield from self.readCSR(csr)
             csrname = self.implemented_csrs[csr]
-            pr('r{} = {}, {} &= ~{} -> {:016X}'.format(rd, csrname, csrname, rs1, self.reg[rd]))                        
+
+            if (rs1 != 0): 
+                pr('r{} = {}, {} &= ~{} -> {:016X}'.format(rd, csrname, csrname, rs1, oldValue))                        
+                self.clearCSR(csr, rs1)
+            else:
+                pr('{} &= ~{} '.format(csrname, rs1))                                    
+            if (rd != 0) and allowed: self.reg[rd] = oldValue
         elif (op == 'RORI'):
             self.reg[rd] = ((self.reg[rs1] >> shamt6) | (self.reg[rs1] << (64-shamt6))) & ((1<<64)-1)
             pr('r{} = r{} >> {} -> {:016X}'.format(rd, rs1, shamt6, self.reg[rd]))
@@ -1985,7 +2054,7 @@ class SingleCycleRISCV(py4hw.Logic):
             else:
                 raise Exception('unknown privilege level {}'.format(curpriv))
         elif (op == 'EBREAK'):
-            raise Breakpoint()
+            raise Breakpoint(tval=self.pc)
         else:
             raise Exception('{} I-Type instruction not supported!'.format(op))
             #self.parent.getSimulator().stop()
@@ -2055,8 +2124,8 @@ class SingleCycleRISCV(py4hw.Logic):
             pr('r{} != r{} ? {} {:016X}'.format(rs1, rs2, self.should_jump, self.jmp_address))    
             #print(self.reg[rs1] , self.reg[rs2])
         else:
-            print(' - BIns Not supported!')
-            self.parent.getSimulator().stop()
+            raise Exception(' - BIns Not supported!')
+            #self.parent.getSimulator().stop()
 
     def executeSIns(self):
         op = self.decoded_ins
@@ -2071,6 +2140,8 @@ class SingleCycleRISCV(py4hw.Logic):
         
         if (op == 'SD'):
             pr('[r{} + {}] = r{} -> [{}]={:016X}'.format(rs1, soff12, rs2, saddr, self.reg[rs2]))
+            if ((address & 0x7) != 0):
+                raise StoreAMOAddressMisaligned(tval = address)
             yield from self.virtualMemoryWrite(address, 64//8, self.reg[rs2])
         elif (op == 'FSH'):
             pr('[r{} + {}] = fr{} -> [{}]={:016X}'.format(rs1, soff12, rs2, saddr, self.freg[rs2]))
@@ -2084,18 +2155,22 @@ class SingleCycleRISCV(py4hw.Logic):
         elif (op == 'SW'):
             address = self.reg[rs1]+soff12
             pr('[r{} + {}] = r{} -> [{}]={:08X}'.format(rs1, soff12, rs2, saddr, self.reg[rs2] & ((1<<32)-1)))
+            if ((address & 0x3) != 0):
+                raise StoreAMOAddressMisaligned(tval = address)
             yield from self.virtualMemoryWrite(address, 32//8, self.reg[rs2])
         elif (op == 'SH'):
             address = self.reg[rs1]+soff12
             pr('[r{} + {}] = r{} -> [{}]={:04X}'.format(rs1, soff12, rs2, saddr, self.reg[rs2] & ((1<<16)-1)))
+            if ((address & 0x1) != 0):
+                raise StoreAMOAddressMisaligned(tval = address)
             yield from self.virtualMemoryWrite(address, 16//8, self.reg[rs2])
         elif (op == 'SB'):
             address = self.reg[rs1]+soff12
             pr('[r{} + {}] = r{} -> [{}]={:02X}'.format(rs1, soff12, rs2, saddr, self.reg[rs2] & ((1<<8)-1)))
             yield from self.virtualMemoryWrite(address, 8//8, self.reg[rs2])
         else:
-            print(' - S-Type instruction not supported!')
-            self.parent.getSimulator().stop()
+            raise Exception(' - S-Type instruction not supported!')
+            #self.parent.getSimulator().stop()
 
     def executeUIns(self):
         op = self.decoded_ins
@@ -2113,8 +2188,8 @@ class SingleCycleRISCV(py4hw.Logic):
             self.reg[rd] = simm
             pr('r{} = {:016X} '.format(rd, simm)  )    
         else:
-            pr(' - U-Type instruction not supported!')
-            self.parent.getSimulator().stop()
+            raise Exception(' - U-Type instruction not supported!')
+            #self.parent.getSimulator().stop()
         
     def executeCRIns(self):
         op = self.decoded_ins
@@ -2127,11 +2202,12 @@ class SingleCycleRISCV(py4hw.Logic):
             self.reg[c_rs1] = self.reg[c_rs2]      
             pr('r{} = r{} -> {:016X}'.format(c_rs1, c_rs2, self.reg[c_rs1]))
         elif (op == 'C.ADD'):
-            self.reg[c_rs1] = (self.reg[c_rs1] + self.reg[c_rs2] ) & ((1<<64)-1)    
+            if (c_rs1 != 0):
+                self.reg[c_rs1] = (self.reg[c_rs1] + self.reg[c_rs2] ) & ((1<<64)-1)    
             pr('r{} = r{} + r{} -> {:016X}'.format(c_rs1, c_rs1, c_rs2, self.reg[c_rs1]))
         elif (op == 'C.JR'):
             self.should_jump = True
-            self.jmp_address = self.reg[c_rs1]
+            self.jmp_address = self.reg[c_rs1] & ~1 # Spec says we have to ignore lower bit if misalignment
             pr('r{} -> {:016X}'.format(c_rs1, self.jmp_address))
             if (c_rs1 == 1):
                 # function exit is identifyied by a jumping to return address register
@@ -2140,19 +2216,20 @@ class SingleCycleRISCV(py4hw.Logic):
                 self.functionEnter(self.jmp_address, 0, 0, True)
         elif (op == 'C.JALR'):
             self.should_jump = True
-            self.jmp_address = self.reg[c_rs1]
+            self.jmp_address = self.reg[c_rs1] & ~1 # Spec says we have to ignore lower bit if misalignment
             ra = self.pc + 2
             self.reg[1] = ra
             pr('r{}, r1 = pc+2 -> {},{}'.format(c_rs1, self.addressFmt(self.jmp_address), self.addressFmt(self.reg[1])))
             self.functionEnter(self.jmp_address, ra, 0, False)
             
         elif (op == 'C.EBREAK'):
+            raise Breakpoint(tval=self.pc)
             # 
-            pr('BUG?')
-            self.parent.getSimulator().stop()
+            #print('C.EBREAK is a BUG?')
+            #self.parent.getSimulator().stop()
         else:
-            print(' - CR-Type instruction not supported!')
-            self.parent.getSimulator().stop()
+            raise Exception(' - CR-Type instruction not supported!')
+            #self.parent.getSimulator().stop()
             
     def executeCIIns(self):
         op = self.decoded_ins
@@ -2261,8 +2338,8 @@ class SingleCycleRISCV(py4hw.Logic):
             yield from self.virtualMemoryWrite(address, 64//8, value)
             pr('[r{}+{}]=fr{} -> [{}]={:016X}'.format(c_rs1, off, c_rs2, self.addressFmt(address), value))
         else:
-            print(' - CS-Type instruction not supported!')
-            self.parent.getSimulator().stop()
+            raise Exception(' - CS-Type instruction not supported!')
+            #self.parent.getSimulator().stop()
     
     def executeCSSIns(self):
         op = self.decoded_ins
@@ -2286,8 +2363,8 @@ class SingleCycleRISCV(py4hw.Logic):
             yield from self.virtualMemoryWrite(address, 64//8, self.freg[rs2])
             pr('[r2 + {}]=r{} -> [{:016X}]={:016X}'.format(off, rs2, address, self.reg[rs2]))
         else:
-            pr(' - CSS-Type instruction not supported!')
-            self.parent.getSimulator().stop()
+            raise Exception(' - CSS-Type instruction not supported!')
+            #self.parent.getSimulator().stop()
         
         
     def executeCIWIns(self):
@@ -2301,8 +2378,8 @@ class SingleCycleRISCV(py4hw.Logic):
             self.reg[c_rd] = self.reg[2] + imm8
             pr('r{} = r2 + {} -> {:016X}'.format(c_rd, imm8 , self.reg[c_rd]))            
         else:
-            print(' - CIW-Type instruction not supported!')
-            self.parent.getSimulator().stop()
+            raise Exception(' - CIW-Type instruction not supported!')
+            #self.parent.getSimulator().stop()
         
     def executeCBIns(self):
         op = self.decoded_ins
@@ -2338,8 +2415,8 @@ class SingleCycleRISCV(py4hw.Logic):
                 
             pr('r{} != 0 ? {} -> {:016X}'.format(c_rs1, self.should_jump, self.jmp_address))
         else:
-            print(' - CIW-Type instruction not supported!')
-            self.parent.getSimulator().stop()
+            raise Exception(' - CIW-Type instruction not supported!')
+            #self.parent.getSimulator().stop()
 
     def executeCJIns(self):
         op = self.decoded_ins
@@ -2352,8 +2429,8 @@ class SingleCycleRISCV(py4hw.Logic):
             pr('{} -> {:016X}'.format(off12, self.jmp_address))
             #self.functionEnter(self.jmp_address, True)
         else:
-            print(' - CJ-Type instruction not supported!')
-            self.parent.getSimulator().stop()
+            raise Exception(' - CJ-Type instruction not supported!')
+            #self.parent.getSimulator().stop()
 
     def executeCLIns(self):
         op = self.decoded_ins
@@ -2384,8 +2461,8 @@ class SingleCycleRISCV(py4hw.Logic):
             self.freg[c_rd] = yield from self.virtualMemoryLoad(address, 64//8)
             pr('fr{} = [r{} + {}] -> {:016X}'.format(c_rd, c_rs1, off, self.freg[c_rd]))
         else:
-            print(' - CL-Type instruction not supported!')
-            self.parent.getSimulator().stop()
+            raise Exception(' - CL-Type instruction not supported!')
+            #self.parent.getSimulator().stop()
 
 
     def encodeFeatures(self, str):
@@ -2528,6 +2605,12 @@ class SingleCycleRISCV(py4hw.Logic):
                 
         if (getCSRPrivilege(idx) > self.csr[CSR_PRIVLEVEL]):
             raise IllegalInstruction('CSR priv: {}  current priv: {}'.format(getCSRPrivilege(idx), self.csr[CSR_PRIVLEVEL]), self.ins) 
+            
+        if (idx == CSR_TIME):
+            address = 0x2000000 | 0xBFF8 # @todo should be configurable on creation 
+            v = yield from self.memoryLoad64(address, 64//8)
+            # make a copy for reports
+            self.csr[CSR_TIME] = v
         
         return v, allowed
 
