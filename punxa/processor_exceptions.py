@@ -61,14 +61,28 @@ class IllegalInstruction(ProcessorException):
 class Breakpoint(ProcessorException):
     code = 3
 
+    def __init__(self, msg='', tval=0):
+        self.msg = msg
+        self.tval = tval
+        
 class LoadAddressMisaligned(ProcessorException):
     code = 4
+    
+    def __init__(self, msg='', tval=0):
+        self.msg = msg
+        self.tval = tval
+    
 
 class LoadAccessFault(ProcessorException):
     code = 5
 
 class StoreAMOAddressMisaligned(ProcessorException):
     code = 6
+
+    def __init__(self, msg='', tval=0):
+        self.msg = msg
+        self.tval = tval
+
 
 class StoreAMOAccessFault(ProcessorException):
     code = 7
