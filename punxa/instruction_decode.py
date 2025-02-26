@@ -169,6 +169,7 @@ def ins_to_str(ins, isa=32):
     imm1_c = ((ins >> 12) & 0x1) 
     imm5_c = (((ins >> 12) & 0x1) << 5) | ((ins >> 2) & 0x1F)
     imm3_c = (((ins >> 12) & 0x1) << 2) | ((ins >> 5) & 0x03)
+    imm10_c = (ins >> 2) & 0x3FF
     imm12 = (ins >> 20) & 0xFFF
     
     if (ins16 == 0x00):
@@ -248,7 +249,7 @@ def ins_to_str(ins, isa=32):
             if (imm5_c == 0x00): return 'C.JR'
             if (imm1_c == 0x00): return 'C.MV'
             if (imm1_c == 0x01):
-                if (rd5_c == 0x00):
+                if (imm10_c == 0x00):
                     return 'C.EBREAK'
                 if (r25_c == 0x00):
                     return 'C.JALR'
