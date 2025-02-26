@@ -30,7 +30,7 @@ def list_commands():
     print('  regs        - display the registers of the processor')
     print('  reportCSR   - display the content of CSRs')
     print('  console     - display the content of the console')
-    print('  stack       - display the stack')
+    print('  stack       - display the stack from [current] thread')
     print('  memoryMap   - display the memory map')
     print('  dump        - dump (binary/ascii) the content of memory locations')
     print('  pageTables  - displays the page tables ')
@@ -109,7 +109,8 @@ def loadElf(memory, filename, offset, verbose=False):
     from elftools.elf.elffile import ELFFile
 
     f = open(filename,'rb')
-    elffile = ELFFile(f,'rb')
+    #elffile = ELFFile(f,'rb')
+    elffile = ELFFile(f)
 
     for seg in elffile.iter_segments():
         if seg['p_type'] == 'PT_LOAD':
@@ -759,6 +760,7 @@ def checkpoint(filename='checkpoint.dat'):
     cpu = _ci_cpu
     memory = cpu.behavioural_memory
     uart = _ci_uart
+    clint = _ci_hw.children['clint']
     
     if (os.path.exists(filename)):
         shutil.copyfile(filename, filename+'.bak')
@@ -792,6 +794,9 @@ def checkpoint(filename='checkpoint.dat'):
     # Serialize UART Info
     ser.write_string_list(uart.console)
     
+    # Serialize CLINT info
+    ser.write_i64(clint.mtime)
+    ser.write_i64(clint.mtimecmp)
     
     # Serialize pending tracing (comple tracing is discarded)
     ser.write_dictionary(cpu.tracer.pending)
@@ -804,6 +809,7 @@ def restore(filename= 'checkpoint.dat'):
     cpu = _ci_cpu
     memory = cpu.behavioural_memory
     uart = _ci_uart
+    clint = _ci_hw.children['clint']
     
     ser = Deserializer(filename)
     
@@ -834,6 +840,10 @@ def restore(filename= 'checkpoint.dat'):
 
     # Deserialize UART info
     uart.console = ser.read_string_list()
+    
+    # Deserialize CLINT info
+    clint.mtime = ser.read_i64()
+    clint.mtimecmp = ser.read_i64()
     
     # Deerialize pending tracing (comple tracing is discarded)
     cpu.tracer.pending = ser.read_dictionary()
@@ -1287,7 +1297,7 @@ def translateVirtualAddress32(va):
     print(f'Level 0 PTE index {vpn[0]} in {pte_addr:08X}. Type={pte_type} Table = {phy:08X}', end='')
     print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
 
-def translateVirtualAddress(va):
+def translateVirtualAddress(va, verbose=True):
     cpu = _ci_cpu
     memory = cpu.behavioural_memory
     mem_base = 0x80000000 # @todo assuming mem_base = 0x80000000
@@ -1297,16 +1307,19 @@ def translateVirtualAddress(va):
     mpp = getCSRField(cpu, CSR_MSTATUS, CSR_MSTATUS_MPP_POS, 2)
     #
     useVM = (priv != CSR_PRIVLEVEL_MACHINE) or (priv == CSR_PRIVLEVEL_MACHINE and (mpvr != 0) and (mpp < CSR_PRIVLEVEL_MACHINE)) 
-    print(f'priv: {priv} mpvr: {mpvr} mpp: {mpp} using Virtual Memory: {useVM}')
+    if (verbose):
+        print(f'priv: {priv} mpvr: {mpvr} mpp: {mpp} using Virtual Memory: {useVM}')
     #
     v = cpu.csr[0x180] # satp
     mode = (v >> 60) & ((1<<4)-1)
     smode = ['Base', '','','','','','','','Sv39','Sv48','Sv57','Sv64'][mode]
     asid = (v >> 44) & ((1<<16)-1)
-    print('Virtual Memory Mode: {} {} ASID: {:04X}'.format(mode, smode, asid))
+    if (verbose):
+        print('Virtual Memory Mode: {} {} ASID: {:04X}'.format(mode, smode, asid))
     root = (v & ((1<<44)-1)) << 12
     
-    print(f'Root:  {root:016X}')
+    if (verbose):
+        print(f'Root:  {root:016X}')
     level = 2
     
     vpn=[0,0,0]
@@ -1329,7 +1342,8 @@ def translateVirtualAddress(va):
     off[1] = (va) & offmask[1] 
     off[0] = (va) & offmask[0]
     #
-    print(f'vpn2: {vpn[2]} vpn1: {vpn[1]} vpn0: {vpn[0]}')
+    if (verbose):
+        print(f'vpn2: {vpn[2]} vpn1: {vpn[1]} vpn0: {vpn[0]}')
     #
     pte_addr = root + vpn[level]*8
     pte = memory.read_i64(pte_addr - mem_base)
@@ -1364,13 +1378,16 @@ def translateVirtualAddress(va):
     v_pa = v_ppn + v_vof
     
     if (is_leaf):
-        print(f'Level 2 PTE index {vpn[2]} in {pte_addr:016X}. Type={pte_type} VA: {vpn[2]:03X} | {v_vof:08X} PA: {v_ppn:X} + {v_vof:X} = {v_pa:016X}', end='')
-        print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
+        if (verbose):
+            print(f'Level 2 PTE index {vpn[2]} in {pte_addr:016X}. Type={pte_type} VA: {vpn[2]:03X} | {v_vof:08X} PA: {v_ppn:X} + {v_vof:X} = {v_pa:016X}', end='')
+            print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
         return v_pa
     
     phy = ppn2 << 30 | ppn1 << 21 | ppn0 << 12
-    print(f'Level 2 PTE index {vpn[2]} in {pte_addr:016X}. Type={pte_type} Table = {phy:016X}', end='')
-    print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
+
+    if (verbose):
+        print(f'Level 2 PTE index {vpn[2]} in {pte_addr:016X}. Type={pte_type} Table = {phy:016X}', end='')
+        print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
 
     level = 1
     pte_addr = phy + vpn[level]*8
@@ -1406,13 +1423,16 @@ def translateVirtualAddress(va):
     v_pa = v_ppn + v_vof
     
     if (is_leaf):
-        print(f'Level 1 PTE index {vpn[1]} in {pte_addr:016X}. Type={pte_type} VA: {vpn[2]:03X} | {vpn[1]:03X} | {v_vof:08X} PA: {v_ppn:X} + {v_vof:X} = {v_pa:016X}', end='')
-        print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
+        if (verbose):
+            print(f'Level 1 PTE index {vpn[1]} in {pte_addr:016X}. Type={pte_type} VA: {vpn[2]:03X} | {vpn[1]:03X} | {v_vof:08X} PA: {v_ppn:X} + {v_vof:X} = {v_pa:016X}', end='')
+            print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
         return v_pa
     
     phy = ppn2 << 30 | ppn1 << 21 | ppn0 << 12
-    print(f'Level 1 PTE index {vpn[1]} in {pte_addr:016X}. Type={pte_type} Table = {phy:016X}', end='')
-    print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
+
+    if (verbose):
+        print(f'Level 1 PTE index {vpn[1]} in {pte_addr:016X}. Type={pte_type} Table = {phy:016X}', end='')
+        print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
     
     level = 0
     pte_addr = phy + vpn[level]*8
@@ -1448,13 +1468,15 @@ def translateVirtualAddress(va):
     v_pa = v_ppn + v_vof
     
     if (is_leaf):
-        print(f'Level 0 PTE index {vpn[0]} in {pte_addr:016X}. Type={pte_type} VA: {vpn[2]:03X} | {vpn[1]:03X} | {v_vof:08X} PA: {v_ppn:X} + {v_vof:X} = {v_pa:016X}', end='')
-        print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
+        if (verbose):
+            print(f'Level 0 PTE index {vpn[0]} in {pte_addr:016X}. Type={pte_type} VA: {vpn[2]:03X} | {vpn[1]:03X} | {v_vof:08X} PA: {v_ppn:X} + {v_vof:X} = {v_pa:016X}', end='')
+            print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
         return v_pa
     
     phy = ppn2 << 30 | ppn1 << 21 | ppn0 << 12
-    print(f'Level 0 PTE index {vpn[0]} in {pte_addr:016X}. Type={pte_type} Table = {phy:016X}', end='')
-    print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
+    if (verbose):
+        print(f'Level 0 PTE index {vpn[0]} in {pte_addr:016X}. Type={pte_type} Table = {phy:016X}', end='')
+        print(f' {D}{A}{G}{U}{X}{W}{R}{V}')
 
 def memoryMap():
     bus = _ci_bus
