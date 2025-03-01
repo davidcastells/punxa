@@ -214,12 +214,12 @@ class SingleCycleRISCV(py4hw.Logic):
                 
 
                 # Interrupts are always handled by machine mode, unless they are delegated
-                # to lower modes
+                # to lower modes (see priv-spec section 3.1.8)
                 
-                if (priv == CSR_PRIVLEVEL_MACHINE): # machine
-                    self.csr[CSR_MSTATUS] |= (3 << 11) # set M-Mode as previous mode in MPP
-                elif (priv == CSR_PRIVLEVEL_SUPERVISOR): # supervisor
-                    self.csr[CSR_MSTATUS] |= (1 << 11) # set M-Mode as previous mode in MPP
+                #if (priv == CSR_PRIVLEVEL_MACHINE): # machine
+                #    self.csr[CSR_MSTATUS] |= (3 << 11) # set M-Mode as previous mode in MPP
+                #elif (priv == CSR_PRIVLEVEL_SUPERVISOR): # supervisor
+                #    self.csr[CSR_MSTATUS] |= (1 << 11) # set M-Mode as previous mode in MPP
 
                 mideleg = self.csr[CSR_MIDELEG] # mideleg
                 
@@ -244,7 +244,7 @@ class SingleCycleRISCV(py4hw.Logic):
                     # this is executed in machine mode    
                     vec = self.csr[CSR_MTVEC] # mtvec
                     self.csr[CSR_MTVAL] = e.tval
-                    self.csr[CSR_MSTATUS] |= (priv << 11) # set previous mode in MPP
+                    setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPP_POS, 2, priv ) # set previous mode in SPP
                     self.csr[CSR_MEPC] = self.pc # mepc
                     self.csr[CSR_MCAUSE] = (1 << (self.XLEN -1))  | e.code  
                     
@@ -274,31 +274,29 @@ class SingleCycleRISCV(py4hw.Logic):
                	   self.parent.getSimulator().stop()
                	               
             except ProcessorException as e:
-                emsg = f'Exception: {e.msg} code: {e.code} tval: 0x{e.tval:X}'
+                priv = self.csr[CSR_PRIVLEVEL]
+                emsg = f'Exception: {e.msg} code: {e.code} tval: 0x{e.tval:X} priv:{priv}'
                 epc = self.pc
                 pr('\n\t', emsg, end=' ' )
                 
-                priv = self.csr[CSR_PRIVLEVEL]
                 
-
                 # Exceptions are always handled by machine mode, unless they are delegated
-                # to lower modes
+                # to lower modes (see priv-spec section 3.1.8)
                 
-                if (priv == CSR_PRIVLEVEL_MACHINE): # machine
-                    self.csr[CSR_MSTATUS] |= (3 << 11) # set M-Mode as previous mode in MPP
-                elif (priv == CSR_PRIVLEVEL_SUPERVISOR): # supervisor
-                    self.csr[CSR_MSTATUS] |= (1 << 11) # set M-Mode as previous mode in MPP
+                #if (priv == CSR_PRIVLEVEL_MACHINE): # machine
+                #    self.csr[CSR_MSTATUS] |= (3 << 11) # set M-Mode as previous mode in MPP
+                #elif (priv == CSR_PRIVLEVEL_SUPERVISOR): # supervisor
+                #    self.csr[CSR_MSTATUS] |= (1 << 11) # set M-Mode as previous mode in MPP
 
                 medeleg = self.csr[0x302] # medeleg
                 
                 entertype = 1 # machine mode exception
                 
-                if (get_bit(medeleg, e.code)):
+                if (get_bit(medeleg, e.code) ):
                     # this should be delegated to supervisor mode
                     vec = self.csr[CSR_STVEC] # stvec
                     self.csr[CSR_STVAL] = e.tval
                     assert(priv <= CSR_PRIVLEVEL_SUPERVISOR)
-                    #self.csr[CSR_MSTATUS] |= (priv&1 << 8) 
                     setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_SPP_POS, 1, priv&1 ) # set previous mode in SPP
                     self.csr[CSR_SEPC] = self.pc # sepc
                     self.csr[CSR_SCAUSE] = e.code  # scause
@@ -312,7 +310,7 @@ class SingleCycleRISCV(py4hw.Logic):
                     # this is executed in machine mode    
                     vec = self.csr[CSR_MTVEC] # mtvec
                     self.csr[CSR_MTVAL] = e.tval
-                    self.csr[CSR_MSTATUS] |= (priv << 11) # set previous mode in MPP
+                    setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPP_POS, 2, priv ) # set previous mode in SPP
                     self.csr[CSR_MEPC] = self.pc # mepc
                     self.csr[CSR_MCAUSE] = e.code  
                     
@@ -327,7 +325,10 @@ class SingleCycleRISCV(py4hw.Logic):
                     pr('jumping to {}'.format(vecname))
                     self.pc = addr                    
                 elif ((vec & 3) == 1):
-                    self.pc = addr + e.code * 4
+                    #pr('vectorized jump to entry {}'.format(e.code))
+                    #self.pc = addr + e.code * 4
+                    pr('VECTORED mode is irrelevant for exceptions jumping to {}'.format(vecname))
+                    self.pc = addr                    
                 else:
                     raise Exception('unhandled exception cause')                    
                 
@@ -437,15 +438,8 @@ class SingleCycleRISCV(py4hw.Logic):
             self.functionExit()
 
     def fetchIns(self):
-        # Check interrupts
-        if (self.int_timer_machine.get() == 1):
-            # @ this should happen automatically in a real processor because this bit is a shadow
-            # register of the interrupt line
-            if (self.csr[CSR_MIDELEG] & CSR_MIDELEG_STI_MASK):
-                # delegate the interrupt to supervisor mode
-                self.csr[CSR_MIP] |= CSR_MIP_STIP_MASK 
-            else:
-                self.csr[CSR_MIP] |= CSR_MIP_MTIP_MASK 
+        self.readCSR(CSR_MIP) # force to update the MIP register
+        
             
             
         # Machine Mode exceptions should always be checked
@@ -488,7 +482,8 @@ class SingleCycleRISCV(py4hw.Logic):
             pr(self.funcs[self.pc], ':')
             
         if ((self.pc % 2) != 0):
-            raise Exception('pc is not multiple of 2!', self.pc)
+            raise InstructionAddressMisaligned(tval=self.pc)
+            #raise Exception('pc is not multiple of 2!', self.pc)
             
         if (self.debug_pc):
             print(f'FETCH {self.pc:016X}')
@@ -496,7 +491,10 @@ class SingleCycleRISCV(py4hw.Logic):
         if (self.debug_insret):
             print(self.csr[CSR_INSTRET], end = ' - ')
         
-        self.ins = yield from self.virtualMemoryLoad(self.pc, 32//8, MEMORY_OP_EXECUTE)
+        try:
+            self.ins = yield from self.virtualMemoryLoad(self.pc, 32//8, MEMORY_OP_EXECUTE)
+        except:
+            raise InstructionAccessFault(tval=self.pc)
 
     def getPTEFromPageTables(self, pageTable, address, level):
         # returnns the level and the PTE of the asddress by page walking
@@ -2007,9 +2005,9 @@ class SingleCycleRISCV(py4hw.Logic):
             self.should_jump = True
             self.jmp_address = self.csr[CSR_MEPC]
             self.csr[CSR_PRIVLEVEL] = (self.csr[CSR_MSTATUS] >> 11) & ((1<<2)-1) # change to the MPP Mode (mstatus)
-            self.csr[CSR_MSTATUS] |= CSR_MSTATUS_MPIE_MASK
-            # self.csr[CSR_MSTATUS] &= ~CSR_MSTATUS_MPRV_MASK     # clear the MPRV bit
+            setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MIE_POS, 1, getCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPIE_POS, 1))
             setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPP_POS, 2, 0) # clear MPP
+            setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPIE_POS, 1, 1)
             pr('pc = mepc -> {:016X}'.format(self.jmp_address)) 
             self.functionExit(et=1)
         elif (op == 'SRET'):
@@ -2018,6 +2016,10 @@ class SingleCycleRISCV(py4hw.Logic):
             self.should_jump = True
             self.jmp_address = self.csr[CSR_SEPC]
             self.csr[CSR_PRIVLEVEL] = (self.csr[CSR_MSTATUS] >> 8) & 1 # we use MSTATUS instead of SSTATUS. change to the SPP Mode (status)   
+            setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_SIE_POS, 1, getCSRField(self, CSR_MSTATUS, CSR_MSTATUS_SPIE_POS, 1))
+            setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_SPP_POS, 1, 0) # clear SPP
+            setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_SPIE_POS, 1, 1)
+            setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPRV_POS, 1, 0)
             pr('pc = sepc -> {:016X}'.format(self.jmp_address)) 
             self.functionExit(et=2)
         elif (op == 'JALR'):
@@ -2492,6 +2494,7 @@ class SingleCycleRISCV(py4hw.Logic):
         self.implemented_csrs[CSR_MARCHID] = 'marchid'
         self.implemented_csrs[CSR_MIMPID] = 'mimpid'
         self.implemented_csrs[CSR_MHARTID] = 'mhartid'
+        self.implemented_csrs[CSR_MCONFIGPTR] = 'mconfigptr'
         
 
     def initDynamicCSRs(self):
@@ -2509,12 +2512,14 @@ class SingleCycleRISCV(py4hw.Logic):
         self.implemented_csrs[0x105] = 'stvec'        
         self.implemented_csrs[0x106] = 'scounteren'
         
-        self.implemented_csrs[0x140] = 'sscratch'
-        self.implemented_csrs[0x141] = 'sepc'
-        self.implemented_csrs[0x142] = 'scause'
-        self.implemented_csrs[0x143] = 'stval'
+        self.implemented_csrs[CSR_SSCRATCH] = 'sscratch'
+        self.implemented_csrs[CSR_SEPC] = 'sepc'
+        self.implemented_csrs[CSR_SCAUSE] = 'scause'
+        self.implemented_csrs[CSR_STVAL] = 'stval'
         self.implemented_csrs[CSR_SIP] = 'sip'
-
+        self.implemented_csrs[CSR_STIMECMP] = 'stimecmp'
+        self.implemented_csrs[CSR_STIMECMPH] = 'stimecmph'
+        
         self.implemented_csrs[CSR_SATP] = 'satp'
 
         self.csr[CSR_MSTATUS] = CSR_MSTATUS_SXL_64_BITS_MASK | CSR_MSTATUS_UXL_64_BITS_MASK
@@ -2535,9 +2540,9 @@ class SingleCycleRISCV(py4hw.Logic):
         self.implemented_csrs[0x340] = 'mscratch'
         self.implemented_csrs[0x341] = 'mepc'
         self.implemented_csrs[0x342] = 'mcause'
-        self.implemented_csrs[0x343] = 'mtval'
-        self.implemented_csrs[0x344] = 'mip'
-        self.implemented_csrs[0x380] = 'mbase'
+        self.implemented_csrs[CSR_MTVAL] = 'mtval'
+        self.implemented_csrs[CSR_MIP] = 'mip'
+        self.implemented_csrs[CSR_MBASE] = 'mbase'
         
         self.implemented_csrs[0x3A0] = 'pmpcfg0'
         
@@ -2611,6 +2616,28 @@ class SingleCycleRISCV(py4hw.Logic):
             v = yield from self.memoryLoad64(address, 64//8)
             # make a copy for reports
             self.csr[CSR_TIME] = v
+            
+        if (idx == CSR_MIP):
+            if (self.csr[CSR_MIDELEG] & CSR_MIDELEG_STI_MASK):
+                v = v & ~CSR_MIP_STIP_MASK
+                if (self.int_timer_machine.get() == 1):
+                    v = v | CSR_MIP_STIP_MASK
+            else:
+                v = v & ~CSR_MIP_MTIP_MASK
+                if (self.int_timer_machine.get() == 1):
+                    v = v | CSR_MIP_MTIP_MASK
+            
+            if (self.csr[CSR_MIDELEG] & CSR_MIDELEG_SSI_MASK):
+                v = v & ~CSR_MIP_SSIP_MASK
+                if (self.int_soft_machine.get() == 1):
+                    v = v | CSR_MIP_SSIP_MASK
+            else:
+                v = v &  ~CSR_MIP_MSIP_MASK
+                if (self.int_soft_machine.get() == 1):
+                    v = v | CSR_MIP_MSIP_MASK
+                    
+            self.csr[CSR_MIP] = v
+
         
         return v, allowed
 
@@ -2631,11 +2658,12 @@ class SingleCycleRISCV(py4hw.Logic):
             v = (self.csr[real_idx] & ~csr_mirror_mask[idx]) | (v & csr_mirror_mask[idx])
 
         if ((real_idx in csr_fix_ro) or (real_idx in csr_var_ro)):
-            if (self.csr[CSR_PRIVLEVEL] == CSR_PRIVLEVEL_MACHINE):
-                print('WARNING! trying to write read-only CSR {}'.format(csrname))
-                return
-            else:
-                raise IllegalInstruction('trying to write read-only CSR {}'.format(csrname), self.ins)
+            #if (self.csr[CSR_PRIVLEVEL] == CSR_PRIVLEVEL_MACHINE):
+            #    print('WARNING! trying to write read-only CSR {}'.format(csrname))
+            #    return
+            #else:
+            #    raise IllegalInstruction('trying to write read-only CSR {}'.format(csrname), self.ins)
+            raise IllegalInstruction('trying to write read-only CSR {}'.format(csrname), self.ins)
         
         # do write special things
         if (real_idx in csr_partial_wr_mask.keys()):
@@ -2651,6 +2679,13 @@ class SingleCycleRISCV(py4hw.Logic):
             if (sn != 'Sv39'):
                 print('WARNING: trying to set VM mode', sn)
                 return 
+                
+            root = (v & ((1<<44)-1)) << 12
+            
+            if (root == 0):
+                # quick check for invalid SATP, if activating the VM causes an exception we should raise
+                # the exception before, to tell that we are unable to access the instruction
+                raise InstructionAccessFault(f'Trying to set an invalid root in SATP {root:016X}', self.ins)
                 
         if (real_idx == CSR_FCSR):
             # write also in FFLAGS
@@ -2685,10 +2720,6 @@ class SingleCycleRISCV(py4hw.Logic):
         if (idx in csr_mirrored.keys()):
             real_idx = csr_mirrored[idx]
         
-        # @todo this should be controlled in writeCSR
-        if (getCSRPrivilege(idx) > self.csr[CSR_PRIVLEVEL]):
-            raise IllegalInstruction('CSR priv: {}  current priv: {}'.format(getCSRPrivilege(idx), self.csr[CSR_PRIVLEVEL]), self.ins) 
-        
         v = self.csr[real_idx] | v
         
         self.writeCSR(idx, v)
@@ -2705,15 +2736,6 @@ class SingleCycleRISCV(py4hw.Logic):
         real_idx = idx
         if (idx in csr_mirrored.keys()):
             real_idx = csr_mirrored[idx]
-        
-        # @todo this should be controlled in writeCSR
-        if (idx == CSR_SATP):
-            if (self.csr[CSR_PRIVLEVEL] == CSR_PRIVLEVEL_SUPERVISOR) and (self.csr[CSR_MSTATUS] & CSR_MSTATUS_TVM_MASK):
-                raise IllegalInstruction('Trying to read SATP with TVM', self.ins)
-                
-        # @todo this should be controlled in writeCSR
-        if (getCSRPrivilege(idx) > self.csr[CSR_PRIVLEVEL]):
-            raise IllegalInstruction('CSR priv: {}  current priv: {}'.format(getCSRPrivilege(idx), self.csr[CSR_PRIVLEVEL]), self.ins) 
         
         v = self.csr[real_idx] & (~v) 
         
