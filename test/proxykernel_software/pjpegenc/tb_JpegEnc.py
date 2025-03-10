@@ -238,6 +238,7 @@ def buildHw(useHWCI):
     import punxa.interactive_commands
     punxa.interactive_commands._ci_hw = hw
     punxa.interactive_commands._ci_cpu = cpu
+    punxa.interactive_commands._ci_bus = bus
     
     return hw
 
