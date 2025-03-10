@@ -1496,6 +1496,9 @@ def memoryMap():
     memory = _ci_cpu.behavioural_memory
     mem_base = memory.mem_base
     
+    if (bus is None):
+        raise Exception('testbench should set the _ci_bus variable')
+        
     for i in range(len(bus.start)):
         size = bus.stop[i] - bus.start[i]
         units = 'B'
@@ -1508,8 +1511,10 @@ def memoryMap():
         if (size > 1024):
             size = size/1024
             units = 'GiB'
+            
+        slave_name = bus.slaves[i].read.sinks[0].parent.name
         
-        print('* {:016X} - {:016X} {:.0f} {}'.format(bus.start[i], bus.stop[i], size, units))
+        print('* {:016X} - {:016X} {:.0f} {}\t{}'.format(bus.start[i], bus.stop[i], size, units, slave_name))
         
         if (bus.start[i] == mem_base):
             # we assume thereis a sparse-memory starting at memory area
