@@ -115,7 +115,7 @@ class SingleCycleRISCV(py4hw.Logic):
         self.int_soft_machine = self.addIn('int_soft_machine', int_soft_machine)
         self.int_timer_machine = self.addIn('int_timer_machine', int_timer_machine)
         self.int_ext_machine = self.addIn('int_ext_machine', ext_int_targets[0])
-        self.int_ext_supervisor = self.addIn('int_ext_supervisor', ext_int_targets[0])
+        self.int_ext_supervisor = self.addIn('int_ext_supervisor', ext_int_targets[1])
         
         self.mem_width = memory.read_data.getWidth()
         print('MEM WIDTH', self.mem_width)
@@ -216,11 +216,6 @@ class SingleCycleRISCV(py4hw.Logic):
                 # Interrupts are always handled by machine mode, unless they are delegated
                 # to lower modes (see priv-spec section 3.1.8)
                 
-                #if (priv == CSR_PRIVLEVEL_MACHINE): # machine
-                #    self.csr[CSR_MSTATUS] |= (3 << 11) # set M-Mode as previous mode in MPP
-                #elif (priv == CSR_PRIVLEVEL_SUPERVISOR): # supervisor
-                #    self.csr[CSR_MSTATUS] |= (1 << 11) # set M-Mode as previous mode in MPP
-
                 mideleg = self.csr[CSR_MIDELEG] # mideleg
                 
                 entertype = 1 # machine mode exception
@@ -235,6 +230,7 @@ class SingleCycleRISCV(py4hw.Logic):
                     self.csr[CSR_SEPC] = self.pc # sepc
                     self.csr[CSR_SCAUSE] = (1 << (self.XLEN -1))  | e.code  # scause
 
+                    setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_SPIE_POS, 1, getCSRField(self, CSR_MSTATUS, CSR_MSTATUS_SIE_POS, 1))
                     setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_SIE_POS, 1, 0)
                     vecname = self.implemented_csrs[0x105]
                     self.csr[CSR_PRIVLEVEL] = 1
@@ -248,8 +244,9 @@ class SingleCycleRISCV(py4hw.Logic):
                     self.csr[CSR_MEPC] = self.pc # mepc
                     self.csr[CSR_MCAUSE] = (1 << (self.XLEN -1))  | e.code  
                     
-                    #setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPIE_POS, 1, getCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPIE_POS, 1))
+                    setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPIE_POS, 1, getCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MIE_POS, 1))
                     setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MIE_POS, 1, 0)
+
                     vecname = self.implemented_csrs[0x305]
                     self.csr[CSR_PRIVLEVEL] = 3
                     
@@ -301,6 +298,7 @@ class SingleCycleRISCV(py4hw.Logic):
                     self.csr[CSR_SEPC] = self.pc # sepc
                     self.csr[CSR_SCAUSE] = e.code  # scause
                     
+                    setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_SPIE_POS, 1, getCSRField(self, CSR_MSTATUS, CSR_MSTATUS_SIE_POS, 1))
                     setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_SIE_POS, 1, 0)
                     vecname = self.implemented_csrs[0x105]
                     self.csr[CSR_PRIVLEVEL] = 1
@@ -314,7 +312,7 @@ class SingleCycleRISCV(py4hw.Logic):
                     self.csr[CSR_MEPC] = self.pc # mepc
                     self.csr[CSR_MCAUSE] = e.code  
                     
-                    # setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPIE_POS, 1, getCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPIE_POS, 1))
+                    setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPIE_POS, 1, getCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MIE_POS, 1))
                     setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MIE_POS, 1, 0)
                     vecname = self.implemented_csrs[0x305]
                     self.csr[CSR_PRIVLEVEL] = 3
@@ -438,16 +436,12 @@ class SingleCycleRISCV(py4hw.Logic):
             self.functionExit()
 
     def fetchIns(self):
-        self.readCSR(CSR_MIP) # force to update the MIP register
-        
-            
+        self.updateMIP() # force to update the MIP register
             
         # Machine Mode exceptions should always be checked
         if (self.csr[CSR_MSTATUS] & CSR_MSTATUS_MIE_MASK):
             # check interrupts
             if ((self.csr[CSR_MIE] & self.csr[CSR_MIP]) != 0):
-                self.csr[CSR_MSTATUS] = self.csr[CSR_MSTATUS] & ~CSR_MSTATUS_MIE_MASK # clear the Interrupt Enable bit in mstatus
-                    
                 if (self.csr[CSR_MIE] & CSR_MIE_MEIE_MASK) and (self.csr[CSR_MIP] & CSR_MIP_MEIP_MASK): raise MachineExternalInterrupt()
                 if (self.csr[CSR_MIE] & CSR_MIE_SEIE_MASK) and (self.csr[CSR_MIP] & CSR_MIP_SEIP_MASK): raise SupervisorExternalInterrupt()
                 if (self.csr[CSR_MIE] & CSR_MIE_UEIE_MASK) and (self.csr[CSR_MIP] & CSR_MIP_UEIP_MASK): raise UserExternalInterrupt()
@@ -460,12 +454,10 @@ class SingleCycleRISCV(py4hw.Logic):
                 
                 print('WARNING: Should handle interrupt mip={:016X}'.format(self.csr[CSR_MIP]))
             
-        # Supervisor exceptions should only be checked when running in supervisor mode
-        if (self.csr[CSR_PRIVLEVEL] == CSR_PRIVLEVEL_SUPERVISOR) and (self.csr[CSR_MSTATUS] & CSR_MSTATUS_SIE_MASK):
+        # Supervisor exceptions should only be checked when running in supervisor or user mode
+        if (self.csr[CSR_PRIVLEVEL] <= CSR_PRIVLEVEL_SUPERVISOR) and (self.csr[CSR_MSTATUS] & CSR_MSTATUS_SIE_MASK):
             # check interrupts
             if ((self.csr[CSR_MIE] & self.csr[CSR_MIP]) != 0): # SIE and MIE are mirrors 
-                self.csr[CSR_MSTATUS] = self.csr[CSR_MSTATUS] & ~CSR_MSTATUS_SIE_MASK # clear the Interrupt Enable bit in mstatus
-                    
                 #if (self.csr[CSR_MIE] & CSR_MIE_MEIE_MASK) and (self.csr[CSR_MIP] & CSR_MIP_MEIP_MASK): raise MachineExternalInterrupt()
                 if (self.csr[CSR_MIE] & CSR_MIE_SEIE_MASK) and (self.csr[CSR_MIP] & CSR_MIP_SEIP_MASK): raise SupervisorExternalInterrupt()
                 #if (self.csr[CSR_MIE] & CSR_MIE_UEIE_MASK) and (self.csr[CSR_MIP] & CSR_MIP_UEIP_MASK): raise UserExternalInterrupt()
@@ -492,15 +484,30 @@ class SingleCycleRISCV(py4hw.Logic):
             print(self.csr[CSR_INSTRET], end = ' - ')
         
         try:
+            if (self.debug_vm): print(f'load to execute: {self.pc:016X}') 
             self.ins = yield from self.virtualMemoryLoad(self.pc, 32//8, MEMORY_OP_EXECUTE)
-        except:
-            raise InstructionAccessFault(tval=self.pc)
+        except InstructionPageFault as e:
+            if (self.debug_vm): print(f'Instruction Page Fault') 
+            #raise LoadPageFault(e.msg, e.tval)
+            raise e
+        except LoadPageFault as e:
+            if (self.debug_vm): print(f'Load Page Fault') 
+            raise e
+        except ProcessorException as e:
+            if (self.debug_vm): print(f'Other Exception') 
+            raise InstructionAccessFault(f'could not load instruction: {e.msg}', tval=self.pc)
 
     def getPTEFromPageTables(self, pageTable, address, level):
-        # returnns the level and the PTE of the asddress by page walking
+        # returns the level and the PTE of the address by page walking
+        # this is the fundamental function to do address tanslation (VA -> PA)
         vpn=[0,0,0]
         off=[0,0,0]
         offmask=[0,0,0]
+        
+        # check sign extension
+        if (signExtend(address, 39, 64) != address):
+            raise LoadPageFault('high vpn bits not correctly sign extended', address)
+        
         vpn[2] = (address >> 30) & ((1<<9)-1)
         vpn[1] = (address >> 21) & ((1<<9)-1)
         vpn[0] = (address >> 12) & ((1<<9)-1)
@@ -510,7 +517,7 @@ class SingleCycleRISCV(py4hw.Logic):
         off[2] = (address) & offmask[2]
         off[1] = (address) & offmask[1] 
         off[0] = (address) & offmask[0]
-        
+            
         pteaddr = pageTable + vpn[level]*8
         
         if (self.debug_vm): print(f'Loading PTE from {pteaddr:016X}')
@@ -568,6 +575,13 @@ class SingleCycleRISCV(py4hw.Logic):
         ppn2 = (pte >> 28) & ((1<<26)-1)
         ppn1 = (pte >> 19) & ((1<<9)-1)
         ppn0 = (pte >> 10) & ((1<<9)-1)
+        
+        #accum_ppn2 = (pte >> 28) & ((1<<26)-1)
+        #accum_ppn1 = (pte >> 19) & ((1<<(26+9))-1)
+        #accum_ppn0 = (pte >> 10) & ((1<<(26+9+9))-1)
+        #acum_ppn = [accum_ppn0, accum_ppn1, accum_ppn2]
+        #ppn_pos = [12,21,30]
+                
         rsw = (pte >> 8) & ((1<<2)-1)
         D = (pte >> 7) & 1
         A = (pte >> 6) & 1
@@ -578,6 +592,9 @@ class SingleCycleRISCV(py4hw.Logic):
         R = (pte >> 1) & 1
         valid = pte & 1
         
+        if (self.debug_vm):
+            print(f'PTE level {level} ppn2: {ppn2:03X} ppn1: {ppn1:03X} ppn0: {ppn0:03X}')
+            
         #pr('pte: {:016X} valid: {}'.format(pte, valid))
         
         # Check PTE bits
@@ -595,20 +612,38 @@ class SingleCycleRISCV(py4hw.Logic):
         
             
         if (priv == CSR_PRIVLEVEL_USER) and not(U):
-            raise InstructionPageFault('PTE not User accessible', address)
+            if (memory_op == MEMORY_OP_LOAD):
+                raise LoadPageFault(f'PTE not User accessible pte:{pte:016X} R (U:{U})', address)
+            else:
+                raise InstructionPageFault(f'PTE not User accessible pte:{pte:016X} X (U:{U})', address)
         
             
         if (D == 0) and (memory_op == MEMORY_OP_STORE):
             raise StoreAMOPageFault('Dirty bit not set', address)
         
         if (level == 2) and ((ppn1 != 0) or (ppn0 != 0)):
-            raise StoreAMOPageFault('Lower PPN bits not zero', address)
+            if (memory_op == MEMORY_OP_LOAD):
+                raise LoadPageFault('Lower PPN bits not zero', address)
+            elif (memory_op == MEMORY_OP_EXECUTE):
+                raise InstructionPageFault('Lower PPN bits not zero', address)
+            else:
+                raise StoreAMOPageFault('Lower PPN bits not zero', address)
         
+        #phy = accum_ppn[level] << ppn_pos[level] 
         phy = (ppn2 << 30 | ppn1 << 21 | ppn0 << 12) 
         
         #phy +=  off[level]
         #pr('VMA: {:016X} PHY: {:016X}'.format(address, phy))
         return phy , offmask[level], off[level]
+
+    def getPmaskFromPTE(self,  address, level, pte, memory_op):
+        offmask=[0,0,0]
+
+        offmask[2] = ((1<<30)-1)
+        offmask[1] = ((1<<21)-1)
+        offmask[0] = ((1<<12)-1)
+        
+        return  offmask[level]
         
     def getPhysicalAddressFromTLB(self, address, memory_op):
         # returns the base and mask
@@ -617,32 +652,41 @@ class SingleCycleRISCV(py4hw.Logic):
         offmask[1] = ((1<<21)-1)
         offmask[0] = ((1<<12)-1)
 
-        for mask in offmask:       
-            vbasemask = ((1<<64)-1) - mask
-            vbase = address & vbasemask
-            off = address & mask
+        if (self.debug_vm):
+            import traceback
+            print('Traceback:', traceback.format_stack())
             
-            #print('va: {:016X} vbasemask: {:016X} vbase: {:016X}'.format(address, vbasemask, vbase))
-            if (vbase in self.tlb.keys()):
-                level, pte = self.tlb[vbase]
-                base, pmask , _off = self.getPhysicalAddressFromPTE( address,  level, pte, memory_op)
-
-                if (pmask == mask):
-                    # if the masks are the same, we have a hit
-                    return base , mask
+        for vbase in self.tlb.keys():
+            if (self.debug_vm): print(f'Checking TLB vbase: {vbase:016X}')
+            level, pte = self.tlb[vbase]
+            #base, pmask , _off = self.getPhysicalAddressFromPTE(address, level, pte, memory_op)
+            pmask = self.getPmaskFromPTE(address, level, pte, memory_op)
+            
+            basemask = ((1<<64)-1)-offmask[level]
+            add_vbase = address & basemask
+            
+            if (pmask == offmask[level] and add_vbase == vbase):
+                # if the masks are the same, we have a hit
+                if (self.debug_vm): print(f'Get PA from PTE address: {address:016X} pte: {pte:016X} mem op: {memory_op}')
+                base, pmask , _off = self.getPhysicalAddressFromPTE(address, level, pte, memory_op)
+            
+                return base , pmask
         
         raise TLBMiss()
         
     def getPhysicalAddress(self, address, memory_op):
+        # returns the physical address and a flag if virtual address was translated
         priv = self.csr[0xfff]
         satp = self.csr[CSR_SATP] # satp
         mpvr = self.csr[CSR_MSTATUS] & CSR_MSTATUS_MPRV_MASK
         mpp = getCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPP_POS, 2)
+        translated = False
 
         if (priv != CSR_PRIVLEVEL_MACHINE) or (priv == CSR_PRIVLEVEL_MACHINE and (memory_op != MEMORY_OP_EXECUTE) 
                                                and (mpvr != 0) and (mpp < CSR_PRIVLEVEL_MACHINE)):
             if (satp != 0): 
                 try:
+                    # First, try to see if we already have the address in the TLB
                     va = address
                     base, offmask = self.getPhysicalAddressFromTLB(address, memory_op)
                     address = base + (address & offmask)
@@ -658,18 +702,23 @@ class SingleCycleRISCV(py4hw.Logic):
                     if (self.debug_vm): print(f'ROOT PA:{root:016X}')
                     
                     level, pte = yield from self.getPTEFromPageTables(root, address, 2)
+
+                    if (self.debug_vm): print(f'VA:{address:016X} pte:{pte:016X} level:{level}')
                     base, offmask, off = self.getPhysicalAddressFromPTE(address, level, pte, memory_op)
                     
-                    
-                    if (self.debug_vm): print(f'tranlation VA: {address:016X} PA: {base:X} + {off:X} = {base+off:016X} ')
-                    
                     vbasemask = ((1<<64)-1) - offmask
+                    base = base & vbasemask
                     vbase = address & vbasemask
+                    
+                    if (self.debug_vm): print(f'tranlation VA: {address:016X} PA: {vbase:X} + {off:X} = {base+off:016X} (level:{level})')
+                    
                     self.tlb[vbase] = (level, pte)
                     #print('ADDING TLB ENTRY - VBASE:{:016X} PBASE:{:016X} OFF:{:016X}'.format(vbase, base, offmask))
                     address = base + off
+                    
+                    translated = True
         
-        return address
+        return address, translated
             
     def virtualMemoryLoad(self, address, b, memory_op=MEMORY_OP_LOAD):
         self.checkReservedAddress(address, b)
@@ -680,11 +729,28 @@ class SingleCycleRISCV(py4hw.Logic):
             if (memory_op == MEMORY_OP_EXECUTE) and (self.csr[CSR_TDATA1] & CSR_TDATA1_EXECUTE_MASK) and (match): raise Breakpoint()
             if (memory_op == MEMORY_OP_LOAD) and (self.csr[CSR_TDATA1] & CSR_TDATA1_LOAD_MASK) and (match): raise Breakpoint()
 
-        address = yield from self.getPhysicalAddress(address, memory_op)    
+        pa, isVa  = yield from self.getPhysicalAddress(address, memory_op)    
+        
+        if (isVa):
+            # Any error should be treated as PageFault
+            try:
+                if (self.mem_width == 32):
+                    value = yield from self.memoryLoad32(pa, b, memory_op)
+                elif (self.mem_width == 64):
+                    value = yield from self.memoryLoad64(pa, b, memory_op)
+                else:
+                    raise Exception()
+                return value
+            except:
+                raise LoadPageFault('Invalid memory access of translated VA')
+                #if (memory_op == MEMORY_OP_LOAD): raise LoadPageFault()
+                #if (memory_op == MEMORY_OP_EXECUTE): raise InstructionPageFault()
+                #raise Exception()
+
         if (self.mem_width == 32):
-            value = yield from self.memoryLoad32(address, b, memory_op)
+            value = yield from self.memoryLoad32(pa, b, memory_op)
         elif (self.mem_width == 64):
-            value = yield from self.memoryLoad64(address, b, memory_op)
+            value = yield from self.memoryLoad64(pa, b, memory_op)
         else:
             raise Exception()
         return value
@@ -695,7 +761,7 @@ class SingleCycleRISCV(py4hw.Logic):
         if (self.debugTrigger):
             if (self.csr[CSR_TDATA1] & CSR_TDATA1_STORE_MASK) and (va == self.csr[CSR_TDATA2]): raise Breakpoint()
             
-        pa = yield from self.getPhysicalAddress(va, MEMORY_OP_STORE)
+        pa, isVa = yield from self.getPhysicalAddress(va, MEMORY_OP_STORE)
         #print('\nWR va: {:016X} -> pa: {:016X}'.format(va,pa)) 
         if (self.mem_width == 32):
             yield from self.memoryWrite32(pa, b, v)
@@ -848,13 +914,15 @@ class SingleCycleRISCV(py4hw.Logic):
     def decode(self):
         ins = self.ins
         self.decoded_ins = ins_to_str(self.ins, 64)
+        priv = self.csr[0xFFF]
+        priv_s = ['U','S','-','M'][priv]
         
         if (is_compact_ins(ins)):
             ins = (ins & 0xFFFF)
             self.ins = ins
-            pr('{:08X}: {:04X}         {} '.format(self.pc , ins,  self.decoded_ins), end='' )
+            pr('{} {:08X}: {:04X}         {} '.format(priv_s, self.pc , ins,  self.decoded_ins), end='' )
         else:
-            pr('{:08X}: {:08X}     {} '.format(self.pc , ins,  self.decoded_ins), end='' )
+            pr('{} {:08X}: {:08X}     {} '.format(priv_s, self.pc , ins,  self.decoded_ins), end='' )
         
     def getPhysicalAddressQuick(self, address, memory_op=MEMORY_OP_LOAD):
         # Only used for formating output
@@ -867,7 +935,8 @@ class SingleCycleRISCV(py4hw.Logic):
                     base, offmask = self.getPhysicalAddressFromTLB(address, memory_op)
                     address = base + (address & offmask)
                     return address
-                except TLBMiss:
+                #except TLBMiss:
+                except: # any exception
                     return address
         
         return address
@@ -1916,17 +1985,19 @@ class SingleCycleRISCV(py4hw.Logic):
             # Read and set
             # rd <= csr, csr <= csr | rs1 
             v1 = self.reg[rs1] 
-            vcsr, allowed = yield from self.readCSR(csr)
-            if (v1 != 0): self.setCSR(csr, v1)
-            if (rd != 0) and allowed: self.reg[rd] = vcsr
+            oldvalue, allowed = yield from self.readCSR(csr)
+            if (rd != 0) and allowed: self.reg[rd] = oldvalue
             csrname = self.implemented_csrs[csr]
+            newvalue = oldvalue | v1
             
             if (rd == 0):
-                pr('{} |= r{} -> {:016X}'.format(csrname, rs1, self.csr[csr])) 
+                pr('{} |= r{} -> {:016X}'.format(csrname, rs1, newvalue)) 
             elif (rs1 == 0):
                 pr('r{} = {} -> {:016X}'.format(rd, csrname, self.reg[rd]))           
             else:
-                pr('r{} = {}, {} |= r{} -> {:016X},{:016X}'.format(rd, csrname, csrname, rs1, self.reg[rd], self.csr[csr]))            
+                pr('r{} = {}, {} |= r{} -> {:016X},{:016X}'.format(rd, csrname, csrname, rs1, self.reg[rd], newvalue))            
+
+            if (v1 != 0): self.setCSR(csr, v1)
         
         elif (op == 'CSRRC'):
             # Read and clear
@@ -2530,7 +2601,7 @@ class SingleCycleRISCV(py4hw.Logic):
         self.implemented_csrs[0x304] = 'mie'
         self.implemented_csrs[0x305] = 'mtvec'
         self.implemented_csrs[0x306] = 'mcounteren'
-        
+        self.implemented_csrs[CSR_MENVCFG] = 'menvcfg'
         self.implemented_csrs[0x320] = 'mcountinhibit'
 
         for i in range(3,32):
@@ -2545,9 +2616,10 @@ class SingleCycleRISCV(py4hw.Logic):
         self.implemented_csrs[CSR_MBASE] = 'mbase'
         
         self.implemented_csrs[0x3A0] = 'pmpcfg0'
+        self.implemented_csrs[0x3A2] = 'pmpcfg2'
         
 
-        for i in range(1): # was 64 (not 1)
+        for i in range(16): # was 64 (not 1)
             self.implemented_csrs[0x3B0+i] = 'pmpaddr{}'.format(i)
         
         self.implemented_csrs[CSR_TSELECT] = 'tselect'
@@ -2560,17 +2632,19 @@ class SingleCycleRISCV(py4hw.Logic):
         self.implemented_csrs[CSR_MCYCLE] = 'mcycle'
         self.implemented_csrs[CSR_MINSTRET] = 'minstret'
 
-        # for i in range(3,32):
-        #     self.implemented_csrs[0xB00+i] = 'mhpmcounter{}'.format(i)
+        for i in range(3,32):
+             self.implemented_csrs[0xB00+i] = 'mhpmcounter{}'.format(i)
 
         self.implemented_csrs[CSR_MNSCRATCH] = 'mnscratch'
         self.implemented_csrs[CSR_MNEPC] = 'mnepc'
         self.implemented_csrs[CSR_MNCAUSE] = 'mncause'
         self.implemented_csrs[CSR_MNSTATUS] = 'mnstatus'
+        self.implemented_csrs[CSR_MSECCFG] = 'mseccfg'
  
         self.implemented_csrs[CSR_CYCLE] = 'cycle'
         self.implemented_csrs[CSR_TIME] = 'time'
         self.implemented_csrs[CSR_INSTRET] = 'instret'
+
         
         self.implemented_csrs[CSR_PRIVLEVEL] = 'privlevel'  # this is my own CSR to store the current privilege level
 
@@ -2587,6 +2661,37 @@ class SingleCycleRISCV(py4hw.Logic):
     
     def getFreg(self, r):
         return self.freg[r]
+    
+    def updateMIP(self):
+        v = self.csr[CSR_MIP]
+        
+        if (self.csr[CSR_MIDELEG] & CSR_MIDELEG_STI_MASK):
+            #v = v & ~CSR_MIP_STIP_MASK
+            if (self.int_timer_machine.get() == 1):
+                v = v | CSR_MIP_STIP_MASK
+        else:
+            v = v & ~CSR_MIP_MTIP_MASK
+            if (self.int_timer_machine.get() == 1):
+                v = v | CSR_MIP_MTIP_MASK
+        
+        if (self.csr[CSR_MIDELEG] & CSR_MIDELEG_SSI_MASK):
+            #v = v & ~CSR_MIP_SSIP_MASK
+            if (self.int_soft_machine.get() == 1):
+                v = v | CSR_MIP_SSIP_MASK
+        else:
+            v = v &  ~CSR_MIP_MSIP_MASK
+            if (self.int_soft_machine.get() == 1):
+                v = v | CSR_MIP_MSIP_MASK
+
+        if (self.csr[CSR_MIDELEG] & CSR_MIDELEG_SEI_MASK):
+            if (self.int_ext_machine.get() == 1):
+                v = v | CSR_MIP_SEIP_MASK
+
+        v = v &  ~CSR_MIP_MEIP_MASK
+        if (self.int_ext_machine.get() == 1):
+            v = v | CSR_MIP_MEIP_MASK
+                
+        self.csr[CSR_MIP] = v
     
     def readCSR(self, idx):
         # Returns the value of the CSR, and if the access was allowed
@@ -2619,7 +2724,7 @@ class SingleCycleRISCV(py4hw.Logic):
             
         if (idx == CSR_MIP):
             if (self.csr[CSR_MIDELEG] & CSR_MIDELEG_STI_MASK):
-                v = v & ~CSR_MIP_STIP_MASK
+                #v = v & ~CSR_MIP_STIP_MASK
                 if (self.int_timer_machine.get() == 1):
                     v = v | CSR_MIP_STIP_MASK
             else:
@@ -2628,7 +2733,7 @@ class SingleCycleRISCV(py4hw.Logic):
                     v = v | CSR_MIP_MTIP_MASK
             
             if (self.csr[CSR_MIDELEG] & CSR_MIDELEG_SSI_MASK):
-                v = v & ~CSR_MIP_SSIP_MASK
+                #v = v & ~CSR_MIP_SSIP_MASK
                 if (self.int_soft_machine.get() == 1):
                     v = v | CSR_MIP_SSIP_MASK
             else:
@@ -2636,6 +2741,14 @@ class SingleCycleRISCV(py4hw.Logic):
                 if (self.int_soft_machine.get() == 1):
                     v = v | CSR_MIP_MSIP_MASK
                     
+            if (self.csr[CSR_MIDELEG] & CSR_MIDELEG_SEI_MASK):
+                if (self.int_ext_machine.get() == 1):
+                    v = v | CSR_MIP_SEIP_MASK
+
+            v = v &  ~CSR_MIP_MEIP_MASK
+            if (self.int_ext_machine.get() == 1):
+                v = v | CSR_MIP_MEIP_MASK
+                
             self.csr[CSR_MIP] = v
 
         
