@@ -11,6 +11,7 @@ from punxa.bus import *
 from punxa.uart import *
 from punxa.clint import *
 from punxa.plic import *
+from punxa.gpio import *
 from punxa.single_cycle.singlecycle_processor import *
 from punxa.instruction_decode import *
 from punxa.interactive_commands import *
@@ -55,13 +56,16 @@ def findFunction(name):
 #             |     |     +-------+
 #             |     |--L--| CLINT |
 #             |     |     +-------+
+#             |     |     +------+
+#             |     |--G--| GPIO |
+#             |     |     +------+
 #             +-----+
-#  | start          | stop           | device        |
-#  | 0000 0000 0000 | 0001 BFEF FFFF | memory (5GB)  |
-#  | 0000 BFF0 0000 | 0002 8000 0000 | pmem (3GB)    |
-#  | 00FF F0C2 C000 | 00FF F0C2 CFFF | uart          |
-#  | 0000 0200 0000 | 0000 0202 FFFF | CLINT         |
-#  | 0000 0C00 0000 | 0000 0C0F FFFF | PLIC          |
+#  | start               | stop                | device        |
+#  | 0080 0000 0000 0000 | 0080 0000 FFFF FFFF | memory (2GB)  |
+#  | 0000 00FF F0C2 C000 | 0000 00FF F0C2 CFFF | UART          |
+#  | 0000 0000 0200 0000 | 0000 0000 0202 FFFF | CLINT         |
+#  | 0000 0000 0C00 0000 | 0000 0000 0C0F FFFF | PLIC          |
+#  | 0000 0000 0C00 0000 | 0000 0000 0C0F FFFF | GPIO          |
 
 def buildHw():
     global memory
@@ -75,6 +79,7 @@ def buildHw():
     port_u = MemoryInterface(hw, 'port_u', mem_width, 8)      # 8 bits = 256
     port_l = MemoryInterface(hw, 'port_l', mem_width, 16)      # 8 bits = 256
     port_p = MemoryInterface(hw, 'port_p', mem_width, 24)      # 8 bits = 256
+    port_g = MemoryInterface(hw, 'port_g', mem_width, 8)      # 8 bits = 256
     #port_t = MemoryInterface(hw, 'port_t', mem_width, 8)     # 8 bits = 256
     # Memory initialization
 
@@ -92,11 +97,14 @@ def buildHw():
     int_soft = hw.wire('int_soft')
     int_timer = hw.wire('int_timer')
 
-    ext_int_sources = []
-    ext_int_sources.append(hw.wire('ext_int_0'))
-    ext_int_sources.append(hw.wire('ext_int_1'))
-    Constant(hw, 'ext_int_0', 0, ext_int_sources[0])
-    Constant(hw, 'ext_int_1', 0, ext_int_sources[1])
+    int_dummy = hw.wire('int_dummy')
+    py4hw.Constant(hw, 'dummy', 0, int_dummy)
+    
+    int_gpio = hw.wire('int_gpio')
+    
+    gpio = GPIO(hw, 'gpio', port_g, int_gpio)
+
+    ext_int_sources = [int_dummy, int_dummy, int_dummy, int_gpio]
 
     ext_int_targets = []
     ext_int_targets.append(hw.wire('int_machine'))
@@ -113,7 +121,8 @@ def buildHw():
                                           #(port_d, 0x01BFF00000),
                                           (port_u, 0x0010000000),
                                           (port_p, 0x000C000000),
-                                          (port_l, 0x0002000000)])
+                                          (port_l, 0x0002000000),
+                                          (port_g, 0x0010060000)])
 
     cpu = SingleCycleRISCV(hw, 'RISCV', port_c, int_soft, int_timer, ext_int_targets, mem_base)
 
@@ -131,13 +140,18 @@ def buildHw():
 def reportInterrupts():
     print('Interrupt Status')
     print(' CPU:') # be prepared for multiple CPUs
+
     timer_wire = cpu.int_timer_machine.get()
     soft_wire = cpu.int_soft_machine.get()
-    
-    
+    ext_m_wire = cpu.int_ext_machine.get()    
+    ext_s_wire = cpu.int_ext_supervisor.get()    
     
     mideleg_mt = 1 if (cpu.csr[CSR_MIDELEG] & CSR_MIDELEG_MTI_MASK) else 0
     mideleg_st = 1 if (cpu.csr[CSR_MIDELEG] & CSR_MIDELEG_STI_MASK) else 0
+
+    meip = 1 if (cpu.csr[CSR_MIP] & CSR_MIP_MEIP_MASK) else 0
+    seip = 1 if (cpu.csr[CSR_MIP] & CSR_MIP_SEIP_MASK) else 0
+    ueip = 1 if (cpu.csr[CSR_MIP] & CSR_MIP_UEIP_MASK) else 0
         
     mtip = 1 if (cpu.csr[CSR_MIP] & CSR_MIP_MTIP_MASK) else 0
     stip = 1 if (cpu.csr[CSR_MIP] & CSR_MIP_STIP_MASK) else 0
@@ -147,6 +161,9 @@ def reportInterrupts():
     ssip = 1 if (cpu.csr[CSR_MIP] & CSR_MIP_SSIP_MASK) else 0
     usip = 1 if (cpu.csr[CSR_MIP] & CSR_MIP_USIP_MASK) else 0
 
+    meie = 1 if (cpu.csr[CSR_MIE] & CSR_MIE_MEIE_MASK) else 0
+    seie = 1 if (cpu.csr[CSR_MIE] & CSR_MIE_SEIE_MASK) else 0
+    ueie = 1 if (cpu.csr[CSR_MIE] & CSR_MIE_UEIE_MASK) else 0
 
     mtie = 1 if (cpu.csr[CSR_MIE] & CSR_MIE_MTIE_MASK) else 0
     stie = 1 if (cpu.csr[CSR_MIE] & CSR_MIE_STIE_MASK) else 0
@@ -169,10 +186,39 @@ def reportInterrupts():
     
     nclks_to_interrupt = timecmp - time
     seconds_to_interrupt = nclks_to_interrupt / 50E6
+        
+    gpio = hw.children['gpio']
+    gpio_int = hw.children['gpio'].interrupt.get()
+    
+    
     
     print(f'   CLINT')  
     print(f'   time: {time:016X} {tcmp} {timecmp:016X} : timecmp ')
     print(f'   Interrupt {nclks_to_interrupt} clks away ({seconds_to_interrupt} seconds)')
+    print()
+    print(f'   GPIO')  
+    print(f'   oval:{gpio.oval:08X} oe:{gpio.oe:08X}' )
+    print(f'   ival:{gpio.ival:08X} ie:{gpio.ie:08X}  value:{gpio.value:08X}' )
+    print(f'   hip: {gpio.hip:08X} hie: {gpio.hie:08X}  ')
+    print(f'   lip: {gpio.lip:08X} hie: {gpio.lie:08X}  ')
+    print(f'   rip: {gpio.rip:08X} rie: {gpio.rie:08X}  ')
+    print(f'   fip: {gpio.fip:08X} fie: {gpio.fie:08X}  ')
+    print(f'   Interrupt {gpio_int}')
+    print()
+    print(f'   PLIC')
+
+    for idx, target in enumerate(hw.children['plic'].int_targets):
+        priority_th = hw.children['plic'].int_context_priority_th[idx]
+    
+        for sidx, source in enumerate(hw.children['plic'].int_sources):
+            priority = hw.children['plic'].int_source_priority[sidx]
+            ie = hw.children['plic'].ie[idx][sidx]
+            print(f'   source {sidx} [{source.get()}] priority:[{priority}] IE:[{ie}]')
+
+        print(f'   --> target {idx} [{target.get()}] pri.th:[{priority_th}]')
+        print('   ------------------------------')
+        
+    
     print()
     print(f'   CSRs')  
     print(f'   time: {time_csr:016X}')
@@ -180,14 +226,23 @@ def reportInterrupts():
         print(f'         MIDELEG     MIP          MIE       MSTATUS')
         print(f'   timer [{timer_wire}]    MTIP [{mtip}] --> MTIE [{mtie}] --> MIE [{mie}]')
         print(f'            \-> STIP [{stip}] --> STIE [{stie}] --> SIE [{sie}]')
+        print(f'   sw-i  [{soft_wire}]--> MSIP [{msip}] --> MSIE [{msie}] --> MIE [{mie}]')
+        print(f'       (sw) --> SSIP [{ssip}] --> SSIE [{ssie}] --> SIE [{sie}]')
+        print(f'   ext-M [{ext_m_wire}]--> MEIP [{meip}] --> MEIE [{meie}] --> MIE [{mie}]')
+        print(f'   ext-S [{ext_s_wire}]--> SEIP [{seip}] --> SEIE [{seie}] --> SIE [{sie}]')
 
     else:
         print(f'         MIDELEG     MIP          MIE       MSTATUS')
         print(f'   timer [{timer_wire}]--> MTIP [{mtip}] --> MTIE [{mtie}] --> MIE [{mie}]')
         print(f'       (sw) --> STIP [{stip}] --> STIE [{stie}] --> SIE [{sie}]')
         
-        print(f'   sw-i  [{soft_wire}]--> MSIP [{msip}] --> MTIE [{msie}] --> MIE [{mie}]')
+        print(f'   sw-i  [{soft_wire}]--> MSIP [{msip}] --> MSIE [{msie}] --> MIE [{mie}]')
+        print(f'       (sw) --> SSIP [{ssip}] --> SSIE [{ssie}] --> SIE [{sie}]')
+        print(f'   ext-M [{ext_m_wire}]--> MEIP [{meip}] --> MEIE [{meie}] --> MIE [{mie}]')
+        print(f'   ext-S [{ext_s_wire}]--> SEIP [{seip}] --> SEIE [{seie}] --> SIE [{sie}]')
 
+def reallocMem(add, size):
+    memory.reallocArea(add - mem_base, size)
 
 def prepareTest(test_file, verbose=True):
     global hw
@@ -198,6 +253,10 @@ def prepareTest(test_file, verbose=True):
     loadSymbolsFromElf(cpu, programFile, 0)
     loadSymbolsFromElf(cpu, programFile, 0xffffffff7fe00000)    # for virtual memory tests
     
+    reallocMem(0x87FFF000, 0x400)
+    reallocMem(0x80200000, 0x10000)
+    reallocMem(0x84212348, 0x400)
+
     
     a2f, f2a = getSymbolsFromElf(elf_file, 0)
 
@@ -300,6 +359,7 @@ def parseArgs(args):
     global signature_granularity
     global elf_file
     global doPrepare
+    global mem_base
     
     doPrepare = False
     
@@ -317,6 +377,8 @@ def parseArgs(args):
             print('Signature granularity=', signature_granularity)
         elif (arg == '-prepare'):
             doPrepare = True
+        elif (startsWith(arg, '-mem_base=')):
+            mem_base = eval(arg[len('-mem_base='):])
         else:
             elf_file = arg
             print('Elf file=', elf_file)
