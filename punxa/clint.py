@@ -55,7 +55,7 @@ class CLINT(Logic):
         if (self.msip & 1):
             if (self.int_soft.get() == 0):
                 # only print debug messages at the positive edge
-                print('WARNING: CLINT Software interrupt {:016X} < {:016X}'.format(self.mtimecmp, self.mtime))
+                print('WARNING: CLINT Software interrupt')
             self.int_soft.prepare(1)
         else:
             self.int_soft.prepare(0)
@@ -76,11 +76,7 @@ class CLINT(Logic):
 
         be = self.port.be.get()
         
-        if (bin(be).count('1') != 8):
-            print('WARNING: log2(BE)!=8 : {:02X}'.format(be))
-            #self.parent.getSimulator().stop()
-            
-            
+
         address = self.port.address.get()
         field = ''
         write_data = self.port.write_data.get()
@@ -92,10 +88,12 @@ class CLINT(Logic):
             field = 'msip'
         elif (address == 0x4000):
             field = 'mtimecmp'            
-        # elif (address == 0x4004):
-        #     field = 'mtimecmph'
+        elif (address == 0x4004):
+            field = 'mtimecmph'
         elif (address == 0xBFF8):
             field = 'mtime'
+        elif (address == 0xBFFC):
+            field = 'mtimeh'
         else:
             field = 'unknown {:016X}'.format(address)
 
@@ -105,8 +103,8 @@ class CLINT(Logic):
                 read_data = self.mtime 
             elif (field == 'mtimecmp'):
                 read_data = self.mtimecmp 
-            # elif (field == 'mtimecmph'):
-            #     read_data = (self.mtimecmp >> 32) & ((1<<32)-1)
+            elif (field == 'mtimecmph'):
+                read_data = (self.mtimecmp >> 32) & ((1<<32)-1)
                 
             print('WARNING: CLINT read transaction to {} = {:016X}'.format(field, read_data))
             self.port.read_data.prepare(read_data)
@@ -117,11 +115,34 @@ class CLINT(Logic):
             if (field == 'msip'):
                 self.msip = write_data & 1
             elif (field == 'mtimecmp'):
-                self.mtimecmp = write_data # signExtend(write_data , 64)
-                
-            #    self.mtimecmp = (self.mtimecmp & (((1<<32)-1) << 32)) | (write_data & ((1<<32)-1))
-            # elif (field == 'mtimecmph'):
-            #     self.mtimecmp = ((write_data & ((1<<32)-1)) << 32) | (self.mtimecmp & ((1<<32)-1))
+                if (be == 0xFF):
+                    self.mtimecmp = write_data 
+                elif (be == 0xF):
+                    self.mtimecmp = (self.mtimecmp & (((1<<32)-1) << 32)) | (write_data & ((1<<32)-1))
+                else:
+                    print(f'WARNING: writing {field} with unknown be {be:02X} ')
+            elif (field == 'mtimecmph'):
+                if (be == 0xFF):
+                    print(f'ERROR: writing {field} with invalid be {be:02X} ')
+                elif (be == 0xF):
+                    self.mtimecmp = (write_data << 32) | (self.mtimecmp & ((1<<32)-1))
+                else:
+                    print(f'WARNING: writing {field} with unknown be {be:02X} ')
+            elif (field == 'mtime'):
+                if (be == 0xFF):
+                    self.mtime = write_data 
+                elif (be == 0xF):
+                    self.mtime = (self.mtime & (((1<<32)-1) << 32)) | (write_data & ((1<<32)-1))
+                else:
+                    print(f'WARNING: writing {field} with unknown be {be:02X} ')
+            elif (field == 'mtimeh'):
+                if (be == 0xFF):
+                    #self.mtime = write_data 
+                    print(f'ERROR: writing {field} with invalid be {be:02X} ')
+                elif (be == 0xF):
+                    self.mtime = (write_data << 32) | (self.mtime & ((1<<32)-1))
+                else:
+                    print(f'WARNING: writing {field} with unknown be {be:02X} ')
                 
             print('WARNING: CLINT write transaction to {} = {:016X}'.format(field, write_data))
             #self.parent.getSimulator().stop()
