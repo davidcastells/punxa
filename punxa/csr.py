@@ -38,6 +38,8 @@ CSR_SEPC =          0x141
 CSR_SCAUSE =        0x142
 CSR_STVAL =         0x143
 CSR_SIP =           0x144
+CSR_STIMECMP =      0x14D
+CSR_STIMECMPH =     0x15D
 CSR_SATP =          0x180
 
 CSR_MSTATUS =       0x300
@@ -47,6 +49,7 @@ CSR_MIDELEG =       0x303
 CSR_MIE =           0x304
 CSR_MTVEC =         0x305
 CSR_MCOUNTEREN =    0x306
+CSR_MENVCFG =       0x30A
 CSR_MCOUNTINHIBIT = 0x320
 
 CSR_MHPMEVENT3 =    0x323
@@ -73,6 +76,7 @@ CSR_MNSCRATCH =     0x740
 CSR_MNEPC =         0x741
 CSR_MNCAUSE =       0x742
 CSR_MNSTATUS =      0x744
+CSR_MSECCFG =       0x747
 
 # Debug/Trace registers
 CSR_TSELECT =       0x7A0
@@ -85,6 +89,7 @@ CSR_MCONTEXT =      0x7A8
 
 CSR_MCYCLE =        0xB00
 CSR_MINSTRET =      0xB02
+CSR_MHPMCOUNTER3 =  0xB03
 
 # for i in range(3,32):
 #     self.implemented_csrs[0xB00+i] = 'mhpmcounter{}'.format(i)
@@ -94,17 +99,18 @@ CSR_TIME =          0xC01
 CSR_INSTRET =       0xC02
 
 CSR_MCPUID =        0xF00
-CSR_MVENDORID =     0xF11
-CSR_MARCHID =       0xF12
-CSR_MIMPID =        0xF13
-CSR_MHARTID =       0xf14
+CSR_MVENDORID =     0xF11   # Vendor ID
+CSR_MARCHID =       0xF12   # Architecture ID
+CSR_MIMPID =        0xF13   # Implementation ID
+CSR_MHARTID =       0xF14   # Hardware thread ID
+CSR_MCONFIGPTR =    0xF15   # pointer to configuration data structure
 
 CSR_PRIVLEVEL =     0xFFF
 
 # ------------------------------------
 
 # Inmutable Read-only CSRs
-csr_fix_ro = [CSR_MISA, CSR_MCPUID, CSR_MHARTID] 
+csr_fix_ro = [CSR_MISA, CSR_MCPUID, CSR_MVENDORID, CSR_MARCHID, CSR_MIMPID, CSR_MHARTID, CSR_MCONFIGPTR] 
 
 # Non writable CSR that CPU state can change
 csr_var_ro = [CSR_CYCLE] 
@@ -120,7 +126,7 @@ csr_mirrored = {CSR_SIE:CSR_MIE, CSR_SIP:CSR_MIP}
 
 
 
-csr_partial_wr_mask = {}
+csr_partial_wr_mask = {CSR_MIE: 0xAAA, CSR_MIDELEG: 0x222}
 csr_mirror_mask = {CSR_SIE:-1, CSR_SIP:-1} # @todo define the correct masks
 
 # ------------------------------------
@@ -193,6 +199,7 @@ CSR_MSTATUS_TVM_MASK = (1<<20)
 CSR_MSTATUS_MXR_MASK = (1<<19)
 CSR_MSTATUS_SUM_MASK = (1<<18)
 
+CSR_MSTATUS_MPRV_POS = 17
 CSR_MSTATUS_MPRV_MASK = (1<<17) 
 
 CSR_MSTATUS_XS_MASK = (3 << 15)
@@ -206,12 +213,13 @@ CSR_MSTATUS_SPP_MASK = (1 << 8)
 
 CSR_MSTATUS_MPIE_POS = 7
 CSR_MSTATUS_MPIE_MASK = (1<<7)
-CSR_MSTATUS_SIE_POS = 1
+CSR_MSTATUS_SPIE_POS = 5
 CSR_MSTATUS_SPIE_MASK = (1<<5)
 CSR_MSTATUS_UPIE_MASK = (1<<4)
 
 CSR_MSTATUS_MIE_POS = 3
 CSR_MSTATUS_MIE_MASK = (1 << 3)
+CSR_MSTATUS_SIE_POS = 1
 CSR_MSTATUS_SIE_MASK = (1 << 1)
 CSR_MSTATUS_UIE_MASK = (1)
 
