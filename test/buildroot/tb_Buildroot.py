@@ -280,7 +280,10 @@ def prepare():
     reallocMem(0x80200000, 0x3fe00000)
 
 
-
+def read32(va):
+    ptr = translateVirtualAddress(va, verbose=False)
+    return memory.read_i32(ptr-mem_base)
+    
 def getSz(ptr):
     doRun = True
     i = 0
@@ -336,10 +339,26 @@ def runUntilInterrupt(max_clks=100000):
             print('Timer Interrupt!')
             return
             
+def runWithEntropy():
+    import random
+    f = findFunction('jent_get_nstime')
+    while (True):
+        run(f, 1000000, verbose=False)
+        if (cpu.pc == f):
+            hw.children['clint'].mtime += random.randint(0, 100)
+            run(0, 100000, verbose=False)
+            for line in uart.console[-10:]:
+                print(line)
+        else:
+            return
+    
+    
 def reportInterrupts():
     print('Interrupt Status')
     print(' CPU:') # be prepared for multiple CPUs
     timer_wire = cpu.int_timer_machine.get()
+    
+    
     
     mideleg_mt = 1 if (cpu.csr[CSR_MIDELEG] & CSR_MIDELEG_MTI_MASK) else 0
     mideleg_st = 1 if (cpu.csr[CSR_MIDELEG] & CSR_MIDELEG_STI_MASK) else 0
@@ -355,14 +374,30 @@ def reportInterrupts():
     mie = 1 if (cpu.csr[CSR_MSTATUS] & CSR_MSTATUS_MIE_MASK) else 0
     sie = 1 if (cpu.csr[CSR_MSTATUS] & CSR_MSTATUS_SIE_MASK) else 0
     uie = 1 if (cpu.csr[CSR_MSTATUS] & CSR_MSTATUS_UIE_MASK) else 0
-        
+
+    time = hw.children['clint'].mtime        
+    timecmp = hw.children['clint'].mtimecmp
+    
+    tcmp = '<' if time < timecmp else '>='
+            
+    time_csr = cpu.csr[CSR_TIME]
+    
+    nclks_to_interrupt = timecmp - time
+    seconds_to_interrupt = nclks_to_interrupt / 50E6
+    
+    print(f'   CLINT')  
+    print(f'   time: {time:016X} {tcmp} {timecmp:016X} : timecmp ')
+    print(f'   Interrupt {nclks_to_interrupt} clks away ({seconds_to_interrupt} seconds)')
+    print()
+    print(f'   CSRs')  
+    print(f'   time: {time_csr:016X}')
     if (mideleg_st):
-        print(f'   CLINT MIDELEG     MIP          MIE       MSTATUS')
+        print(f'         MIDELEG     MIP          MIE       MSTATUS')
         print(f'   timer [{timer_wire}]    MTIP [{mtip}] --> MTIE [{mtie}] --> MIE [{mie}]')
         print(f'            \-> STIP [{stip}] --> STIE [{stie}] --> SIE [{sie}]')
 
     else:
-        print(f'   CLINT MIDELEG     MIP          MIE       MSTATUS')
+        print(f'         MIDELEG     MIP          MIE       MSTATUS')
         print(f'   timer [{timer_wire}]--> MTIP [{mtip}] --> MTIE [{mtie}] --> MIE [{mie}]')
         print(f'       (sw) --> STIP [{stip}] --> STIE [{stie}] --> SIE [{sie}]')
 
@@ -400,6 +435,57 @@ def OpenSBIInfo():
         
         domain_mem_regions_ptr += 8*3
         i += 1
+
+
+def list_commands():
+    punxa.interactive_commands.list_commands()
+    print('  threads     - display inferred Linux threads')
+    
+    
+def threads():
+    kernel_start = 0xFF00000000000000
+    for tcb in cpu.per_thread_stack.keys():
+        if (tcb < kernel_start):
+            continue;
+        print(f'Thread Control Block: {tcb:016X}')
+        thread_name = getSz(translateVirtualAddress(tcb+0x638, verbose=False))
+        print(f'Thread Name:          {thread_name}')
+        tid = read32(tcb + 0x440)
+        pid = read32(tcb + 0x444)
+        print(f'Process ID:           {pid:X}')
+        print(f'Thread ID:            {tid:X}')
+        print()
+    
+def stack(tcb=None):
+    if (tcb is None):
+        tcb = cpu.reg[4]
+    thread_name = getSz(translateVirtualAddress(tcb+0x638, verbose=False))
+    
+    print(f'Stack for thread: {tcb:016X} - {thread_name}')
+    
+    if not(tcb in cpu.per_thread_stack.keys()):
+        print('No stack for thread')
+        return
+        
+    stack = cpu.per_thread_stack[tcb]
+    indent = 0
+    for idx, finfo in enumerate(stack):
+        
+        #f = cpu.getPhysicalAddressQuick(finfo[0])
+        f = finfo[0]    # no need to translate, since symbols are provided in 
+                        # virtual memory addresses for kernel
+        j = finfo[2]    # indicates it is a jump
+        ra = finfo[3]   # return address
+
+        ec = '|' if j else '+->'        
+        ras = '' if j else f'->ra: {ra:016X}' 
+        
+        if (f in cpu.funcs.keys()):
+            print(' '*indent, ec, cpu.funcs[f], ras)
+        else:
+            print(' '*indent, ec, '{:016X}'.format(f), ras)
+            
+        if not(j): indent += 1
 
 
 if __name__ == "__main__":
