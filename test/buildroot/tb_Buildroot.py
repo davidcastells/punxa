@@ -127,7 +127,7 @@ def buildHw():
     #pmem = PersistentMemory(hw, 'pmem', ex_dir + 'pmem.img', port_d)
 
     # Uart initialization
-    uart = Uart(hw, 'uart', port_u, reg_size=4)
+    uart = UartSiFive(hw, 'uart', port_u)
 
 
     int_soft = hw.wire('int_soft')
