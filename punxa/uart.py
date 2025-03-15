@@ -11,35 +11,36 @@ from py4hw.logic.storage import *
 from py4hw.simulation import Simulator
 import py4hw.debug
 
-# Info from here
-# https://github.com/riscv-software-src/opensbi/blob/b9edf49b67a1b5e47b1c35dcd7c75efccaf22ea3/lib/utils/serial/uart8250.c
 
-UART_RBR_OFFSET	= 0	# In:  Recieve Buffer Register 
-UART_THR_OFFSET = 0	# Out: Transmitter Holding Register */
-UART_DLL_OFFSET	= 0	# Out: Divisor Latch Low */
-UART_IER_OFFSET = 1	# I/O: Interrupt Enable Register */
-UART_DLM_OFFSET	= 1	# Out: Divisor Latch High */
-UART_FCR_OFFSET	= 2	# Out: FIFO Control Register */
-UART_IIR_OFFSET	= 2	# I/O: Interrupt Identification Register */
-UART_LCR_OFFSET	= 3	# Out: Line Control Register */
-UART_MCR_OFFSET	= 4	# Out: Modem Control Register */
-UART_LSR_OFFSET	= 5	# In:  Line Status Register */
-UART_MSR_OFFSET	= 6	# In:  Modem Status Register */
-UART_SCR_OFFSET	= 7	# I/O: Scratch Register */
-UART_MDR1_OFFSET	 = 8 # I/O:  Mode Register */
+class Uart8250(Logic):
+    # Info from here
+    # https://github.com/riscv-software-src/opensbi/blob/b9edf49b67a1b5e47b1c35dcd7c75efccaf22ea3/lib/utils/serial/uart8250.c
+    
+    UART_RBR_OFFSET	= 0	# In:  Recieve Buffer Register 
+    UART_THR_OFFSET = 0	# Out: Transmitter Holding Register */
+    UART_DLL_OFFSET	= 0	# Out: Divisor Latch Low */
+    UART_IER_OFFSET = 1	# I/O: Interrupt Enable Register */
+    UART_DLM_OFFSET	= 1	# Out: Divisor Latch High */
+    UART_FCR_OFFSET	= 2	# Out: FIFO Control Register */
+    UART_IIR_OFFSET	= 2	# I/O: Interrupt Identification Register */
+    UART_LCR_OFFSET	= 3	# Out: Line Control Register */
+    UART_MCR_OFFSET	= 4	# Out: Modem Control Register */
+    UART_LSR_OFFSET	= 5	# In:  Line Status Register */
+    UART_MSR_OFFSET	= 6	# In:  Modem Status Register */
+    UART_SCR_OFFSET	= 7	# I/O: Scratch Register */
+    UART_MDR1_OFFSET	 = 8 # I/O:  Mode Register */
+    
+    #define UART_LSR_FIFOE		0x80	/* Fifo error */
+    UART_LSR_TEMT =	0x40	# Transmitter empty 
+    UART_LSR_THRE = 0x20    # Transmit-hold-register empty 
+    #define UART_LSR_BI		0x10	/* Break interrupt indicator */
+    #define UART_LSR_FE		0x08	/* Frame error indicator */
+    #define UART_LSR_PE		0x04	/* Parity error indicator */
+    #define UART_LSR_OE		0x02	/* Overrun error indicator */
+    #define UART_LSR_DR		0x01	/* Receiver data ready */
+    #define UART_LSR_BRK_ERROR_BITS	0x1E	/* BI, FE, PE, OE bits */
 
-#define UART_LSR_FIFOE		0x80	/* Fifo error */
-UART_LSR_TEMT =	0x40	# Transmitter empty 
-UART_LSR_THRE = 0x20    # Transmit-hold-register empty 
-#define UART_LSR_BI		0x10	/* Break interrupt indicator */
-#define UART_LSR_FE		0x08	/* Frame error indicator */
-#define UART_LSR_PE		0x04	/* Parity error indicator */
-#define UART_LSR_OE		0x02	/* Overrun error indicator */
-#define UART_LSR_DR		0x01	/* Receiver data ready */
-#define UART_LSR_BRK_ERROR_BITS	0x1E	/* BI, FE, PE, OE bits */
-
-class Uart(Logic):
-
+    
     def __init__(self, parent:Logic, name:str, port, reg_size=1):
         super().__init__(parent, name)
         
@@ -59,13 +60,13 @@ class Uart(Logic):
             self.console[clen-1] += c
             
     def readReg(self, reg):
-        if (reg == UART_LSR_OFFSET):
-            return UART_LSR_THRE | UART_LSR_TEMT # report tx empty
+        if (reg == self.UART_LSR_OFFSET):
+            return self.UART_LSR_THRE | self.UART_LSR_TEMT # report tx empty
         else:
             return 0
         
     def writeReg(self, reg, v):
-        if (reg == UART_THR_OFFSET):
+        if (reg == self.UART_THR_OFFSET):
             #print('Consolse Out: ', chr(v))
             self.addConsoleChar(chr(v))
         else:
