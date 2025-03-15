@@ -582,6 +582,7 @@ class SingleCycleRISCV(py4hw.Logic):
         #acum_ppn = [accum_ppn0, accum_ppn1, accum_ppn2]
         #ppn_pos = [12,21,30]
                 
+        reserved = (pte >> 54) & ((1<<7)-1)
         rsw = (pte >> 8) & ((1<<2)-1)
         D = (pte >> 7) & 1
         A = (pte >> 6) & 1
@@ -592,39 +593,65 @@ class SingleCycleRISCV(py4hw.Logic):
         R = (pte >> 1) & 1
         valid = pte & 1
         
+        mxr = getCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MXR_POS, 1)
+        sum = getCSRField(self, CSR_MSTATUS, CSR_MSTATUS_SUM_POS, 1)
+        opX = (memory_op == MEMORY_OP_EXECUTE)
+        opL = (memory_op == MEMORY_OP_LOAD)
+        opS = (memory_op == MEMORY_OP_STORE)
+        
         if (self.debug_vm):
             print(f'PTE level {level} ppn2: {ppn2:03X} ppn1: {ppn1:03X} ppn0: {ppn0:03X}')
             
         #pr('pte: {:016X} valid: {}'.format(pte, valid))
         
         # Check PTE bits
-        if (memory_op == MEMORY_OP_EXECUTE):
+        if (opX):
             if (valid == 0):
                 raise InstructionPageFault('PTE @ level {} not valid trying to access va:{:016X}'.format(level, address), address)
             if (A == 0):
                 raise InstructionPageFault('Access bit not set', address)    
+            if (X == 0):
+                raise InstructionPageFault('Executable bit not set', address)    
+            if (reserved != 0):
+                raise LoadPageFault('Reserved bits not zero', address)                
                 
-        if (memory_op == MEMORY_OP_LOAD):
+        if (opL):
             if (valid == 0):
                 raise LoadPageFault('PTE @ level {} not valid trying to access va:{:016X}'.format(level, address), address)
             if (A == 0):
                 raise LoadPageFault('Access bit not set', address)
+            if (R == 0 and not(mxr and X)):
+                raise LoadPageFault('Read bit not set', address)
+            if (reserved != 0):
+                raise LoadPageFault('Reserved bits not zero', address)
+                
+        if (opS):
+            if (D == 0):
+                raise StoreAMOPageFault('Dirty bit not set', address)
+            if (W == 0):
+                raise StoreAMOPageFault('Write bit not set', address)
         
             
         if (priv == CSR_PRIVLEVEL_USER) and not(U):
-            if (memory_op == MEMORY_OP_LOAD):
+            # User mode can only access User pages
+            if (opL):
                 raise LoadPageFault(f'PTE not User accessible pte:{pte:016X} R (U:{U})', address)
             else:
                 raise InstructionPageFault(f'PTE not User accessible pte:{pte:016X} X (U:{U})', address)
-        
+
+        if (priv != CSR_PRIVLEVEL_USER) and U and not(sum and (opL)):
+            # Non user modes cannot access User pages
+            if (opL):
+                raise LoadPageFault(f'PTE is restricted to User pte:{pte:016X} R (U:{U})', address)
+            else:
+                raise InstructionPageFault(f'PTE is restricted to User pte:{pte:016X} X (U:{U})', address)
+
             
-        if (D == 0) and (memory_op == MEMORY_OP_STORE):
-            raise StoreAMOPageFault('Dirty bit not set', address)
         
         if (level == 2) and ((ppn1 != 0) or (ppn0 != 0)):
-            if (memory_op == MEMORY_OP_LOAD):
+            if (opL):
                 raise LoadPageFault('Lower PPN bits not zero', address)
-            elif (memory_op == MEMORY_OP_EXECUTE):
+            elif (opX):
                 raise InstructionPageFault('Lower PPN bits not zero', address)
             else:
                 raise StoreAMOPageFault('Lower PPN bits not zero', address)
@@ -909,7 +936,7 @@ class SingleCycleRISCV(py4hw.Logic):
         yield
     
         if (self.v_mem_resp == 1):
-            raise StoreAMOPageFault('Failed to store physical memory', address)
+            raise StoreAMOAccessFault('Failed to store physical memory', address)
     
     def decode(self):
         ins = self.ins
@@ -2079,6 +2106,7 @@ class SingleCycleRISCV(py4hw.Logic):
             setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MIE_POS, 1, getCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPIE_POS, 1))
             setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPP_POS, 2, 0) # clear MPP
             setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPIE_POS, 1, 1)
+            setCSRField(self, CSR_MSTATUS, CSR_MSTATUS_MPRV_POS, 1, 0)
             pr('pc = mepc -> {:016X}'.format(self.jmp_address)) 
             self.functionExit(et=1)
         elif (op == 'SRET'):
