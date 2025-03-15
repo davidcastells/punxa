@@ -81,7 +81,7 @@ def executeCustom(self, n):
     a = self.reg[rs1]
     b = self.reg[rs2]
     x = a ^ b 
-    r = bin(n).count('1')
+    r = bin(x).count('1')
 
     self.reg[rd] = r
     
