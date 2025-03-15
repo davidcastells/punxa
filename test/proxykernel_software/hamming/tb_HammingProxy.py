@@ -168,10 +168,8 @@ def buildHw(useHWCI):
     #memory.reallocArea(0, 1 << 16)
 
 
-
-
     # Uart initialization
-    uart = Uart(hw, 'uart', port_u)
+    uart = Uart8250(hw, 'uart', port_u)
 
 
     int_soft = hw.wire('int_soft')
@@ -230,24 +228,6 @@ def buildHw(useHWCI):
     
     return hw
 
-def pushString(s):
-    memory.writeByte(cpu.reg[2], 0)
-    cpu.reg[2] -= 1
-    for k in range(len(s)):
-        memory.writeByte(cpu.reg[2], ord(s[len(s)-1-k]) )
-        cpu.reg[2] -= 1
-
-def pushInt64(v):
-    for k in range(8):
-        memory.writeByte(cpu.reg[2], (v >> 56) & 0xFF)
-        cpu.reg[2] -= 1
-        v = v << 8
-
-def pushInt32(v):
-    for k in range(4):
-        memory.writeByte(cpu.reg[2], (v >> 24) & 0xFF)
-        cpu.reg[2] -= 1
-        v = v << 8
 
 def prepareTest(test_file, args, useHWCI):
     global hw
@@ -276,25 +256,6 @@ def prepareTest(test_file, args, useHWCI):
     print(f'\tStack base: 0x{stack_base:016X} size: 0x{stack_size:016X}')
     print(f'\tHeap base:  0x{cpu.heap_base:016X} size: 0x{cpu.heap_size:016X}')
 
-    # Now push the arguments to the stack
-    #args = [programFile] + args
-    #argc = len(args)
-    #argsp = [0] * argc
-    #
-    #for i in range(argc):
-    #    param = args[argc-1-i]
-    #    pushString(param)
-    #    argsp[i] = cpu.reg[2] + 1
-    #
-    #pushInt64(0)
-
-    #for i in range(argc):
-    #    add = argsp[i]
-    #    pushInt64(add)
-
-    #pushInt64(argc)
-
-    #cpu.reg[2] += 1
     
 
 def runTest(test_file):
