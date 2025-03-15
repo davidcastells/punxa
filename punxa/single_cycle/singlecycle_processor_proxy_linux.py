@@ -387,20 +387,30 @@ class SingleCycleRISCVProxyLinux(SingleCycleRISCV):
 
 
     def pushString(self, s):
-        self.behavioural_memory.writeByte(self.reg[2], 0)
-        self.reg[2] -= 1
+        # stack pointer points to the last used position
+        towrite = (len(s)+1)            # count the final zero
+        towrite = ((towrite + 3)//4)*4  # align to 32 bits
+
+        start = self.reg[2] - towrite
+        
         for k in range(len(s)):
-            self.behavioural_memory.writeByte(self.reg[2], ord(s[len(s)-1-k]) )
-            self.reg[2] -= 1
+            self.behavioural_memory.writeByte(start+k, ord(s[k]))
+
+        for k in range(len(s), towrite):
+            self.behavioural_memory.writeByte(start+k, 0) # fill with zeros
+            
     
     def pushInt64(self, v):
         for k in range(8):
             self.behavioural_memory.writeByte(self.reg[2], (v >> 56) & 0xFF)
-            self.reg[2] -= 1
             v = v << 8
+            
+        self.reg[2] -= 8
     
     def pushInt32(self, v):
+        # stack should be aligned to 64 bits
         for k in range(4):
             self.behavioural_memory.writeByte(self.reg[2], (v >> 24) & 0xFF)
-            self.reg[2] -= 1
             v = v << 8
+
+        self.reg[2] -= 8
