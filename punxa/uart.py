@@ -120,3 +120,53 @@ class Uart8250(Logic):
                 
                 self.port.read_data.prepare(0)
 
+class UartSiFive(Logic):
+    # Info from
+    # https://static.dev.sifive.com/SiFive-E300-platform-reference-manual-v1.0.1.pdf
+    
+    TXDATA = 0x00
+    RXDATA = 0x04
+    TXCONTROL = 0x08
+    RXCONTROL = 0x0C
+    IE = 0x10
+    IP = 0x14
+    DIV = 0x18
+    
+    TXDATA_FULL_POS = 31
+    
+    def __init__(self, parent:Logic, name:str, port):
+        super().__init__(parent, name)
+        
+        self.port = self.addInterfaceSink('port', port)
+        self.console = ['']        
+        self.verbose = False
+
+    def addConsoleChar(self, c):
+        if (c == '\n'):
+            clen = len(self.console)
+            if (clen > 1000):
+                self.console = self.console[1:] # remove one line
+            self.console.append('')
+        else:
+            clen = len(self.console)
+            self.console[clen-1] += c
+
+
+    def clock(self):
+        read = self.port.read.get()
+        write = self.port.write.get()
+        write_data = self.port.write_data.get()
+        addr = self.port.address.get()
+        be = self.port.be.get()
+        read_data = 0
+
+        if (addr == TXDATA):
+            if (write):
+                addConsoleChar(chr(write_data & 0xFF))
+            elif (read):
+                read_data = 0 # never report full FIFO
+        else:
+            if (write): print(f'WARNING: Write transaction on SiFive UART address {addr:08X} = {write_data:016X}')
+            if (read): print(f'WARNING: Read transaction on SiFive UART address {addr:08X} ')
+                
+        self.port.read_data.prepare(read_data)
