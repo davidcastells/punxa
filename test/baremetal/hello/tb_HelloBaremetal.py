@@ -122,7 +122,7 @@ def buildHw(cpu_model='sc'):
     plic = PLIC(hw, 'plic', port_p, ext_int_sources, ext_int_targets)
     
     # Uart initialization
-    uart = Uart(hw, 'uart', port_u)
+    uart = Uart8250(hw, 'uart', port_u)
 
 
     bus = MultiplexedBus(hw, 'bus', port_c, [(port_m, mem_base),
