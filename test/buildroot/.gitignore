@@ -1,0 +1,4 @@
+*.dat
+*.dat.bak
+*.json
+*.json.gz
