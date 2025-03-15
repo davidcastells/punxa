@@ -156,7 +156,7 @@ def buildHw():
 
 
     # Uart initialization
-    uart = Uart(hw, 'uart', port_u)
+    uart = Uart8250(hw, 'uart', port_u)
 
 
     int_soft = hw.wire('int_soft')
@@ -258,7 +258,7 @@ def prepareTest(test_file, args):
     for i in range(argc):
         param = args[argc-1-i]
         cpu.pushString(param)
-        argsp[i] = cpu.reg[2] + 1
+        argsp[i] = cpu.reg[2] 
     
     for i in range(4):
         cpu.pushInt64(0) # for other libc argmuments
@@ -271,7 +271,7 @@ def prepareTest(test_file, args):
     
     cpu.pushInt64(argc)
     
-    cpu.reg[2] += 1
+    #cpu.reg[2] += 1
     
 
 def runTest():
