@@ -43,6 +43,11 @@ class MachineExternalInterrupt(ProcessorInterrupt):
 
 class InstructionAddressMisaligned(ProcessorException):
     code = 0
+    
+    def __init__(self, msg = '', tval=0):
+        self.msg = msg
+        self.tval = tval
+
 
 class InstructionAccessFault(ProcessorException):
     code = 1

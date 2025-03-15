@@ -35,6 +35,7 @@ def list_commands():
     print('  dump        - dump (binary/ascii) the content of memory locations')
     print('  pageTables  - displays the page tables ')
     print('  write_trace - exports function call traces')
+    print('  tlb         - display the content of the tlb')
 
 def regs():
     cpu = _ci_cpu
@@ -938,7 +939,19 @@ def get_va_parts(v):
     ret['vpn0'] = (v >> 12) & ((1<<9)-1)
     ret['offset'] = v & ((1<<12)-1)
     return ret
-            
+
+
+def tlb():
+    cpu = _ci_cpu            
+    tlb = cpu.tlb
+    print('TLB:')
+    for vbase in tlb.keys():
+        level, pte = cpu.tlb[vbase]
+        base, offmask , _off = cpu.getPhysicalAddressFromPTE(0, level, pte, 1)
+        vbasemask = ((1<<64)-1) - offmask
+        base = base & vbasemask
+        print(f'level: {level} page: {vbase:016X}-{vbase+offmask:016X}  pte: {pte:016X} base:{base:016X}')
+    
 def pageTables(root=None, vbase = 0, level=None, printPTE=True):
     
     if (_ci_cpu.isa == 64):

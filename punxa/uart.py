@@ -52,7 +52,7 @@ class Uart8250(Logic):
     def addConsoleChar(self, c):
         if (c == '\n'):
             clen = len(self.console)
-            if (clen > 80):
+            if (clen > 1000):
                 self.console = self.console[1:] # remove one line
             self.console.append('')
         else:
