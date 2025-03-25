@@ -95,7 +95,7 @@ def buildHw(cpu_model='sc'):
 
 
     # Uart initialization
-    uart = Uart(hw, 'uart', port_u)
+    uart = Uart8250(hw, 'uart', port_u)
 
 
     int_soft = hw.wire('int_soft')
