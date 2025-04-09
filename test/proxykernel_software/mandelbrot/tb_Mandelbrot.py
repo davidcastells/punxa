@@ -522,7 +522,7 @@ def buildHw():
 
 
     # Uart initialization
-    uart = Uart(hw, 'uart', port_u)
+    uart = Uart8250(hw, 'uart', port_u)
 
 
     int_soft = hw.wire('int_soft')
@@ -563,24 +563,7 @@ def buildHw():
     
     return hw
 
-def pushString(s):
-    memory.writeByte(cpu.reg[2], 0)
-    cpu.reg[2] -= 1
-    for k in range(len(s)):
-        memory.writeByte(cpu.reg[2], ord(s[len(s)-1-k]) )
-        cpu.reg[2] -= 1
 
-def pushInt64(v):
-    for k in range(8):
-        memory.writeByte(cpu.reg[2], (v >> 56) & 0xFF)
-        cpu.reg[2] -= 1
-        v = v << 8
-
-def pushInt32(v):
-    for k in range(4):
-        memory.writeByte(cpu.reg[2], (v >> 24) & 0xFF)
-        cpu.reg[2] -= 1
-        v = v << 8
 
 def prepareTest(test_file, args):
     global hw
@@ -613,6 +596,9 @@ def prepareTest(test_file, args):
     print(f'\tStack base: 0x{stack_base:016X} size: 0x{stack_size:016X}')
     print(f'\tHeap base:  0x{cpu.heap_base:016X} size: 0x{cpu.heap_size:016X}')
 
+    # enable the FPU
+    setCSRField(cpu, CSR_MSTATUS, CSR_MSTATUS_FS_POS, 1, 1)
+    
     # Now push the arguments to the stack
     args = [programFile] + args
     argc = len(args)
@@ -620,18 +606,17 @@ def prepareTest(test_file, args):
 
     for i in range(argc):
         param = args[argc-1-i]
-        pushString(param)
-        argsp[i] = cpu.reg[2] + 1
+        cpu.pushString(param)
+        argsp[i] = cpu.reg[2] 
 
-    pushInt64(0)
+    cpu.pushInt64(0)
 
     for i in range(argc):
         add = argsp[i]
-        pushInt64(add)
+        cpu.pushInt64(add)
 
-    pushInt64(argc)
+    cpu.pushInt64(argc)
 
-    cpu.reg[2] += 1
     
 
 def runTest(test_file):
@@ -670,7 +655,7 @@ def runMandelbrot():
 
 
 def prepare():
-    prepareTest('mandelbrot.elf', ['-v', '-o', 'eclair.jpg'])
+    prepareTest('mandelbrot.elf', [])
 
 if __name__ == "__main__":
     print(sys.argv)
