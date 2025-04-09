@@ -193,3 +193,32 @@ class SingleCycleRISCVProxyKernel(SingleCycleRISCV):
         else:
             clen = len(self.console)
             self.console[clen-1] += c
+
+    def pushString(self, s):
+        # stack pointer points to the last used position
+        towrite = (len(s)+1)            # count the final zero
+        towrite = ((towrite + 3)//4)*4  # align to 32 bits
+
+        start = self.reg[2] - towrite
+        
+        for k in range(len(s)):
+            self.behavioural_memory.writeByte(start+k, ord(s[k]))
+
+        for k in range(len(s), towrite):
+            self.behavioural_memory.writeByte(start+k, 0) # fill with zeros
+            
+    
+    def pushInt64(self, v):
+        for k in range(8):
+            self.behavioural_memory.writeByte(self.reg[2], (v >> 56) & 0xFF)
+            v = v << 8
+            
+        self.reg[2] -= 8
+    
+    def pushInt32(self, v):
+        # stack should be aligned to 64 bits
+        for k in range(4):
+            self.behavioural_memory.writeByte(self.reg[2], (v >> 24) & 0xFF)
+            v = v << 8
+
+        self.reg[2] -= 8

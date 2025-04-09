@@ -1,1 +1,6 @@
-buildroot-2024.02.10/*
+buildroot/*
+*.dat
+*.dat.bak
+*.json
+*.json.gz
+vmlinux.disasm
