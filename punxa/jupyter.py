@@ -114,7 +114,7 @@ def buildInterface():
     # --- Memory display (e.g., 16 words starting from base) ---
     memory_display = widgets.Textarea(value='', description='Memory:',
                                       style={'font_family': 'monospace'},
-                                      layout=widgets.Layout(width='500px', height='300px'))
+                                      layout=widgets.Layout(width='700px', height='300px'))
 
     # --- Combine instructions and register display side-by-side ---
     left_pane = widgets.VBox([instruction_list, memory_display], layout=widgets.Layout(width='550px', height='600px'))
