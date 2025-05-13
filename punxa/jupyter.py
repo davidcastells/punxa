@@ -83,7 +83,7 @@ def get_assembly():
     
     return ret
 
-def buildInterface():
+def buildInterface(mem_width=500):
     global mem
     import ipywidgets as widgets
     from IPython.display import display, clear_output
@@ -114,10 +114,10 @@ def buildInterface():
     # --- Memory display (e.g., 16 words starting from base) ---
     memory_display = widgets.Textarea(value='', description='Memory:',
                                       style={'font_family': 'monospace'},
-                                      layout=widgets.Layout(width='700px', height='300px'))
+                                      layout=widgets.Layout(width=f'{mem_width}px', height='300px'))
 
     # --- Combine instructions and register display side-by-side ---
-    left_pane = widgets.VBox([instruction_list, memory_display], layout=widgets.Layout(width='750px', height='600px'))
+    left_pane = widgets.VBox([instruction_list, memory_display], layout=widgets.Layout(width=f'{mem_width+50}px', height='600px'))
     top_layout = widgets.HBox([left_pane, register_grid])
 
     # --- Memory base address input ---
