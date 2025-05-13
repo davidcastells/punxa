@@ -1,4 +1,6 @@
+buildroot/*
 *.dat
 *.dat.bak
 *.json
 *.json.gz
+vmlinux.disasm
