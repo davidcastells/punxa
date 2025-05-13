@@ -117,7 +117,7 @@ def buildInterface():
                                       layout=widgets.Layout(width='700px', height='300px'))
 
     # --- Combine instructions and register display side-by-side ---
-    left_pane = widgets.VBox([instruction_list, memory_display], layout=widgets.Layout(width='550px', height='600px'))
+    left_pane = widgets.VBox([instruction_list, memory_display], layout=widgets.Layout(width='750px', height='600px'))
     top_layout = widgets.HBox([left_pane, register_grid])
 
     # --- Memory base address input ---
