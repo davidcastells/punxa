@@ -50,10 +50,19 @@ def showMemTraces():
     if not(mem_trace in saved_mem_traces):
         saved_mem_traces.append(mem_trace)
         
-    for mt in saved_mem_traces:
-        showMemTrace(mt)
+    num_columns = len(saved_mem_traces)
+    
+    fig, ax = plt.subplots(1, num_columns, figsize=(20, 8))
+    
+    for idx, mt in enumerate(saved_mem_traces):
+        showMemTrace(mt, ax[idx])
         
-def showMemTrace(mem_trace):
+    plt.title('Memory Layout')
+    # Show plot
+    #plt.savefig('memtrace.pdf')
+    plt.show()
+        
+def showMemTrace(mem_trace, ax):
     mem_trace.sort(key=lambda x: x[0])
     
     last_start = 0
@@ -73,7 +82,7 @@ def showMemTrace(mem_trace):
 
     mem_trace2.append((last_end, '', 1<<8)) # random size
         
-    fig, ax = plt.subplots(figsize=(4, 8))
+    #fig, ax = plt.subplots(figsize=(4, 8))
     colors = plt.cm.tab20.colors  # Use a colormap with enough colors
     # Plot each memory segment as a rectangle
     i = 0
@@ -89,7 +98,7 @@ def showMemTrace(mem_trace):
             h = 0.5
             
             
-        print(f'{i}: {name}= {start:08X} - {end:08X} - h:{h}')
+        #print(f'{i}: {name}= {start:08X} - {end:08X} - h:{h}')
         
         if (len(name) == 0):
             color = 'lightgray' 
@@ -117,10 +126,7 @@ def showMemTrace(mem_trace):
     ax.set_xticks([])
     ax.set_yticks([])
     # Add title
-    plt.title('Memory Layout')
-    # Show plot
-    plt.savefig('memtrace.pdf')
-    plt.show()
+    
 
 
 def newMemTraceColumn(cpu):
