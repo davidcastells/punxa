@@ -126,20 +126,28 @@ class UartSiFive(Logic):
     
     TXDATA = 0x00
     RXDATA = 0x04
-    TXCONTROL = 0x08
-    RXCONTROL = 0x0C
+    TXCNTRL = 0x08
+    RXCNTRL = 0x0C
     IE = 0x10
     IP = 0x14
-    DIV = 0x18
+    DIV =   0x18
     
     TXDATA_FULL_POS = 31
     
+    TXCTRL_TXEN_POS = 0
+    TXCTRL_NSTOP_POS = 0
+    TXCTRL_TXCNT_POS = 0
+
+
     def __init__(self, parent:Logic, name:str, port):
         super().__init__(parent, name)
         
         self.port = self.addInterfaceSink('port', port)
         self.console = ['']        
         self.verbose = False
+        
+        self.txen = 0 # tx not active
+        self.txcnt = 0
 
     def addConsoleChar(self, c):
         if (c == '\n'):
@@ -160,11 +168,20 @@ class UartSiFive(Logic):
         be = self.port.be.get()
         read_data = 0
 
-        if (addr == TXDATA):
+        if (addr == self.TXDATA):
             if (write):
-                addConsoleChar(chr(write_data & 0xFF))
+                self.addConsoleChar(chr(write_data & 0xFF))
             elif (read):
                 read_data = 0 # never report full FIFO
+        elif (addr == self.TXCNTRL):
+            if (write):
+                self.txen = write_data & 1
+                self.txcnt = (write_data >> self.TXCTRL_TXCNT_POS) & ((1<<3)-1)
+        elif (addr == self.IP):
+            if (read):
+                rxwm = 0
+                txwm = 1 if (0 < self.txcnt) else 0
+                read_data = rxwm << 1 | txwm
         else:
             if (write): print(f'WARNING: Write transaction on SiFive UART address {addr:08X} = {write_data:016X}')
             if (read): print(f'WARNING: Read transaction on SiFive UART address {addr:08X} ')

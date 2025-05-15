@@ -40,10 +40,20 @@ import matplotlib.patches as patches
 mem_base =  0x00000000
 #test_base = 0x80001000
 
+# We maintain a list of (addr, name, size)
 mem_trace = []
 
+saved_mem_traces = []
 
-def showMemTrace():
+def showMemTraces():
+    global saved_mem_traces
+    if not(mem_trace in saved_mem_traces):
+        saved_mem_traces.append(mem_trace)
+        
+    for mt in saved_mem_traces:
+        showMemTrace(mt)
+        
+def showMemTrace(mem_trace):
     mem_trace.sort(key=lambda x: x[0])
     
     last_start = 0
@@ -112,7 +122,45 @@ def showMemTrace():
     plt.savefig('memtrace.pdf')
     plt.show()
 
+
+def newMemTraceColumn(cpu):
+    global stack_top
+    global stack_current
+    global stack_bottom
+    global mem_trace
+    
+    # store a copy of the current mem_trace in saved_mem_traces
+    saved_mem_traces.append(mem_trace)
+    
+    # create a copy of the mem_trace removing stack elements below current stack
+    cs = cpu.reg[2]
+    
+    mem_trace2 = []
+    for start, name, size in mem_trace:    
+        if not(start < cs and start > stack_bottom): 
+            mem_trace2.append((start, name, size))
+
+    mem_trace = mem_trace2
+
+    stack_current = cs
+    
+def myFunctionExit(self, et=0):    
+    # et (exit type) can be 0 (function) 1 (M exception) 2 (S exception)
+    global stack_top
+    global stack_current
+    global stack_bottom
+    
+    if (self.reg[2] > stack_current):
+        # We should deallocate all elements below
+        newMemTraceColumn(self)
+
+    
+    self.old_functionExit(et)
+
 def unknown_syscall(self):
+    global stack_top
+    global stack_current
+    global stack_bottom
     
     syscall = self.reg[17]
     
@@ -124,6 +172,8 @@ def unknown_syscall(self):
     addr = self.reg[10]
     name_ptr = self.reg[11]
     size = self.reg[12]
+    
+    stack_current = self.reg[2]
     
     name = ''
 
@@ -218,6 +268,8 @@ def buildHw():
     import types
     cpu.syscall_unknown = types.MethodType(unknown_syscall, cpu)
         
+    cpu.old_functionExit = cpu.functionExit
+    cpu.functionExit = types.MethodType(myFunctionExit, cpu)
         
     # pass objects to interactive commands module
     import punxa.interactive_commands
@@ -229,6 +281,10 @@ def buildHw():
 
 def prepareTest(test_file):
     global hw
+    global stack_top
+    global stack_current
+    global stack_bottom
+    
     hw = buildHw()
     programFile = ex_dir + test_file
     
@@ -244,6 +300,10 @@ def prepareTest(test_file):
     stack_base = 0x90000
     stack_size = 0x10000
     cpu.reg[2] = mem_base + stack_base + stack_size - 8
+
+    stack_top = mem_base + stack_base + stack_size
+    stack_current = cpu.reg[2]
+    stack_bottom = mem_base + stack_base 
 
     memory.reallocArea(stack_base, stack_size)
 
