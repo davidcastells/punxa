@@ -44,6 +44,30 @@ class Memory(Logic):
         #self.values[address//4] = value
         raise Exception('not implemented')
         
+    def readByte(self, address):
+        if (address >= 0 and address < len(self.values)):
+            return self.values[address]                 
+
+    def writeByte(self, address, value):
+        
+        if (address >= 0 and address < len(self.values)):
+            self.values[address] = value
+
+
+    def write_i32(self, address, value):
+        # writes in little endian (LEAST SIGNIFICANT BYTE FIRST)
+        
+        for i in range(4):
+            self.writeByte(address+i, (value >> (8*i)) & 0xFF) 
+
+    def read_i32(self, address):
+        # reads in little endian (LEAST SIGNIFICANT BYTE FIRST)
+        v = 0
+        for i in range(4):
+            v |= self.readByte(address+i) << (8*i)
+            
+        return v
+    
     def read(self, address:int) -> int:
         #return self.values[address//4]
         raise Exception('not implemented')

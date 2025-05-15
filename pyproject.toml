@@ -5,13 +5,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "punxa"
-version = "0.2"  # Change this to your desired version
+version = "2025.2"  # Change this to your desired version
 authors = [ {name= "David Castells-Rufas", email="david.castells@uab.cat" } ]
 description = "Python-based RISC-V Full System Simulator."
 readme="README.md"
 
 
-dependencies = ["py4hw","pyelftools", "itanium-demangler"]
+dependencies = ["py4hw>=2025.4","pyelftools", "itanium-demangler"]
 
 
 [tool.black]
