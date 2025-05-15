@@ -107,8 +107,11 @@ def isElf(filepath):
         return False
 
 def loadElf(memory, filename, offset, verbose=False):
+    # offset is the memory offset where the program should be loaded to
     from elftools.elf.elffile import ELFFile
 
+    mem_base = memory.mem_base
+    
     f = open(filename,'rb')
     #elffile = ELFFile(f,'rb')
     elffile = ELFFile(f)
@@ -120,7 +123,7 @@ def loadElf(memory, filename, offset, verbose=False):
             size = len(data)
             if (verbose):
                 print('ELF segment. address: {:016X} - {:016X}'.format(adr, size))
-            memory.reallocArea(adr - offset, 1 << int(math.ceil(math.log2(size))), verbose=verbose)
+            memory.reallocArea(adr - mem_base + offset, 1 << int(math.ceil(math.log2(size))), verbose=verbose)
             p = adr - offset
             try:
                 for x in data:
