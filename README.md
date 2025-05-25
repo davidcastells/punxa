@@ -60,7 +60,19 @@ check [riscv-tests](https://github.com/davidcastells/punxa/blob/main/test/riscv-
 - [Paranoia](https://github.com/davidcastells/punxa/tree/main/test/proxykernel_software/paranoia/README.md)
 
 ### Publications
-Cite as 
+Cite as
+
+```
+@article{castells2025punxa,
+author={Castells-Rufas, David and Novo, David and Martorell, Xavier},
+title={Punxa: A Python-Based RISC-V System Simulator for Education},
+journal={Electronics Letters},
+volume={61},
+number={1},
+pages={e70300},
+doi={10.1049/ell2.70300},
+year={2025}}
+```
 
 ```
 @INPROCEEDINGS{castells2024educational,
